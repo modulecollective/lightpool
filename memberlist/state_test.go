@@ -17,7 +17,7 @@ import (
 	"time"
 
 	metrics "github.com/hashicorp/go-metrics"
-	iretry "github.com/hashicorp/memberlist/internal/retry"
+	iretry "github.com/modulecollective/lightpool/internal/retry"
 	"github.com/stretchr/testify/require"
 )
 

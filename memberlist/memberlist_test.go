@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	iretry "github.com/hashicorp/memberlist/internal/retry"
 	"github.com/miekg/dns"
+	iretry "github.com/modulecollective/lightpool/internal/retry"
 	"github.com/stretchr/testify/require"
 )
 
