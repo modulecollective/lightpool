@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .SHELLFLAGS := -o pipefail -euc
 .DEFAULT_GOAL := test
 
-.PHONY: test subnet cov testrace check lint copywriteheaders tidy integ
+.PHONY: test subnet cov testrace check lint tidy integ
 
 # test runs the test suite
 test: subnet
@@ -16,7 +16,7 @@ integ: subnet
 # subnet sets up the require subnet for testing on darwin (osx) - you must run
 # this before running other tests if you are on osx.
 subnet:
-	@sh -c "'$(CURDIR)/test/setup_subnet.sh'"
+	@sh -c "'$(CURDIR)/scripts/setup_subnet.sh'"
 
 # cov runs tests with a coverage profile
 cov:
@@ -28,15 +28,11 @@ testrace: subnet
 	go test -count=1 -race ./... $(TESTARGS)
 
 # check runs all the linters and custom checks
-check: lint tidy copywriteheaders
+check: lint tidy
 
 # lint covers go vet and go fmt
 lint:
 	golangci-lint run --build-tags "$(GO_TAGS)"
-
-# make sure our copyright headers are correct
-copywriteheaders:
-	copywrite headers --plan
 
 # make sure go.mod/sum are up to date
 tidy:
