@@ -1795,9 +1795,9 @@ func TestMemberlist_Join_IPv6(t *testing.T) {
 		t.Fatalf("should have 2 nodes! %v", m2.Members())
 	}
 
-	if len(m1.Members()) != 2 {
-		t.Fatalf("should have 2 nodes! %v", m2.Members())
-	}
+	// m1 merges B's state after replying to the push/pull, so Join
+	// returning on m2 does not mean m1 has caught up yet.
+	waitUntilSize(t, m1, 2)
 }
 
 func reservePort(t *testing.T, ip net.IP, purpose string) int {
