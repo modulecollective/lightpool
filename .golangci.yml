@@ -19,6 +19,8 @@ linters:
     - unused
 
 formatters:
+  enable:
+    - gofmt
   settings:
     gofmt:
       simplify: true
