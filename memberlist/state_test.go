@@ -2623,8 +2623,10 @@ func testVerifyProtocolSingle(t *testing.T, A [][6]uint8, B [][6]uint8, expect b
 
 func registerInMemorySink(t *testing.T) *metrics.InmemSink {
 	t.Helper()
-	// Only have a single interval for the test
-	sink := metrics.NewInmemSink(1*time.Minute, 1*time.Minute)
+	// One interval for the life of the test. The sink buckets by
+	// wall clock, so a short interval drops every sample when the
+	// clock crosses a boundary mid-test.
+	sink := metrics.NewInmemSink(100*365*24*time.Hour, 100*365*24*time.Hour)
 	cfg := metrics.DefaultConfig("consul.usage.test")
 	cfg.EnableHostname = false
 	if _, err := metrics.NewGlobal(cfg, sink); err != nil {
