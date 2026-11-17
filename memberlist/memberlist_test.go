@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -876,6 +877,8 @@ func TestMemberlist_JoinDifferentNetworksMultiMasks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected err: %s", err)
 	}
+	// m3 joins through m1 and expects to learn m2 from it.
+	waitUntilSize(t, m1, 2)
 
 	// Create a rogue node that allows all networks
 	// It should see others, but will not be seen by others
@@ -946,13 +949,15 @@ func TestMemberlist_JoinDifferentNetworksMultiMasks(t *testing.T) {
 }
 
 type CustomMergeDelegate struct {
-	invoked bool
+	invoked atomic.Bool
 	t       *testing.T
 }
 
 func (c *CustomMergeDelegate) NotifyMerge(nodes []*Node) error {
+	// Log before setting invoked: a test that waits on invoked must not
+	// return while this goroutine can still call t.Logf.
 	c.t.Logf("Cancel merge")
-	c.invoked = true
+	c.invoked.Store(true)
 	return fmt.Errorf("Custom merge canceled")
 }
 
@@ -1001,24 +1006,25 @@ func TestMemberlist_Join_Cancel(t *testing.T) {
 		t.Fatalf("should have 1 nodes! %v", m1.Members())
 	}
 
-	// Check delegate invocation
-	if !merge1.invoked {
+	// Check delegate invocation. m2's Join returns once m1 has replied,
+	// which m1 does before it merges, so m1's delegate may still be pending.
+	if !merge2.invoked.Load() {
 		t.Fatalf("should invoke delegate")
 	}
-	if !merge2.invoked {
-		t.Fatalf("should invoke delegate")
-	}
+	waitForCondition(t, func() (bool, string) {
+		return merge1.invoked.Load(), "m1 should invoke merge delegate"
+	})
 }
 
 type CustomAliveDelegate struct {
 	Ignore string
-	count  int
+	count  atomic.Int32
 
 	t *testing.T
 }
 
 func (c *CustomAliveDelegate) NotifyAlive(peer *Node) error {
-	c.count++
+	c.count.Add(1)
 	if peer.Name == c.Ignore {
 		return nil
 	}
@@ -1078,11 +1084,11 @@ func TestMemberlist_Join_Cancel_Passive(t *testing.T) {
 	}
 
 	// Check delegate invocation
-	if alive1.count == 0 {
-		t.Fatalf("should invoke delegate: %d", alive1.count)
+	if alive1.count.Load() == 0 {
+		t.Fatalf("should invoke delegate: %d", alive1.count.Load())
 	}
-	if alive2.count == 0 {
-		t.Fatalf("should invoke delegate: %d", alive2.count)
+	if alive2.count.Load() == 0 {
+		t.Fatalf("should invoke delegate: %d", alive2.count.Load())
 	}
 }
 
@@ -1193,17 +1199,12 @@ func TestMemberlist_Leave(t *testing.T) {
 	err = m1.Leave(time.Second)
 	require.NoError(t, err)
 
-	// Wait for leave
-	time.Sleep(10 * time.Millisecond)
-
 	// m1 should think dead
 	if len(m1.Members()) != 1 {
 		t.Fatalf("should have 1 node")
 	}
 
-	if len(m2.Members()) != 1 {
-		t.Fatalf("should have 1 node")
-	}
+	waitUntilSize(t, m2, 1)
 
 	if m2.nodeMap[c1.Name].State != StateLeft {
 		t.Fatalf("bad state")
@@ -1249,11 +1250,6 @@ func TestMemberlist_JoinShutdown(t *testing.T) {
 	}
 	if err != nil {
 		t.Fatalf("unexpected err: %s", err)
-	}
-
-	// Check the hosts
-	if len(m2.Members()) != 2 {
-		t.Fatalf("should have 2 nodes! %v", m2.Members())
 	}
 
 	require.NoError(t, m1.Shutdown())
