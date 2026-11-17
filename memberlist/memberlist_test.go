@@ -1194,6 +1194,8 @@ func TestMemberlist_Leave(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected err: %s", err)
 	}
+	// Leave only waits for its broadcast if m1 already knows m2.
+	waitUntilSize(t, m1, 2)
 
 	// Leave
 	err = m1.Leave(time.Second)
