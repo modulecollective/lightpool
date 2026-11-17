@@ -855,7 +855,10 @@ func (m *Memberlist) rawSendMsgPacket(a Address, node *Node, msg []byte) error {
 		m.nodeLock.RLock()
 		nodeState, ok := m.nodeMap[toAddr]
 		if ok {
-			node = &nodeState.Node
+			// Copy under the lock: aliveNode rewrites the protocol
+			// versions in place, and PMax is read below without it.
+			n := nodeState.Node
+			node = &n
 		}
 		m.nodeLock.RUnlock()
 	}
