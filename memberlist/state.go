@@ -536,15 +536,16 @@ func (m *Memberlist) Ping(node string, addr net.Addr) (time.Duration, error) {
 
 	a := Address{Addr: addr.String(), Name: node}
 
+	// Mark the sent time before the send, as probeNode does. Stamping it
+	// after the write returns lets the ack's receive timestamp land first
+	// when this goroutine is descheduled, giving a negative RTT. Before the
+	// send, the RTT over-reports by the encode and syscall cost instead.
+	sent := time.Now()
+
 	// Send a ping to the node.
 	if err := m.encodeAndSendMsg(a, pingMsg, &ping); err != nil {
 		return 0, err
 	}
-
-	// Mark the sent time here, which should be after any pre-processing and
-	// system calls to do the actual send. This probably under-reports a bit,
-	// but it's the best we can do.
-	sent := time.Now()
 
 	// Wait for response or timeout.
 	select {

@@ -1123,6 +1123,50 @@ func TestMemberList_Ping(t *testing.T) {
 	}
 }
 
+// slowWriteTransport returns from a packet write only after the peer has
+// had time to answer, standing in for a pinger descheduled after its send.
+type slowWriteTransport struct {
+	*MockTransport
+	delay time.Duration
+}
+
+func (t *slowWriteTransport) WriteToAddress(b []byte, a Address) (time.Time, error) {
+	ts, err := t.MockTransport.WriteToAddress(b, a)
+	time.Sleep(t.delay)
+	return ts, err
+}
+
+func TestMemberList_Ping_RTTNotNegativeWhenSendReturnsLate(t *testing.T) {
+	network := &MockNetwork{}
+
+	c1 := DefaultLANConfig()
+	c1.Name = "node1"
+	c1.Transport = &slowWriteTransport{network.NewTransport("node1"), 50 * time.Millisecond}
+	m1, err := Create(c1)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	defer func() { _ = m1.Shutdown() }()
+
+	t2 := network.NewTransport("node2")
+	c2 := DefaultLANConfig()
+	c2.Name = "node2"
+	c2.Transport = t2
+	m2, err := Create(c2)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	defer func() { _ = m2.Shutdown() }()
+
+	rtt, err := m1.Ping("node2", t2.addr)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if rtt <= 0 {
+		t.Fatalf("bad: %v", rtt)
+	}
+}
+
 func TestMemberList_ResetNodes(t *testing.T) {
 	m := GetMemberlist(t, func(c *Config) {
 		c.GossipToTheDeadTime = 100 * time.Millisecond
