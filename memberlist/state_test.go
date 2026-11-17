@@ -1188,9 +1188,9 @@ func TestMemberList_setProbeChannels(t *testing.T) {
 
 	require.True(t, ackHandlerExists(t, m), "missing handler")
 
-	time.Sleep(20 * time.Millisecond)
-
-	require.False(t, ackHandlerExists(t, m), "non-reaped handler")
+	waitForCondition(t, func() (bool, string) {
+		return !ackHandlerExists(t, m), "non-reaped handler"
+	})
 }
 
 func TestMemberList_setAckHandler(t *testing.T) {
@@ -1201,9 +1201,9 @@ func TestMemberList_setAckHandler(t *testing.T) {
 
 	require.True(t, ackHandlerExists(t, m), "missing handler")
 
-	time.Sleep(20 * time.Millisecond)
-
-	require.False(t, ackHandlerExists(t, m), "non-reaped handler")
+	waitForCondition(t, func() (bool, string) {
+		return !ackHandlerExists(t, m), "non-reaped handler"
+	})
 }
 
 func TestMemberList_invokeAckHandler(t *testing.T) {
