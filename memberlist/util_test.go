@@ -108,27 +108,35 @@ func TestRetransmitLimit(t *testing.T) {
 func TestShuffleNodes(t *testing.T) {
 	orig := []*nodeState{
 		{
+			Node:  Node{Name: "n0"},
 			State: StateDead,
 		},
 		{
+			Node:  Node{Name: "n1"},
 			State: StateAlive,
 		},
 		{
+			Node:  Node{Name: "n2"},
 			State: StateAlive,
 		},
 		{
+			Node:  Node{Name: "n3"},
 			State: StateDead,
 		},
 		{
+			Node:  Node{Name: "n4"},
 			State: StateAlive,
 		},
 		{
+			Node:  Node{Name: "n5"},
 			State: StateAlive,
 		},
 		{
+			Node:  Node{Name: "n6"},
 			State: StateDead,
 		},
 		{
+			Node:  Node{Name: "n7"},
 			State: StateAlive,
 		},
 	}
