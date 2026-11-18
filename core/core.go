@@ -55,6 +55,8 @@ type Core struct {
 	work                   Token
 	effects                []Effect
 	stats                  Stats
+	inspect                bool
+	journal                []Inspection
 }
 type sendPending struct{ command, probe uint64 }
 
@@ -98,6 +100,7 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
 	}
 	c.now = now
 	c.effects = nil
+	c.journal = nil
 	c.stats.Steps++
 	if c.stopped {
 		if s, ok := input.(Shutdown); ok {
@@ -111,6 +114,7 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
 	case Start:
 		if !c.started {
 			c.started = true
+			c.recordMember(c.nodes[c.self].Member)
 			c.queue(wire.Message{Alive: ptrMember(c.nodes[c.self].Member)}, c.self, 0)
 			c.startSchedules()
 		}
@@ -216,7 +220,7 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
 }
 func ptrMember(n wire.Member) *wire.Member { n = n.Clone(); return &n }
 func (c *Core) Snapshot() Snapshot {
-	s := Snapshot{Now: c.now, Health: c.health, Backlog: len(c.broadcasts), PendingStreams: len(c.streams), Stopped: c.stopped, Left: c.left, Stats: c.stats}
+	s := c.Summary()
 	for _, name := range c.names() {
 		s.Members = append(s.Members, c.nodes[name].Clone())
 	}
@@ -238,12 +242,14 @@ func (c *Core) arm(key, kind string, at Instant, op uint64, node string) {
 	c.timers[key] = d
 	c.timerKeys[t.ID] = key
 	c.emit(Arm{t, d.at})
+	c.record(Inspection{Kind: "timer", ID: t.ID, Generation: t.Generation, Operation: op, Phase: "arm", At: d.at, Purpose: kind, Subject: node})
 }
 func (c *Core) cancel(key string) {
 	if d, ok := c.timers[key]; ok {
 		delete(c.timers, key)
 		delete(c.timerKeys, d.timer.ID)
 		c.emit(Cancel{d.timer})
+		c.record(Inspection{Kind: "timer", ID: d.timer.ID, Generation: d.timer.Generation, Operation: d.op, Phase: "cancel", At: d.at, Purpose: d.kind, Subject: d.node})
 	}
 }
 func (c *Core) adjustHealth(delta int) {

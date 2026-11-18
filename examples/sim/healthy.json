@@ -1,0 +1,133 @@
+{
+  "Code": "supplied-by-producer",
+  "Protocol": {
+    "ProbeInterval": 200000000,
+    "ProbeTimeout": 40000000,
+    "PushPullInterval": 2000000000,
+    "GossipInterval": 50000000,
+    "StreamTimeout": 1000000000,
+    "GossipToDead": 1500000000,
+    "IndirectChecks": 3,
+    "RetransmitMult": 4,
+    "SuspicionMult": 3,
+    "SuspicionMaxMult": 2,
+    "AwarenessMax": 8,
+    "GossipNodes": 3,
+    "QueueDepth": 1024,
+    "PacketBudget": 1400,
+    "MaxPushPull": 128,
+    "DisableTCP": true
+  },
+  "Nodes": [
+    {
+      "Identity": {
+        "name": "a",
+        "address": "192.0.2.1:7946"
+      },
+      "Service": 10000
+    },
+    {
+      "Identity": {
+        "name": "b",
+        "address": "192.0.2.2:7946"
+      },
+      "Service": 10000
+    },
+    {
+      "Identity": {
+        "name": "c",
+        "address": "192.0.2.3:7946"
+      },
+      "Service": 10000
+    },
+    {
+      "Identity": {
+        "name": "d",
+        "address": "192.0.2.4:7946"
+      },
+      "Service": 10000
+    },
+    {
+      "Identity": {
+        "name": "e",
+        "address": "192.0.2.5:7946"
+      },
+      "Service": 10000
+    },
+    {
+      "Identity": {
+        "name": "f",
+        "address": "192.0.2.6:7946"
+      },
+      "Service": 10000
+    },
+    {
+      "Identity": {
+        "name": "g",
+        "address": "192.0.2.7:7946"
+      },
+      "Service": 10000
+    },
+    {
+      "Identity": {
+        "name": "h",
+        "address": "192.0.2.8:7946"
+      },
+      "Service": 10000
+    }
+  ],
+  "Actions": [
+    {
+      "At": 10000000,
+      "Node": "b",
+      "Kind": "join",
+      "Peer": "a"
+    },
+    {
+      "At": 40000000,
+      "Node": "c",
+      "Kind": "join",
+      "Peer": "a"
+    },
+    {
+      "At": 70000000,
+      "Node": "d",
+      "Kind": "join",
+      "Peer": "a"
+    },
+    {
+      "At": 100000000,
+      "Node": "e",
+      "Kind": "join",
+      "Peer": "a"
+    },
+    {
+      "At": 130000000,
+      "Node": "f",
+      "Kind": "join",
+      "Peer": "a"
+    },
+    {
+      "At": 160000000,
+      "Node": "g",
+      "Kind": "join",
+      "Peer": "a"
+    },
+    {
+      "At": 190000000,
+      "Node": "h",
+      "Kind": "join",
+      "Peer": "a"
+    }
+  ],
+  "Seeds": {
+    "Protocol": 1,
+    "Fault": 2,
+    "Schedule": 3
+  },
+  "Horizon": 5000000000,
+  "EventBudget": 500000,
+  "DatagramCapacity": 65536,
+  "StreamCapacity": 4096,
+  "Latency": 1000000
+}

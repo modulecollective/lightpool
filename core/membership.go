@@ -122,6 +122,7 @@ func (c *Core) applyAlive(n wire.Member) {
 		c.order[offset], c.order[last] = c.order[last], c.order[offset]
 	}
 	c.nodes[n.Name] = &member{n.Clone(), changed}
+	c.recordMember(n)
 	c.queue(wire.Message{Alive: ptrMember(n)}, n.Name, 0)
 	if kind == "join" || old == nil || !bytes.Equal(old.Meta, n.Meta) {
 		c.notify(kind, n)
@@ -134,6 +135,8 @@ func (c *Core) refute(inc uint64) {
 	}
 	n.Incarnation = max(n.Incarnation, inc) + 1
 	n.State = wire.Alive
+	c.recordMember(n.Member)
+	c.record(Inspection{Kind: "refutation", Subject: c.self})
 	c.adjustHealth(1)
 	c.queue(wire.Message{Alive: ptrMember(n.Member)}, c.self, 0)
 	c.notify("refute", n.Member)
@@ -149,6 +152,7 @@ func (c *Core) suspect(a wire.Accusation) {
 		}
 		s.confirmations[a.From] = true
 		s.n++
+		c.record(Inspection{Kind: "suspicion", Subject: a.Node, Outcome: "confirmation:" + a.From})
 		c.queue(wire.Message{Suspect: &a}, a.Node, 0)
 		// arm clamps an already shortened deadline to now; no recursive transition.
 		c.arm("suspect:"+a.Node, "suspicion", s.start.Add(s.duration()), 0, a.Node)
@@ -164,6 +168,7 @@ func (c *Core) suspect(a wire.Accusation) {
 	n.State = wire.Suspect
 	n.Incarnation = a.Incarnation
 	n.changed = c.now
+	c.recordMember(n.Member)
 	c.queue(wire.Message{Suspect: &a}, a.Node, 0)
 	c.notify("suspect", n.Member)
 	k := c.config.SuspicionMult - 2
@@ -174,6 +179,7 @@ func (c *Core) suspect(a wire.Accusation) {
 	min := suspicionTimeout(c.config.SuspicionMult, len(c.nodes), interval)
 	s := &suspicion{start: c.now, min: min, max: time.Duration(c.config.SuspicionMaxMult) * min, k: k, confirmations: map[string]bool{a.From: true}}
 	c.susp[a.Node] = s
+	c.record(Inspection{Kind: "suspicion", Subject: a.Node, Outcome: "started:" + a.From})
 	c.arm("suspect:"+a.Node, "suspicion", c.now.Add(s.duration()), 0, a.Node)
 }
 func (c *Core) dead(a wire.Accusation) {
@@ -196,6 +202,7 @@ func (c *Core) dead(a wire.Accusation) {
 		n.State = wire.Left
 	}
 	n.changed = c.now
+	c.recordMember(n.Member)
 	c.queue(wire.Message{Dead: &a}, a.Node, 0)
 	c.notify("leave", n.Member)
 }
@@ -214,6 +221,7 @@ func (c *Core) update(e Update) {
 		return
 	}
 	n.Member = copyNode
+	c.recordMember(n.Member)
 	c.queue(wire.Message{Alive: ptrMember(n.Member)}, c.self, e.Command)
 	c.notify("update", n.Member)
 }
@@ -282,6 +290,7 @@ func (c *Core) resetNodes() {
 		n := c.nodes[name]
 		if name != c.self && (n.State == wire.Dead || n.State == wire.Left) && c.now-n.changed > Instant(c.config.GossipToDead) {
 			delete(c.nodes, name)
+			c.record(Inspection{Kind: "member.remove", Subject: name})
 		} else {
 			kept = append(kept, name)
 		}

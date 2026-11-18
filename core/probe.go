@@ -39,6 +39,7 @@ func (c *Core) admit(m wire.Message, from netip.AddrPort, received Instant) {
 		p := m.Indirect
 		id := c.token().ID
 		c.probes[id] = &probe{id: id, peer: p.Target.Clone(), start: c.now, relay: &p.Source, relaySequence: p.Sequence}
+		c.recordProbe(c.probes[id], "relay", "")
 		c.arm(key("relay:", id), "relay", c.now.Add(c.config.ProbeTimeout), id, "")
 		c.datagram(p.Target.Address, []wire.Message{{Ping: &wire.Ping{Sequence: id, Target: p.Target.Name, Source: routing(c.nodes[c.self].Identity)}}}, 0, id, true)
 	case m.Ack != nil:
@@ -74,6 +75,7 @@ func (c *Core) startProbe(peer wire.Identity, command uint64, explicit, periodic
 		p.incarnation = n.Incarnation
 	}
 	c.probes[id] = p
+	c.recordProbe(p, "direct", "")
 	c.stats.Probes++
 	if periodic {
 		c.activeProbe = id
@@ -128,6 +130,7 @@ func (c *Core) escalate(id uint64) {
 		p.helpers = append(p.helpers, n.Identity.Clone())
 		c.datagram(n.Address, []wire.Message{{Indirect: &wire.Indirect{Sequence: id, Target: routing(p.peer), Source: routing(c.nodes[c.self].Identity)}}}, 0, 0, true)
 	}
+	c.recordProbe(p, "indirect", "")
 	if !c.tcpDisabled(p.peer.Name) {
 		c.openPing(p)
 	}
@@ -154,6 +157,7 @@ func (c *Core) finishProbe(id uint64, f Failure, rtt time.Duration, payload []by
 	if p == nil {
 		return
 	}
+	c.recordProbe(p, "finished", f.String())
 	delete(c.probes, id)
 	c.cancel(key("direct:", id))
 	c.cancel(key("overall:", id))
@@ -268,6 +272,7 @@ func (c *Core) fire(t Timer) {
 	if d.timer != t || d.at > c.now {
 		return
 	}
+	c.record(Inspection{Kind: "timer", ID: t.ID, Generation: t.Generation, Operation: d.op, Phase: "fire", At: d.at, Purpose: d.kind, Subject: d.node})
 	delete(c.timers, k)
 	delete(c.timerKeys, t.ID)
 	switch d.kind {

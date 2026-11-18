@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/modulecollective/lightpool/core"
+	"github.com/modulecollective/lightpool/sim/trace"
 	"github.com/modulecollective/lightpool/wire"
 	"math/rand/v2"
 	"runtime"
@@ -116,6 +117,7 @@ type event struct {
 	from       string
 	stream     uint64
 	direction  int
+	traffic    *trace.Traffic
 }
 type eventHeap []*event
 
@@ -132,6 +134,7 @@ func (h *eventHeap) Pop() any     { old := *h; v := old[len(old)-1]; *h = old[:l
 
 type direction struct {
 	frame         []byte
+	traffic       trace.Traffic
 	offset        int
 	assembled     []byte
 	received      core.Instant
@@ -168,12 +171,15 @@ type runner struct {
 	streams        map[uint64]*connection
 	tokens         map[string]map[core.Token]uint64
 	trace          []Trace
+	export         *exporter
 }
 
 // netipKey stores the canonical endpoint text; no DNS exists in this model.
 type netipKey string
 
-func Run(s Scenario) (Result, error) {
+func Run(s Scenario) (Result, error) { return execute(s, nil) }
+
+func execute(s Scenario, x *exporter) (Result, error) {
 	if err := validate(s); err != nil {
 		return Result{}, err
 	}
@@ -186,7 +192,7 @@ func Run(s Scenario) (Result, error) {
 		return Result{}, err
 	}
 	r := &runner{
-		scenario: s, nodes: make(map[string]*machine), addresses: make(map[netipKey]string),
+		export: x, scenario: s, nodes: make(map[string]*machine), addresses: make(map[netipKey]string),
 		schedule: rand.New(rand.NewPCG(s.Seeds.Schedule, 0x7363686564756c65)),
 		streams:  make(map[uint64]*connection), tokens: make(map[string]map[core.Token]uint64),
 	}
@@ -215,6 +221,9 @@ func Run(s Scenario) (Result, error) {
 	for _, a := range s.Actions {
 		r.enqueue(&event{at: a.At, kind: "action", action: a})
 	}
+	if err = r.exportHeader(); err != nil {
+		return Result{}, err
+	}
 	result := Result{Manifest: r.manifest, Complete: true, Reason: "horizon"}
 	for len(r.heap) > 0 {
 		if result.Events >= s.EventBudget {
@@ -241,6 +250,7 @@ func Run(s Scenario) (Result, error) {
 			m.busy = r.now.Add(m.spec.Service)
 		}
 		result.Events++
+		r.beginExport(e, result.Events)
 		trace := Trace{Order: uint64(result.Events), ID: e.id, Time: r.now, Node: e.node, Kind: e.kind}
 		var effects []core.Effect
 		switch e.kind {
@@ -322,22 +332,35 @@ func Run(s Scenario) (Result, error) {
 		if err != nil {
 			return Result{}, fmt.Errorf("%s at %d: %w", trace.Kind, r.now, err)
 		}
-		if e.kind == "core" {
+		if r.export == nil && e.kind == "core" {
 			data, _ := json.Marshal(e.input)
 			trace.Hash = hash(data)
 		}
 		for _, effect := range effects {
-			raw, _ := json.Marshal(effect)
-			tag, _ := json.Marshal(struct {
-				Kind   string
-				Effect json.RawMessage
-			}{fmt.Sprintf("%T", effect), raw})
-			trace.Effects = append(trace.Effects, tag)
+			if r.export == nil {
+				raw, _ := json.Marshal(effect)
+				tag, _ := json.Marshal(struct {
+					Kind   string
+					Effect json.RawMessage
+				}{fmt.Sprintf("%T", effect), raw})
+				trace.Effects = append(trace.Effects, tag)
+			}
 			r.effect(trace.Node, effect)
 		}
-		r.trace = append(r.trace, trace)
+		if r.export == nil {
+			r.trace = append(r.trace, trace)
+		}
+		if err = r.finishExport(e, result.Events); err != nil {
+			return Result{}, err
+		}
 	}
 	result.Trace = r.trace
+	if r.export != nil {
+		if err = r.exportEnd(result); err != nil {
+			return Result{}, err
+		}
+		return result, nil
+	}
 	for _, name := range r.order {
 		m := r.nodes[name]
 		snapshot := core.Snapshot{}
@@ -360,6 +383,10 @@ func stringsCompare(a, b string) int {
 	}
 	return 0
 }
+
+// Validate checks the simulator scenario boundary.
+func Validate(s Scenario) error { return validate(s) }
+
 func validate(s Scenario) error {
 	if s.Code == "" || s.Horizon < 0 || s.EventBudget <= 0 || s.DatagramCapacity <= 0 || s.StreamCapacity <= 0 || s.Latency < 0 || len(s.Nodes) == 0 {
 		return errors.New("invalid scenario bounds or code revision")
@@ -435,11 +462,14 @@ func (r *runner) pop() *event {
 	}
 	return out
 }
-func (r *runner) coreEvent(name string, at core.Instant, input core.Event) {
+func (r *runner) coreEvent(name string, at core.Instant, input core.Event) *event {
 	m := r.nodes[name]
 	if m != nil && m.alive {
-		r.enqueue(&event{at: at, node: name, life: m.life, kind: "core", input: input})
+		e := &event{at: at, node: name, life: m.life, kind: "core", input: input}
+		r.enqueue(e)
+		return e
 	}
+	return nil
 }
 func (r *runner) action(a Action) error {
 	m := r.nodes[a.Node]
@@ -458,6 +488,9 @@ func (r *runner) action(a Action) error {
 			return err
 		}
 		m.engine = engine
+		if r.export != nil {
+			engine.EnableInspection()
+		}
 		r.coreEvent(a.Node, r.now, core.Start{})
 		return nil
 	case "crash":
@@ -525,18 +558,30 @@ func (r *runner) effect(name string, e core.Effect) {
 	switch e := e.(type) {
 	case core.SendDatagram:
 		b, err := wire.Encode(e.Messages, wire.Options{Label: r.scenario.Protocol.Label, Compress: r.scenario.Compression})
+		to := r.addresses[netipKey(e.To.String())]
+		t := r.attempt("datagram", name, to, e.Messages, len(b))
 		if err != nil || len(b) > r.scenario.Protocol.PacketBudget {
+			t.Stage = "drop"
+			t.Detail = "local encoding/budget"
+			r.traffic(t)
 			r.coreEvent(name, r.now, core.Sent{ID: e.ID, Failure: core.LocalFailure})
 			return
 		}
 		m.sent += uint64(len(b))
+		t.Stage = "sent"
+		r.traffic(t)
 		r.coreEvent(name, r.now, core.Sent{ID: e.ID})
-		to := r.addresses[netipKey(e.To.String())]
 		if to == "" {
+			t.Stage = "drop"
+			t.Detail = "unresolved route"
+			r.traffic(t)
 			return
 		}
 		f := r.fault(name, to, r.now)
 		if f.Drop {
+			t.Stage = "drop"
+			t.Detail = "directional fault"
+			r.traffic(t)
 			m.drops++
 			return
 		}
@@ -545,7 +590,7 @@ func (r *runner) effect(name string, e core.Effect) {
 			copies++
 		}
 		for j := 0; j < copies; j++ {
-			r.enqueue(&event{at: r.now.Add(r.scenario.Latency + f.Delay + time.Duration(j)), kind: "datagram", from: name, frame: b, action: Action{Node: to}})
+			r.enqueue(&event{at: r.now.Add(r.scenario.Latency + f.Delay + time.Duration(j)), kind: "datagram", from: name, frame: b, action: Action{Node: to}, traffic: &t})
 		}
 	case core.Arm:
 		r.coreEvent(name, e.At, core.Fired{Timer: e.Timer})
@@ -579,12 +624,34 @@ func (r *runner) effect(name string, e core.Effect) {
 func (r *runner) datagramArrival(e *event) {
 	to := e.action.Node
 	m := r.nodes[to]
+	if e.traffic != nil {
+		t := *e.traffic
+		t.Stage = "arrival"
+		r.traffic(t)
+	}
 	if !m.alive {
+		if e.traffic != nil {
+			t := *e.traffic
+			t.Stage = "drop"
+			t.Detail = "process stopped"
+			r.traffic(t)
+		}
 		return
 	}
 	m.received += uint64(len(e.frame))
+	if r.export != nil && e.traffic != nil {
+		t := *e.traffic
+		t.Stage = "received"
+		r.traffic(t)
+	}
 	if m.buffered+len(e.frame) > r.scenario.DatagramCapacity {
 		m.drops++
+		if e.traffic != nil {
+			t := *e.traffic
+			t.Stage = "drop"
+			t.Detail = "receive queue full"
+			r.traffic(t)
+		}
 		return
 	}
 	messages, err := wire.Decode(e.frame, wire.Options{Label: r.scenario.Protocol.Label})
@@ -592,7 +659,16 @@ func (r *runner) datagramArrival(e *event) {
 		panic(err)
 	}
 	m.buffered += len(e.frame)
-	r.enqueue(&event{at: r.now, node: to, life: m.life, kind: "core", input: core.Datagram{From: r.nodes[e.from].spec.Identity.Address, Received: r.now, Messages: messages}, frame: e.frame})
+	t := trace.Traffic{}
+	if e.traffic != nil {
+		t = *e.traffic
+		t.Received = trace.Decimal(r.now)
+	}
+	pending := r.coreEvent(to, r.now, core.Datagram{From: r.nodes[e.from].spec.Identity.Address, Received: r.now, Messages: messages})
+	pending.frame = e.frame
+	if r.export != nil {
+		pending.traffic = &t
+	}
 }
 func (r *runner) open(name string, e core.OpenStream) {
 	if e.Deadline <= r.now {
@@ -654,6 +730,7 @@ func (r *runner) write(name string, e core.WriteStream) {
 		r.coreEvent(name, r.now, core.Written{ID: e.ID, Failure: core.LocalFailure})
 		return
 	}
+	d.traffic = r.attempt("stream", name, conn.names[1-side], e.Messages, len(b))
 	d.frame = b
 	d.offset = 0
 	d.assembled = nil
@@ -686,6 +763,12 @@ func (r *runner) pump(conn *connection, side int) {
 	chunk := slices.Clone(d.frame[d.offset : d.offset+count])
 	d.offset += count
 	r.nodes[from].sent += uint64(count)
+	if r.export != nil {
+		t := d.traffic
+		t.Stage = "sent"
+		t.Bytes = trace.Decimal(count)
+		r.traffic(t)
+	}
 	r.enqueue(&event{at: r.now.Add(r.scenario.Latency + r.fault(from, to, r.now).Delay), kind: "chunk", stream: conn.id, direction: side, life: d.generation, frame: chunk})
 }
 func (r *runner) chunkArrival(e *event) {
@@ -705,6 +788,14 @@ func (r *runner) chunkArrival(e *event) {
 		return
 	}
 	m.received += uint64(len(e.frame))
+	if r.export != nil {
+		t := d.traffic
+		t.Stage = "arrival"
+		t.Bytes = trace.Decimal(len(e.frame))
+		r.traffic(t)
+		t.Stage = "received"
+		r.traffic(t)
+	}
 	d.received = r.now
 	if d.offset == len(d.frame) {
 		d.writeComplete = true
@@ -741,7 +832,9 @@ func (r *runner) drain(e *event) {
 		panic(err)
 	}
 	to := conn.names[1-e.direction]
-	r.coreEvent(to, r.now, core.StreamMessage{ID: conn.tokens[1-e.direction], Received: d.received, Messages: messages})
+	t := d.traffic
+	t.Received = trace.Decimal(d.received)
+	r.trafficCore(to, core.StreamMessage{ID: conn.tokens[1-e.direction], Received: d.received, Messages: messages}, t)
 	d.assembled = nil
 	d.frame = nil
 }
@@ -750,6 +843,16 @@ func (r *runner) close(conn *connection, f core.Failure) {
 		return
 	}
 	conn.closed = true
+	if r.export != nil {
+		for _, d := range conn.directions {
+			if d.writing {
+				t := d.traffic
+				t.Stage = "drop"
+				t.Detail = f.String()
+				r.traffic(t)
+			}
+		}
+	}
 	for side, name := range conn.names {
 		if conn.directions[side].writing {
 			r.coreEvent(name, r.now, core.Written{ID: conn.tokens[side], Failure: f})
