@@ -102,7 +102,7 @@ leaves an inspectable prefix and stops execution.
 `sim.Export(scenario, writer, options)` uses the same event loop as
 `sim.Run`, without retaining the legacy trace or final membership matrix.
 The caller owns and closes the writer; errors propagate. The opt-in
-`core.EnableInspection` journal records authoritative membership changes,
+`(*core.Core).EnableInspection` journal records authoritative membership changes,
 probe facts and timer lifecycle separately from protocol effects.
 See [trace format](docs/trace-v1.md) and [viewer usage](web/README.md).
 
