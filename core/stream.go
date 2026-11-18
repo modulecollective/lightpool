@@ -96,6 +96,9 @@ func (c *Core) opened(e Opened) {
 }
 func (c *Core) prepareExchange(s *stream) {
 	s.phase = "local-state"
+	// Capture membership before asking for application state, matching the
+	// original sendLocalState order while unrelated operations keep advancing.
+	s.outgoing = wire.Message{Exchange: &wire.Exchange{Join: s.join, Members: c.Snapshot().Members}}
 	if c.config.Application {
 		c.request(pending{kind: LocalState, op: s.id.ID}, Request{Kind: LocalState, Join: s.join})
 	} else {
@@ -103,8 +106,8 @@ func (c *Core) prepareExchange(s *stream) {
 	}
 }
 func (c *Core) writeExchange(s *stream, data []byte) {
-	members := c.Snapshot().Members
-	m := wire.Message{Exchange: &wire.Exchange{Join: s.join, Members: members, Data: slices.Clone(data)}}
+	m := s.outgoing.Clone()
+	m.Exchange.Data = slices.Clone(data)
 	stage := "request"
 	if s.passive {
 		stage = "response"

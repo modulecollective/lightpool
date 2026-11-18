@@ -280,3 +280,27 @@ func TestExchangeRejectsUngossipableIdentity(t *testing.T) {
 		}
 	}
 }
+
+func TestMembershipSnapshotPrecedesApplicationState(t *testing.T) {
+	c := testCore(t)
+	c.config.Application = true
+	o := findOpen(t, step(t, c, 0, Join{Command: 1, Peer: identity("b", 2)}))
+	request := findRequest(t, step(t, c, 0, Opened{ID: o.ID}), LocalState)
+	n := wire.Member{Identity: identity("c", 3), Incarnation: 1}
+	c.applyAlive(n)
+	es := step(t, c, 0, Response{ID: request.ID, Data: []byte("state")})
+	found := false
+	for _, e := range es {
+		if write, ok := e.(WriteStream); ok {
+			found = true
+			for _, m := range write.Messages[0].Exchange.Members {
+				if m.Name == "c" {
+					t.Fatal("membership snapshot moved across application request")
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no response write")
+	}
+}
