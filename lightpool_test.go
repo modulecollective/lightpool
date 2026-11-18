@@ -82,6 +82,10 @@ func TestOrdinaryClusterConcurrentOperations(t *testing.T) {
 		// Exact deadline behavior is exercised with virtual time in core.
 		cfg := DefaultConfig(fmt.Sprint(j))
 		cfg.Bind = netip.MustParseAddrPort("127.0.0.1:0")
+		// Gossip is probabilistic: the later joiners' alive messages travel
+		// together, so now and then one node misses the whole batch and only
+		// push/pull repairs it. The 30s default exceeds the convergence wait.
+		cfg.Protocol.PushPullInterval = time.Second
 		nodes[j] = newNode(t, cfg)
 	}
 	for j := 1; j < len(nodes); j++ {
