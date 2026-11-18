@@ -247,7 +247,7 @@ func Run(s Scenario) (Result, error) {
 		case "action":
 			trace.Node = e.action.Node
 			trace.Kind = "action:" + e.action.Kind
-			effects, err = r.action(e.action)
+			err = r.action(e.action)
 		case "core":
 			m := r.nodes[e.node]
 			trace.Kind = fmt.Sprintf("%T", e.input)
@@ -441,12 +441,12 @@ func (r *runner) coreEvent(name string, at core.Instant, input core.Event) {
 		r.enqueue(&event{at: at, node: name, life: m.life, kind: "core", input: input})
 	}
 }
-func (r *runner) action(a Action) ([]core.Effect, error) {
+func (r *runner) action(a Action) error {
 	m := r.nodes[a.Node]
 	switch a.Kind {
 	case "start":
 		if m.alive {
-			return nil, errors.New("start of running node")
+			return errors.New("start of running node")
 		}
 		m.life++
 		m.alive = true
@@ -455,11 +455,11 @@ func (r *runner) action(a Action) ([]core.Effect, error) {
 		m.buffered = 0
 		engine, err := core.New(r.scenario.Protocol, m.spec.Identity, nodeSeed(r.scenario.Seeds.Protocol, a.Node, m.life))
 		if err != nil {
-			return nil, err
+			return err
 		}
 		m.engine = engine
 		r.coreEvent(a.Node, r.now, core.Start{})
-		return nil, nil
+		return nil
 	case "crash":
 		m.alive = false
 		m.buffered = 0
@@ -474,13 +474,13 @@ func (r *runner) action(a Action) ([]core.Effect, error) {
 				r.close(conn, core.RemoteFailure)
 			}
 		}
-		return nil, nil
+		return nil
 	case "pause":
 		m.paused = max(m.paused, r.now.Add(a.Duration))
-		return nil, nil
+		return nil
 	}
 	if !m.alive {
-		return nil, nil
+		return nil
 	}
 	command := r.next + 1
 	var input core.Event
@@ -506,7 +506,7 @@ func (r *runner) action(a Action) ([]core.Effect, error) {
 		input = core.Shutdown{Command: command}
 	}
 	r.coreEvent(a.Node, r.now, input)
-	return nil, nil
+	return nil
 }
 func (r *runner) fault(from, to string, at core.Instant) Fault {
 	result := Fault{}
@@ -551,7 +551,7 @@ func (r *runner) effect(name string, e core.Effect) {
 		r.coreEvent(name, e.At, core.Fired{Timer: e.Timer})
 	case core.Cancel, core.CancelRequest: // Queued generations deliberately remain to test cancellation.
 	case core.Defer:
-		r.coreEvent(name, r.now, core.Work{ID: e.ID})
+		r.coreEvent(name, r.now, core.Work(e))
 	case core.OpenStream:
 		r.open(name, e)
 	case core.WriteStream:

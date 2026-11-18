@@ -122,7 +122,7 @@ func New(cfg Config) (*Node, error) {
 	var tcp *net.TCPListener
 	var udp *net.UDPConn
 	var err error
-	for attempt := 0; attempt < 10; attempt++ {
+	for range 10 {
 		tcp, err = net.ListenTCP("tcp", net.TCPAddrFromAddrPort(cfg.Bind))
 		if err != nil {
 			return nil, err
@@ -295,7 +295,7 @@ func (n *Node) step(e core.Event) {
 			}
 		case core.Defer:
 			select {
-			case n.deferred <- core.Work{ID: e.ID}:
+			case n.deferred <- core.Work(e):
 			default:
 				panic("duplicate deferred turn")
 			}

@@ -106,9 +106,7 @@ func TestOrdinaryClusterConcurrentOperations(t *testing.T) {
 	var workers sync.WaitGroup
 	errs := make(chan error, len(nodes)*2)
 	for j, n := range nodes {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			rtt, err := n.Ping(ctx, nodes[(j+1)%len(nodes)].Identity())
 			if err != nil {
 				errs <- err
@@ -121,7 +119,7 @@ func TestOrdinaryClusterConcurrentOperations(t *testing.T) {
 			}
 			s := n.Snapshot()
 			s.Members[0].Meta = []byte("caller")
-		}()
+		})
 	}
 	workers.Wait()
 	close(errs)
@@ -160,13 +158,11 @@ func TestOrdinaryClusterConcurrentOperations(t *testing.T) {
 	wait(t, "leave disseminates", func() bool { s, ok := memberState(nodes[0], "7"); return ok && s == wire.Left })
 	var shutdowns sync.WaitGroup
 	for range 8 {
-		shutdowns.Add(1)
-		go func() {
-			defer shutdowns.Done()
+		shutdowns.Go(func() {
 			if err := nodes[0].Shutdown(); err != nil {
 				t.Error(err)
 			}
-		}()
+		})
 	}
 	shutdowns.Wait()
 	if _, err := nodes[0].Ping(ctx, nodes[1].Identity()); err == nil {
@@ -373,7 +369,7 @@ func TestEncryptedLabeledLoopbackAndRotation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer udp.Close()
+	defer func() { _ = udp.Close() }()
 	plain, err := wire.Encode([]wire.Message{{Ack: &wire.Ack{Sequence: 7}}}, wire.Options{Label: ca.Protocol.Label})
 	if err != nil {
 		t.Fatal(err)
@@ -387,7 +383,7 @@ func TestEncryptedLabeledLoopbackAndRotation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(time.Second))
 	frame, err := wire.Encode([]wire.Message{{Ping: &wire.Ping{Sequence: 123, Target: "a", Source: b.Identity()}}}, wire.Options{Label: ca.Protocol.Label, Keys: ka.Keys()})
 	if err != nil {
@@ -460,7 +456,7 @@ func TestRealStreamReadAndBlockedWriteDeadlines(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer listener.Close()
+			defer func() { _ = listener.Close() }()
 			_ = listener.SetDeadline(time.Now().Add(2 * time.Second))
 			gate := make(chan struct{})
 			defer func() {
@@ -497,7 +493,7 @@ func TestRealStreamReadAndBlockedWriteDeadlines(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 			_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
 			if blockedWrite {
 				if err = conn.SetReadBuffer(1024); err != nil {
@@ -556,7 +552,7 @@ func TestStreamAdmissionRecoversAfterOverflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer overflow.Close()
+	defer func() { _ = overflow.Close() }()
 	_ = overflow.SetReadDeadline(time.Now().Add(time.Second))
 	var b [1]byte
 	if _, err = overflow.Read(b[:]); err == nil {

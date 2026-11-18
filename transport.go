@@ -105,12 +105,10 @@ func (n *Node) acceptTCP() {
 			continue
 		}
 		_ = conn.SetDeadline(time.Now().Add(n.cfg.Protocol.StreamTimeout))
-		n.workers.Add(1)
-		go func() {
-			defer n.workers.Done()
+		n.workers.Go(func() {
 			n.post(core.Accepted{ID: id, Peer: normalized(conn.RemoteAddr().(*net.TCPAddr).AddrPort())})
 			n.readStream(id, s, conn)
-		}()
+		})
 	}
 }
 func (n *Node) dial(e core.OpenStream) bool {
@@ -118,9 +116,7 @@ func (n *Node) dial(e core.OpenStream) bool {
 	if s == nil {
 		return false
 	}
-	n.workers.Add(1)
-	go func() {
-		defer n.workers.Done()
+	n.workers.Go(func() {
 		ctx, cancel := context.WithDeadline(s.ctx, n.epoch.Add(time.Duration(e.Deadline)))
 		defer cancel()
 		conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", e.To.String())
@@ -139,7 +135,7 @@ func (n *Node) dial(e core.OpenStream) bool {
 		_ = conn.SetDeadline(n.epoch.Add(time.Duration(e.Deadline)))
 		n.post(core.Opened{ID: e.ID})
 		n.readStream(e.ID, s, conn)
-	}()
+	})
 	return true
 }
 func (n *Node) readStream(id core.Token, s *ioStream, conn net.Conn) {
@@ -170,9 +166,7 @@ func (n *Node) writeStream(e core.WriteStream) {
 		n.post(core.Written{ID: e.ID, Failure: core.LocalFailure})
 		return
 	}
-	n.workers.Add(1)
-	go func() {
-		defer n.workers.Done()
+	n.workers.Go(func() {
 		b, err := wire.Encode(e.Messages, n.options())
 		f := core.Success
 		if err != nil {
@@ -193,7 +187,7 @@ func (n *Node) writeStream(e core.WriteStream) {
 			}
 		}
 		n.post(core.Written{ID: e.ID, Failure: f})
-	}()
+	})
 }
 func (n *Node) closeStream(id core.Token) {
 	n.streamMu.Lock()

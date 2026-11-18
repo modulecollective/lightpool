@@ -83,7 +83,7 @@ func (c *Core) applyAlive(n wire.Member) {
 	if old != nil && old.Address != n.Address {
 		reclaim = old.State == wire.Left || (old.State == wire.Dead && c.config.ReclaimAfter > 0 && c.now-old.changed > Instant(c.config.ReclaimAfter))
 		if !reclaim {
-			c.emit(Notification{Kind: "conflict", Member: old.Member.Clone(), Other: n.Clone()})
+			c.emit(Notification{Kind: "conflict", Member: old.Clone(), Other: n.Clone()})
 			return
 		}
 	}
@@ -205,7 +205,7 @@ func (c *Core) update(e Update) {
 		return
 	}
 	n := c.nodes[c.self]
-	copyNode := n.Member.Clone()
+	copyNode := n.Clone()
 	copyNode.Meta = bytes.Clone(e.Meta)
 	copyNode.Incarnation++
 	size, err := wire.Size([]wire.Message{{Alive: &copyNode}}, c.config.Label, c.config.Protected)

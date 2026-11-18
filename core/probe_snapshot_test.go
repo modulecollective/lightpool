@@ -16,10 +16,11 @@ func TestProbeFailureUsesProbedMembership(t *testing.T) {
 			c := testCore(t)
 			es := step(t, c, 0, Probe{Peer: "b"})
 			expiry := timer(t, es, "overall")
-			n := c.nodes["b"].Member.Clone()
-			if change == "new-incarnation" {
+			n := c.nodes["b"].Clone()
+			switch change {
+			case "new-incarnation":
 				n.Incarnation++
-			} else if change == "reclaimed-address" {
+			case "reclaimed-address":
 				step(t, c, 1, Datagram{From: n.Address, Received: 1, Messages: []wire.Message{{Dead: &wire.Accusation{Node: "b", From: "b", Incarnation: 1}}}})
 				step(t, c, 1, Work{ID: c.work})
 				n.Address = identity("b", 9).Address

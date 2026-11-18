@@ -47,7 +47,7 @@ func add(t testing.TB, c *Core, name string, port uint16) {
 	effects := step(t, c, c.now, Datagram{From: m.Address, Received: c.now, Messages: []wire.Message{{Alive: &m}}})
 	for _, e := range effects {
 		if w, ok := e.(Defer); ok {
-			step(t, c, c.now, Work{ID: w.ID})
+			step(t, c, c.now, Work(w))
 		}
 	}
 }
@@ -210,13 +210,13 @@ func TestRTTReceiveBeforeSendCompletion(t *testing.T) {
 		t.Fatal(out)
 	}
 }
-func suspicionEvent(c *Core, node, from string, inc uint64) {
-	c.suspect(wire.Accusation{Node: node, From: from, Incarnation: inc})
+func suspicionEvent(c *Core, from string) {
+	c.suspect(wire.Accusation{Node: "b", From: from, Incarnation: 1})
 }
 func TestSuspicionRefutationAndExpiryOrders(t *testing.T) {
 	for _, first := range []bool{true, false} {
 		c := testCore(t)
-		suspicionEvent(c, "b", "a", 1)
+		suspicionEvent(c, "a")
 		d := c.timers["suspect:b"]
 		alive := wire.Member{Identity: identity("b", 2), Incarnation: 2}
 		var out []Effect
@@ -242,17 +242,17 @@ func TestSuspicionConfirmationsAndOverdue(t *testing.T) {
 	for j := 3; j <= 5; j++ {
 		add(t, c, fmt.Sprint(j), uint16(j))
 	}
-	suspicionEvent(c, "b", "a", 1)
+	suspicionEvent(c, "a")
 	s := c.susp["b"]
 	original := c.timers["suspect:b"]
 	c.now = s.start.Add(s.min + time.Second)
-	suspicionEvent(c, "b", "c", 1)
+	suspicionEvent(c, "c")
 	short := c.timers["suspect:b"]
-	suspicionEvent(c, "b", "c", 1)
+	suspicionEvent(c, "c")
 	if c.timers["suspect:b"].timer != short.timer || s.n != 1 {
 		t.Fatal("duplicate confirmation counted")
 	}
-	suspicionEvent(c, "b", "d", 1)
+	suspicionEvent(c, "d")
 	due := c.timers["suspect:b"]
 	if due.at != c.now || state(c, "b") != wire.Suspect {
 		t.Fatal("overdue timer did not defer")
@@ -266,14 +266,14 @@ func TestSuspicionConfirmationsAndOverdue(t *testing.T) {
 		t.Fatal("due expiry ignored")
 	}
 	small := testCore(t)
-	suspicionEvent(small, "b", "a", 1)
+	suspicionEvent(small, "a")
 	if small.susp["b"].k != 0 || small.timers["suspect:b"].at != Instant(4*time.Second) {
 		t.Fatal("small-cluster timeout changed")
 	}
 }
 func TestMembershipRules(t *testing.T) {
 	c := testCore(t)
-	n := c.nodes["b"].Member.Clone()
+	n := c.nodes["b"].Clone()
 	n.Meta = []byte("new")
 	c.applyAlive(n)
 	if len(c.nodes["b"].Meta) != 0 {
@@ -337,7 +337,7 @@ func TestQueuePriorityOverflowAndLIFO(t *testing.T) {
 	if c.stats.QueueDrops != 1 {
 		t.Fatal("overflow not counted")
 	}
-	effects = step(t, c, 0, Work{ID: work})
+	step(t, c, 0, Work{ID: work})
 	if c.nodes["c"] == nil {
 		t.Fatal("alive did not win priority")
 	}
@@ -416,7 +416,7 @@ func TestBroadcastReferenceAndBudget(t *testing.T) {
 		message         wire.Message
 	}
 	var ref []item
-	for j := 0; j < 1000; j++ {
+	for j := range 1000 {
 		if r.IntN(3) != 0 || len(ref) == 0 {
 			name := fmt.Sprint(r.IntN(30))
 			data := bytes.Repeat([]byte{byte(j)}, 1+r.IntN(500))
@@ -489,7 +489,7 @@ func BenchmarkBacklog(b *testing.B) {
 		b.Run(fmt.Sprint(count), func(b *testing.B) {
 			c := testCore(b)
 			c.broadcasts = nil
-			for j := 0; j < count; j++ {
+			for j := range count {
 				data := []byte(fmt.Sprint(j))
 				c.queue(wire.Message{User: &data}, "", 0)
 			}

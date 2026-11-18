@@ -169,9 +169,10 @@ func (c *Core) finishProbe(id uint64, f Failure, rtt time.Duration, payload []by
 		}
 	}
 	if p.relay == nil && !p.explicit {
-		if f == Success {
+		switch f {
+		case Success:
 			c.adjustHealth(-1)
-		} else if f == Timeout || f == RemoteFailure {
+		case Timeout, RemoteFailure:
 			c.stats.FailedProbes++
 			delta := 1
 			if len(p.helpers) > 0 {

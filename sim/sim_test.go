@@ -595,7 +595,7 @@ func TestReplayProcess(t *testing.T) {
 }
 func TestFreshProcessReplay(t *testing.T) {
 	var reference []byte
-	for j := 0; j < 10; j++ {
+	for j := range 10 {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestReplayProcess$")
 		cmd.Env = append(os.Environ(), "LIGHTPOOL_REPLAY_CHILD=1", "GOMAXPROCS="+strconv.Itoa(1+j%3))

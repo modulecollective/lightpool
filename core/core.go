@@ -218,7 +218,7 @@ func ptrMember(n wire.Member) *wire.Member { n = n.Clone(); return &n }
 func (c *Core) Snapshot() Snapshot {
 	s := Snapshot{Now: c.now, Health: c.health, Backlog: len(c.broadcasts), PendingStreams: len(c.streams), Stopped: c.stopped, Left: c.left, Stats: c.stats}
 	for _, name := range c.names() {
-		s.Members = append(s.Members, c.nodes[name].Member.Clone())
+		s.Members = append(s.Members, c.nodes[name].Clone())
 	}
 	return s
 }

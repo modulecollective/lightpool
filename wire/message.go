@@ -115,7 +115,7 @@ func (m Message) Validate() error {
 	}
 	if m.Alive != nil {
 		count++
-		if m.Alive.Identity.Validate() != nil || m.Alive.State != Alive {
+		if m.Alive.Validate() != nil || m.Alive.State != Alive {
 			return errors.New("invalid alive")
 		}
 	}
@@ -133,7 +133,7 @@ func (m Message) Validate() error {
 			return errors.New("oversized exchange")
 		}
 		for _, n := range m.Exchange.Members {
-			if n.Identity.Validate() != nil || n.State > Left {
+			if n.Validate() != nil || n.State > Left {
 				return errors.New("invalid member")
 			}
 		}
