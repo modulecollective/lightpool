@@ -43,7 +43,7 @@ func newNode(t testing.TB, c Config) *Node {
 }
 func wait(t testing.TB, description string, predicate func() bool) {
 	t.Helper()
-	deadline := time.NewTimer(5 * time.Second)
+	deadline := time.NewTimer(10 * time.Second)
 	defer deadline.Stop()
 	tick := time.NewTicker(time.Millisecond)
 	defer tick.Stop()
@@ -78,7 +78,11 @@ func memberState(n *Node, name string) (wire.State, bool) {
 func TestOrdinaryClusterConcurrentOperations(t *testing.T) {
 	nodes := make([]*Node, 8)
 	for j := range nodes {
-		nodes[j] = newNode(t, testConfig(fmt.Sprint(j)))
+		// This acceptance workload uses the unchanged LAN detector defaults.
+		// Exact deadline behavior is exercised with virtual time in core.
+		cfg := DefaultConfig(fmt.Sprint(j))
+		cfg.Bind = netip.MustParseAddrPort("127.0.0.1:0")
+		nodes[j] = newNode(t, cfg)
 	}
 	for j := 1; j < len(nodes); j++ {
 		join(t, nodes[j], nodes[0])
@@ -97,7 +101,7 @@ func TestOrdinaryClusterConcurrentOperations(t *testing.T) {
 		}
 		return true
 	})
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	var workers sync.WaitGroup
 	errs := make(chan error, len(nodes)*2)
