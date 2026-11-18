@@ -141,7 +141,8 @@ func (r *runner) exportEnd(result Result) error {
 	if r.export == nil {
 		return nil
 	}
-	end := trace.End{Type: "end", Seq: trace.Decimal(result.Events), Time: trace.Decimal(r.now), Reason: result.Reason, Complete: result.Complete, Nodes: []trace.Measurement{}}
+	// Discarded or deferred events can advance the scheduler past the last record.
+	end := trace.End{Type: "end", Seq: trace.Decimal(result.Events), Time: trace.Decimal(r.export.time), Reason: result.Reason, Complete: result.Complete, Nodes: []trace.Measurement{}}
 	var sent, received, drops, detections uint64
 	for _, name := range r.order {
 		m := r.nodes[name]

@@ -123,6 +123,68 @@ func TestExportMatchesRunAndReplaysState(t *testing.T) {
 	}
 }
 
+func TestExportEndAfterUnrecordedEvents(t *testing.T) {
+	for _, kind := range []string{"crash", "pause", "busy"} {
+		t.Run(kind, func(t *testing.T) {
+			raw, err := os.ReadFile("../examples/sim/healthy.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var s Scenario
+			if err := json.Unmarshal(raw, &s); err != nil {
+				t.Fatal(err)
+			}
+			s.Nodes = s.Nodes[:1]
+			s.Horizon = core.Instant(2 * time.Second)
+			s.Actions = []Action{{At: core.Instant(100 * time.Millisecond), Kind: kind, Node: "a", Duration: 3 * time.Second}}
+			wantTime := "100000000"
+			if kind == "busy" {
+				s.Actions = nil
+				s.Nodes[0].Service = 3 * time.Second
+				wantTime = "0"
+			}
+			legacy := run(t, s)
+			var output bytes.Buffer
+			result, err := Export(s, &output, ExportOptions{})
+			if err != nil || !result.Complete || result.Events != legacy.Events || result.Reason != legacy.Reason {
+				t.Fatalf("export changed execution: %+v, %v", result, err)
+			}
+			var events []trace.Event
+			var end trace.End
+			complete, err := trace.Read(bytes.NewReader(output.Bytes()), func(raw json.RawMessage) error {
+				var tag struct{ Type string }
+				if err := json.Unmarshal(raw, &tag); err != nil {
+					return err
+				}
+				if tag.Type == "event" {
+					var e trace.Event
+					if err := json.Unmarshal(raw, &e); err != nil {
+						return err
+					}
+					events = append(events, e)
+				}
+				if tag.Type == "end" {
+					return json.Unmarshal(raw, &end)
+				}
+				return nil
+			})
+			if err != nil || !complete {
+				t.Fatalf("successful export must be readable: complete=%v, %v", complete, err)
+			}
+			last := events[len(events)-1]
+			if end.Time != wantTime || end.Time != last.Time || end.Seq != last.Seq {
+				t.Fatalf("end does not match last event: %+v, %+v", end, last)
+			}
+			for i, e := range events {
+				oracle := legacy.Trace[i]
+				if e.ID != trace.Decimal(oracle.ID) || e.Seq != trace.Decimal(oracle.Order) || e.Time != trace.Decimal(oracle.Time) {
+					t.Fatalf("event schedule changed at %d", i)
+				}
+			}
+		})
+	}
+}
+
 type failWriter struct{ remaining int }
 
 func (w *failWriter) Write(b []byte) (int, error) {

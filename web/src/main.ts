@@ -16,6 +16,7 @@ const scene = new Scene(el("scene"), (name) => {
   render();
 });
 let activeDemo = false;
+let selection = 0;
 let header: Header | undefined,
   end: End | undefined,
   view: View | undefined,
@@ -68,6 +69,7 @@ function seek(position?: number, time?: bigint) {
 function load(blob: Blob, label: string, isDemo = false) {
   activeDemo = isDemo;
   if (!isDemo) {
+    selection++;
     const url = new URL(location.href);
     url.searchParams.delete("demo");
     url.searchParams.delete("t");
@@ -85,6 +87,7 @@ function load(blob: Blob, label: string, isDemo = false) {
   worker.postMessage({ type: "load", blob });
 }
 async function demo(name: string) {
+  const token = ++selection;
   const chosen = names[name] ? name : "pause";
   el<HTMLSelectElement>("demo").value = chosen;
   try {
@@ -93,12 +96,14 @@ async function demo(name: string) {
       `${import.meta.env.BASE_URL}demos/${chosen}.ndjson`,
     );
     if (!response.ok) throw new Error(`Demo fetch failed (${response.status})`);
-    load(await response.blob(), names[chosen], true);
+    const blob = await response.blob();
+    if (token !== selection) return;
+    load(blob, names[chosen], true);
     const url = new URL(location.href);
     url.searchParams.set("demo", chosen);
     history.replaceState(null, "", url);
   } catch (e) {
-    status((e as Error).message, true);
+    if (token === selection) status((e as Error).message, true);
   }
 }
 worker.onmessage = ({ data }) => {

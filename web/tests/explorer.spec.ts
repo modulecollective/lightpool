@@ -1,5 +1,198 @@
-import { test, expect } from "@playwright/test";
-import { readFile } from "node:fs/promises";
+import { test, expect, type Page } from "@playwright/test";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+async function observeDemoCompletion(page: Page, beforeBody = async () => {}) {
+  let settled!: () => void;
+  const finished = new Promise<void>((resolve) => {
+    settled = resolve;
+  });
+  await page.exposeFunction("demoBody", beforeBody);
+  await page.exposeFunction("demoSettled", () => settled());
+  // A task after fetch/blob completion lets the app's await continuation run
+  // before asserting that an obsolete result left no visible side effects.
+  await page.evaluate(() => {
+    const hooks = window as unknown as {
+      demoBody: () => Promise<void>;
+      demoSettled: () => void;
+    };
+    const original = window.fetch;
+    window.fetch = async (...args) => {
+      try {
+        const response = await original(...args);
+        if (!response.url.includes("healthy.ndjson")) return response;
+        const blob = response.blob.bind(response);
+        response.blob = async () => {
+          try {
+            const result = await blob();
+            await hooks.demoBody();
+            return result;
+          } finally {
+            setTimeout(() => hooks.demoSettled(), 0);
+          }
+        };
+        if (!response.ok) setTimeout(() => hooks.demoSettled(), 0);
+        return response;
+      } catch (error) {
+        setTimeout(() => hooks.demoSettled(), 0);
+        throw error;
+      }
+    };
+  });
+  return { finished };
+}
+
+for (const kind of ["crash", "pause", "busy"])
+  test(`export ending after ${kind} opens in the browser`, async ({ page }) => {
+    const directory = await mkdtemp(join(tmpdir(), "lightpool-end-"));
+    try {
+      const scenario = JSON.parse(
+        await readFile("../examples/sim/healthy.json", "utf8"),
+      );
+      scenario.Nodes = scenario.Nodes.slice(0, 1);
+      scenario.Horizon = 2000000000;
+      scenario.Actions = [
+        { At: 100000000, Kind: kind, Node: "a", Duration: 3000000000 },
+      ];
+      if (kind === "busy") {
+        scenario.Actions = [];
+        scenario.Nodes[0].Service = 3000000000;
+      }
+      const input = join(directory, "scenario.json"),
+        output = join(directory, "recording.ndjson");
+      await writeFile(input, JSON.stringify(scenario));
+      execFileSync(
+        "go",
+        [
+          "run",
+          "./cmd/lightpool-sim",
+          "-scenario",
+          input,
+          "-out",
+          output,
+          "-revision",
+          "browser-regression",
+        ],
+        { cwd: "..", timeout: 30000 },
+      );
+      await page.goto("/");
+      await expect(page.locator("#status")).toContainText("atomic events");
+      await page.locator("#file").setInputFiles(output);
+      await expect(page.locator("#scene-size")).toHaveText("1 nodes");
+      await expect(page.locator("#completion")).toHaveText(
+        "Completed recording",
+      );
+      await expect(page.locator("#status")).toContainText("complete evidence");
+      await page.locator("#timeline").fill("10000");
+      await page.locator("#timeline").dispatchEvent("input");
+      await expect(page.locator("#position")).toHaveText(
+        kind === "busy" ? "Event 2 / 2" : "Event 4 / 4",
+      );
+      await expect(page.locator("#clock")).toHaveText(
+        kind === "busy" ? "0.000 s" : "0.100 s",
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+for (const outcome of [
+  "success",
+  "http error",
+  "network error",
+  "body",
+  "body error",
+])
+  test(`later local selection wins over obsolete demo ${outcome}`, async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(page.locator("#status")).toContainText("atomic events");
+    let release!: () => void, started!: () => void;
+    const held = new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+      pending = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+    const { finished } = await observeDemoCompletion(page, async () => {
+      if (outcome.startsWith("body")) {
+        started();
+        await held;
+        if (outcome === "body error") throw new Error("Body read failed");
+      }
+    });
+    await page.route("**/demos/healthy.ndjson", async (route) => {
+      if (!outcome.startsWith("body")) {
+        started();
+        await held;
+      }
+      if (outcome === "network error") {
+        await route.abort();
+        return;
+      }
+      await route.fulfill({
+        status: outcome === "http error" ? 500 : 200,
+        body: await readFile("public/demos/healthy.ndjson"),
+      });
+    });
+    await page.locator("#demo").selectOption("healthy");
+    await pending;
+    await page.locator("#file").setInputFiles({
+      name: "chosen-local.ndjson",
+      mimeType: "application/x-ndjson",
+      buffer: await readFile("../sim/trace/testdata/exact.ndjson"),
+    });
+    await expect(page.locator("#status")).toContainText("1 atomic events");
+    await page.locator("#step").click();
+    await expect(page.locator("#position")).toHaveText("Event 1 / 1");
+    const status = await page.locator("#status").textContent(),
+      url = page.url();
+    release();
+    await finished;
+    await expect(page.locator("#scene-title")).toHaveText(
+      "chosen-local.ndjson",
+    );
+    await expect(page.locator("#scene-size")).toHaveText("1 nodes");
+    await expect(page.locator("#position")).toHaveText("Event 1 / 1");
+    await expect(page.locator("#status")).toHaveText(status!);
+    expect(page.url()).toBe(url);
+  });
+
+test("out-of-order demo responses preserve the later selection", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("#status")).toContainText("atomic events");
+  let release!: () => void, started!: () => void;
+  const held = new Promise<void>((resolve) => {
+      release = resolve;
+    }),
+    pending = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+  const { finished } = await observeDemoCompletion(page);
+  await page.route("**/demos/healthy.ndjson", async (route) => {
+    started();
+    await held;
+    await route.fulfill({
+      body: await readFile("public/demos/healthy.ndjson"),
+    });
+  });
+  await page.locator("#demo").selectOption("healthy");
+  await pending;
+  await page.locator("#demo").selectOption("crash");
+  await expect(page.locator("#status")).toContainText("3,528 atomic events");
+  const url = page.url();
+  release();
+  await finished;
+  await expect(page.locator("#scene-title")).toHaveText("Process crash");
+  await expect(page.locator("#status")).toContainText("3,528 atomic events");
+  expect(page.url()).toBe(url);
+});
+
 test("static demo, controls, observer, local recovery and no upload", async ({
   page,
 }) => {
