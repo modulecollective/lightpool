@@ -395,3 +395,17 @@ func TestRestartUsesANewLifetime(t *testing.T) {
 		t.Fatal("restart did not arm new work")
 	}
 }
+
+func TestScheduleKeepsThePrescribedFaultedWorld(t *testing.T) {
+	s := replayScenario()
+	s.Seeds.Schedule = 1
+	first := run(t, s)
+	s.Seeds.Schedule = 2
+	second := run(t, s)
+	if len(first.Manifest.PreparedFaults) == 0 {
+		t.Fatal("faulted fixture is empty")
+	}
+	if !reflect.DeepEqual(first.Manifest.PreparedFaults, second.Manifest.PreparedFaults) || !reflect.DeepEqual(first.Manifest.NodeSeeds, second.Manifest.NodeSeeds) {
+		t.Fatal("schedule seed changed the faulted world or initial protocol seeds")
+	}
+}
