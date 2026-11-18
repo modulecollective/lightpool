@@ -53,6 +53,8 @@ test("static demo, controls, observer, local recovery and no upload", async ({
     buffer: prefix,
   });
   await expect(page.locator("#completion")).toContainText("Incomplete");
+  expect(new URL(page.url()).searchParams.has("demo")).toBe(false);
+  expect(new URL(page.url()).searchParams.has("t")).toBe(false);
   await expect(page.locator("#status")).toContainText("valid prefix only");
   await page.locator("#step").click();
   await expect(page.locator("#member-detail")).toContainText(

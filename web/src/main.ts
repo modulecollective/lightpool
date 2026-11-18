@@ -15,6 +15,7 @@ const scene = new Scene(el("scene"), (name) => {
   scene.selected = name;
   render();
 });
+let activeDemo = false;
 let header: Header | undefined,
   end: End | undefined,
   view: View | undefined,
@@ -64,7 +65,14 @@ function seek(position?: number, time?: bigint) {
     time: time?.toString(),
   });
 }
-function load(blob: Blob, label: string) {
+function load(blob: Blob, label: string, isDemo = false) {
+  activeDemo = isDemo;
+  if (!isDemo) {
+    const url = new URL(location.href);
+    url.searchParams.delete("demo");
+    url.searchParams.delete("t");
+    history.replaceState(null, "", url);
+  }
   stop();
   view = undefined;
   header = undefined;
@@ -85,7 +93,7 @@ async function demo(name: string) {
       `${import.meta.env.BASE_URL}demos/${chosen}.ndjson`,
     );
     if (!response.ok) throw new Error(`Demo fetch failed (${response.status})`);
-    load(await response.blob(), names[chosen]);
+    load(await response.blob(), names[chosen], true);
     const url = new URL(location.href);
     url.searchParams.set("demo", chosen);
     history.replaceState(null, "", url);
@@ -248,9 +256,11 @@ function render() {
     `${view.trails.length} / 96 recent trails · animation sampled · exact traffic totals`,
   );
   renderEvents();
-  const url = new URL(location.href);
-  url.searchParams.set("t", view.time);
-  history.replaceState(null, "", url);
+  if (activeDemo) {
+    const url = new URL(location.href);
+    url.searchParams.set("t", view.time);
+    history.replaceState(null, "", url);
+  }
 }
 function describe(e: EventPreview) {
   const parts: string[] = [];
