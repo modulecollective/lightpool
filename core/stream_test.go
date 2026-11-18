@@ -256,3 +256,27 @@ func TestReliableSendCloseCannotOvertakeWrite(t *testing.T) {
 		}
 	}
 }
+
+func TestExchangeRejectsUngossipableIdentity(t *testing.T) {
+	c := testCore(t)
+	application := string(bytes.Repeat([]byte{'<'}, wire.MaxName))
+	c.nodes["a"].Application = application
+	n := wire.Member{Identity: identity(string(bytes.Repeat([]byte{'<'}, wire.MaxName)), 3), Incarnation: 1}
+	n.Application = application
+	n.Meta = make([]byte, wire.MaxMeta)
+	if c.fitsAlive(n) {
+		t.Fatal("fixture fits")
+	}
+	o := findOpen(t, step(t, c, 0, Join{Command: 1, Peer: identity("b", 2)}))
+	step(t, c, 0, Opened{ID: o.ID})
+	step(t, c, 0, Written{ID: o.ID})
+	es := step(t, c, 0, StreamMessage{ID: o.ID, Messages: []wire.Message{{Exchange: &wire.Exchange{Members: []wire.Member{n}}}}})
+	if countResults(es, 1) != 1 || c.nodes[n.Name] != nil {
+		t.Fatal("untransmittable identity merged", es)
+	}
+	for _, e := range es {
+		if r, ok := e.(Result); ok && r.Command == 1 && r.Failure != Rejected {
+			t.Fatal(r)
+		}
+	}
+}

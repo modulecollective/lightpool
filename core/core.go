@@ -8,6 +8,7 @@ import (
 	"github.com/modulecollective/lightpool/wire"
 	"math/rand/v2"
 	"slices"
+	"strconv"
 )
 
 type member struct {
@@ -97,6 +98,8 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
 		return c.effects, nil
 	}
 	switch e := input.(type) {
+	case CancelCommand:
+		c.cancelCommand(e.Command)
 	case Start:
 		if !c.started {
 			c.started = true
@@ -295,21 +298,7 @@ func sortedIDs[V any](m map[uint64]V) []uint64 {
 	slices.Sort(ids)
 	return ids
 }
-func key(prefix string, id uint64) string { return prefix + strconvID(id) }
-func strconvID(id uint64) string { // Stable timer keys are protocol data, not error strings.
-	const digits = "0123456789"
-	var b [20]byte
-	j := len(b)
-	for {
-		j--
-		b[j] = digits[id%10]
-		id /= 10
-		if id == 0 {
-			break
-		}
-	}
-	return string(b[j:])
-}
+func key(prefix string, id uint64) string { return prefix + strconv.FormatUint(id, 10) }
 func (c *Core) cancelOperationApps(op uint64) {
 	for _, id := range sortedIDs(c.app) {
 		if c.app[id].op == op {
@@ -392,6 +381,30 @@ func (c *Core) response(e Response) {
 			}
 		} else {
 			c.datagram(p.peer.Address, []wire.Message{m}, 0, 0, true)
+		}
+	}
+}
+
+func (c *Core) cancelCommand(command uint64) {
+	for _, id := range sortedIDs(c.probes) {
+		if c.probes[id].command == command {
+			c.finishProbe(id, Canceled, 0, nil)
+		}
+	}
+	for _, id := range sortedIDs(c.streams) {
+		if c.streams[id].command == command {
+			c.endStream(id, Canceled)
+		}
+	}
+	for _, b := range c.broadcasts {
+		if b.command == command {
+			c.finishBroadcast(b, Canceled)
+		}
+	}
+	for _, id := range sortedIDs(c.sends) {
+		if c.sends[id].command == command {
+			delete(c.sends, id)
+			c.emit(Result{Command: command, Failure: Canceled})
 		}
 	}
 }

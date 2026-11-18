@@ -379,3 +379,24 @@ func TestBindRulesAndKeyOwnership(t *testing.T) {
 		t.Fatal("removed primary key")
 	}
 }
+
+func TestIPv6AndCIDRAdmission(t *testing.T) {
+	ca, cb := testConfig("a6"), testConfig("b6")
+	ca.Bind = netip.MustParseAddrPort("[::1]:0")
+	cb.Bind = ca.Bind
+	ca.Protocol.Allowed = []netip.Prefix{netip.MustParsePrefix("::1/128")}
+	cb.Protocol.Allowed = ca.Protocol.Allowed
+	a, b := newNode(t, ca), newNode(t, cb)
+	join(t, b, a)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if _, err := a.Ping(ctx, b.Identity()); err != nil {
+		t.Fatal(err)
+	}
+	denied := testConfig("denied")
+	denied.Protocol.Allowed = []netip.Prefix{}
+	d := newNode(t, denied)
+	if count, err := a.Join(ctx, d.Identity().Address.String()); err == nil || count != 0 {
+		t.Fatal("empty admission list accepted network peer")
+	}
+}

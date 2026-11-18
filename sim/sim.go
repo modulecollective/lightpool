@@ -178,7 +178,7 @@ func Run(s Scenario) (Result, error) {
 		return Result{}, err
 	}
 	r := &runner{scenario: s, nodes: make(map[string]*machine), addresses: make(map[netipKey]string), schedule: rand.New(rand.NewPCG(s.Seeds.Schedule, 0x7363686564756c65)), streams: make(map[uint64]*connection), tokens: make(map[string]map[core.Token]uint64)}
-	r.manifest = Manifest{Code: s.Code, Toolchain: runtime.Version(), Generator: "math/rand/v2.PCG (Go 1.25)", Scenario: s}
+	r.manifest = Manifest{Code: s.Code, Toolchain: runtime.Version(), Generator: "math/rand/v2.PCG", Scenario: s}
 	faultRNG := rand.New(rand.NewPCG(s.Seeds.Fault, 0x6661756c74))
 	for _, f := range s.Faults {
 		if f.Jitter > 0 {
@@ -663,6 +663,9 @@ func (r *runner) close(conn *connection, f core.Failure) {
 	}
 	conn.closed = true
 	for side, name := range conn.names {
+		if conn.directions[side].writing {
+			r.coreEvent(name, r.now, core.Written{ID: conn.tokens[side], Failure: f})
+		}
 		delete(r.tokens[name], conn.tokens[side])
 		r.coreEvent(name, r.now, core.Closed{ID: conn.tokens[side], Failure: f})
 	}

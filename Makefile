@@ -3,42 +3,26 @@ SHELL := /bin/bash
 .SHELLFLAGS := -o pipefail -euc
 .DEFAULT_GOAL := test
 
-.PHONY: test subnet cov testrace check lint tidy integ
+.PHONY: test cov testrace check lint tidy integ
 
-# test runs the test suite
-test: subnet
+test integ:
 	go test -count=1 ./...
 
-# runs integration tests
-integ: subnet
-	INTEG_TESTS=yes go test ./...
-
-# subnet sets up the require subnet for testing on darwin (osx) - you must run
-# this before running other tests if you are on osx.
-subnet:
-	@sh -c "'$(CURDIR)/scripts/setup_subnet.sh'"
-
-# cov runs tests with a coverage profile
 cov:
 	go test ./... -coverprofile=coverage.out
 	go tool cover -html=coverage.out
 
-# testrace runs the race checker
-testrace: subnet
+testrace:
 	go test -count=1 -race ./... $(TESTARGS)
 
-# check runs all the linters and custom checks
 check: lint tidy
 
-# lint covers go vet and go fmt
 lint:
 	golangci-lint run --build-tags "$(GO_TAGS)"
 
-# make sure go.mod/sum are up to date
 tidy:
 	go mod tidy
-	@if (git status --porcelain | grep -Eq "go\.(mod|sum)"); then \
-		echo go.mod or go.sum needs updating; \
-		git --no-pager diff go.mod; \
-		git --no-pager diff go.sum; \
+	@if test -n "$$(git status --porcelain -- go.mod go.sum)"; then \
+		echo 'go.mod or go.sum needs updating'; \
+		git --no-pager diff -- go.mod go.sum; \
 		exit 1; fi

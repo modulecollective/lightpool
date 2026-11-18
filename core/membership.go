@@ -50,6 +50,10 @@ func (c *Core) allowed(ip netip.Addr) bool {
 	return false
 }
 func (c *Core) alive(n wire.Member, op uint64, approved bool) {
+	if !c.fitsAlive(n) {
+		c.emit(Observation{Kind: "oversize-alive", Node: n.Name, Value: 1})
+		return
+	}
 	if !c.allowed(n.Address.Addr()) || n.Application != c.nodes[c.self].Application {
 		if op != 0 {
 			if s := c.streams[op]; s != nil {
@@ -64,6 +68,10 @@ func (c *Core) alive(n wire.Member, op uint64, approved bool) {
 		return
 	}
 	c.applyAlive(n)
+}
+func (c *Core) fitsAlive(n wire.Member) bool {
+	size, err := wire.Size([]wire.Message{{Alive: &n}}, c.config.Label, c.config.Protected)
+	return err == nil && size <= c.config.PacketBudget
 }
 func (c *Core) applyAlive(n wire.Member) {
 	// Every approval re-enters here against current state, not a retained pointer.

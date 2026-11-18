@@ -226,7 +226,6 @@ func BenchmarkCodec(b *testing.B) {
 				m.Exchange = &Exchange{Members: []Member{n, n, n, n, n, n, n, n, n, n}}
 			}
 			frame, _ := Encode([]Message{m}, Options{})
-			b.ReportMetric(float64(len(frame)), "bytes/frame")
 			b.ReportAllocs()
 			for b.Loop() {
 				encoded, err := Encode([]Message{m}, Options{})
@@ -237,6 +236,48 @@ func BenchmarkCodec(b *testing.B) {
 					b.Fatal(err)
 				}
 			}
+			b.ReportMetric(float64(len(frame)), "bytes/frame")
 		})
+	}
+}
+
+func FuzzCompressedBody(f *testing.F) {
+	var z bytes.Buffer
+	w := lzw.NewWriter(&z, lzw.LSB, 8)
+	_, _ = w.Write([]byte(`[{"ack":{"sequence":7}}]`))
+	_ = w.Close()
+	f.Add(z.Bytes())
+	f.Add([]byte{0, 1, 255})
+	f.Fuzz(func(t *testing.T, compressed []byte) {
+		if len(compressed) > MaxBody {
+			return
+		}
+		h := []byte{'L', 'P', 'L', '!', 1, 1, 0, 0}
+		h = binary.BigEndian.AppendUint32(h, uint32(len(compressed)+4))
+		h = append(h, compressed...)
+		h = binary.BigEndian.AppendUint32(h, crc32.ChecksumIEEE(h))
+		messages, err := Decode(h, Options{})
+		if err == nil {
+			b, err := Encode(messages, Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = Decode(b, Options{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+}
+func TestCompressedTrailingBytesRejected(t *testing.T) {
+	data := bytes.Repeat([]byte{'x'}, 500)
+	frame, err := Encode([]Message{{User: &data}}, Options{Compress: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := append(bytes.Clone(frame[:len(frame)-4]), 0)
+	binary.BigEndian.PutUint32(payload[8:12], binary.BigEndian.Uint32(payload[8:12])+1)
+	payload = binary.BigEndian.AppendUint32(payload, crc32.ChecksumIEEE(payload))
+	if _, err = Decode(payload, Options{}); err == nil {
+		t.Fatal("trailing compressed data accepted")
 	}
 }

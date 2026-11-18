@@ -203,7 +203,8 @@ func Decode(frame []byte, o Options) ([]Message, error) {
 		b = b[:len(b)-4]
 	}
 	if frame[5]&compressed != 0 {
-		r := lzw.NewReader(bytes.NewReader(b), lzw.LSB, 8)
+		input := bytes.NewReader(b)
+		r := lzw.NewReader(input, lzw.LSB, 8)
 		plain, e := io.ReadAll(io.LimitReader(r, MaxBody+1))
 		closeErr := r.Close()
 		if e != nil {
@@ -211,6 +212,9 @@ func Decode(frame []byte, o Options) ([]Message, error) {
 		}
 		if closeErr != nil {
 			return nil, closeErr
+		}
+		if input.Len() != 0 {
+			return nil, errors.New("trailing compressed content")
 		}
 		if len(plain) > MaxBody {
 			return nil, errors.New("decompression limit")

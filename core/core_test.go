@@ -506,3 +506,176 @@ func BenchmarkBacklog(b *testing.B) {
 		})
 	}
 }
+
+func TestMonotonicTimeAndOwnership(t *testing.T) {
+	c := testCore(t)
+	step(t, c, 10, Update{Meta: []byte("retained")})
+	if _, err := c.Step(9, Start{}); err == nil {
+		t.Fatal("time moved backwards")
+	}
+	data := []byte("original")
+	es := step(t, c, 10, Send{Command: 9, Peer: identity("b", 2), Data: data})
+	data[0] = 'X'
+	for _, e := range es {
+		if s, ok := e.(SendDatagram); ok {
+			if string(*s.Messages[0].User) != "original" {
+				t.Fatal("effect aliased command data")
+			}
+		}
+	}
+	before := c.nodes["a"].Meta
+	s := c.Snapshot()
+	for j := range s.Members {
+		if s.Members[j].Name == "a" {
+			s.Members[j].Meta[0] = 'X'
+		}
+	}
+	if !bytes.Equal(c.nodes["a"].Meta, before) || c.nodes["a"].Meta[0] == 'X' {
+		t.Fatal("snapshot aliases membership")
+	}
+}
+func TestProtocolBroadcastsBeforeUserBacklog(t *testing.T) {
+	c := testCore(t)
+	c.broadcasts = nil
+	c.broadcastKeys = make(map[string]*broadcast)
+	for range 10 {
+		data := bytes.Repeat([]byte{'x'}, 600)
+		c.queue(wire.Message{User: &data}, "", 0)
+	}
+	m := c.nodes["a"].Member
+	c.queue(wire.Message{Alive: &m}, "a", 0)
+	messages := c.pack(nil)
+	if len(messages) == 0 || messages[0].Alive == nil {
+		t.Fatal("user backlog starved protocol broadcast")
+	}
+}
+func TestHelperSelectionAndReaping(t *testing.T) {
+	c := testCore(t)
+	for j := 3; j <= 20; j++ {
+		add(t, c, fmt.Sprint(j), uint16(j))
+	}
+	chosen := c.randomNodes(3, func(n *member) bool { return n.Name == "a" || n.Name == "b" })
+	if len(chosen) != 3 {
+		t.Fatal("helper selection incomplete")
+	}
+	seen := make(map[string]bool)
+	for _, n := range chosen {
+		if seen[n.Name] || n.Name == "a" || n.Name == "b" {
+			t.Fatal("duplicate/excluded helper")
+		}
+		seen[n.Name] = true
+	}
+	c.dead(wire.Accusation{Node: "b", From: "a", Incarnation: 1})
+	c.now = Instant(c.config.GossipToDead)
+	c.resetNodes()
+	if c.nodes["b"] == nil {
+		t.Fatal("dead node reaped before gossip window")
+	}
+	c.now++
+	c.resetNodes()
+	if c.nodes["b"] != nil {
+		t.Fatal("expired dead node retained")
+	}
+}
+
+func TestOverallACKAndNackOrdering(t *testing.T) {
+	for _, kind := range []string{"ack", "nack"} {
+		for _, offset := range []Instant{-1, 0, 1} {
+			for _, first := range []bool{true, false} {
+				c := testCore(t)
+				add(t, c, "c", 3)
+				es := step(t, c, 0, Probe{Peer: "b"})
+				p := pingSend(t, es)
+				direct := timer(t, es, "direct")
+				overall := timer(t, es, "overall")
+				step(t, c, direct.At, Fired{direct.Timer})
+				now := overall.At + offset
+				m := wire.Message{Ack: &wire.Ack{Sequence: p.Messages[0].Ping.Sequence}}
+				from := p.To
+				if kind == "nack" {
+					m = wire.Message{Nack: &wire.Ack{Sequence: p.Messages[0].Ping.Sequence}}
+					from = identity("c", 3).Address
+				}
+				packet := Datagram{From: from, Received: now, Messages: []wire.Message{m}}
+				before := first || offset < 0
+				if before {
+					step(t, c, now, packet)
+					step(t, c, max(now, overall.At), Fired{overall.Timer})
+				} else {
+					step(t, c, now, Fired{overall.Timer})
+					step(t, c, now, packet)
+				}
+				if kind == "ack" {
+					want := wire.Suspect
+					if before {
+						want = wire.Alive
+					}
+					if state(c, "b") != want {
+						t.Fatal(kind, offset, first, c.Snapshot())
+					}
+				} else {
+					want := 1
+					if before {
+						want = 0
+					}
+					if c.health != want || state(c, "b") != wire.Suspect {
+						t.Fatal(kind, offset, first, c.Snapshot())
+					}
+				}
+			}
+		}
+	}
+}
+func TestConfirmationExpiryOrder(t *testing.T) {
+	for _, first := range []bool{true, false} {
+		c := testCore(t)
+		for j := 3; j <= 5; j++ {
+			add(t, c, fmt.Sprint(j), uint16(j))
+		}
+		c.suspect(wire.Accusation{Node: "b", From: "a", Incarnation: 1})
+		old := c.timers["suspect:b"]
+		c.now = old.at
+		if first {
+			c.suspect(wire.Accusation{Node: "b", From: "c", Incarnation: 1})
+		}
+		step(t, c, old.at, Fired{old.timer})
+		if first {
+			if state(c, "b") != wire.Suspect {
+				t.Fatal("confirmation failed to invalidate old expiry")
+			}
+			due := c.timers["suspect:b"]
+			step(t, c, old.at, Fired{due.timer})
+		} else {
+			c.suspect(wire.Accusation{Node: "b", From: "c", Incarnation: 1})
+		}
+		if state(c, "b") != wire.Dead {
+			t.Fatal("expiry never completed")
+		}
+	}
+}
+func TestCancelCommandClosesOnlyItsOperation(t *testing.T) {
+	c := testCore(t)
+	o := findOpen(t, step(t, c, 0, Join{Command: 1, Peer: identity("b", 2)}))
+	step(t, c, 0, Ping{Command: 2, Peer: identity("b", 2)})
+	es := step(t, c, 0, CancelCommand{Command: 1})
+	if countResults(es, 1) != 1 || countResults(es, 2) != 0 || c.streams[o.ID.ID] != nil || len(c.probes) != 1 {
+		t.Fatal(es)
+	}
+	if es = step(t, c, 0, Opened{ID: o.ID}); len(es) != 0 {
+		t.Fatal("canceled open acted")
+	}
+}
+
+func TestOversizeInputsFailExplicitly(t *testing.T) {
+	c := testCore(t)
+	for _, input := range []Event{Update{Command: 1, Meta: make([]byte, wire.MaxMeta+1)}, Send{Command: 1, Peer: identity("b", 2), Data: make([]byte, 2000)}, Send{Command: 1, Broadcast: true, Data: make([]byte, 2000)}} {
+		es := step(t, c, 0, input)
+		if len(es) != 1 {
+			t.Fatal(es)
+		}
+		r, ok := es[0].(Result)
+		if !ok || r.Failure != LocalFailure {
+			t.Fatal(es)
+		}
+	}
+}

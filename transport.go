@@ -149,7 +149,9 @@ func (n *Node) readStream(id core.Token, s *ioStream, conn net.Conn) {
 	received := n.now()
 	if err != nil {
 		if s.ctx.Err() == nil {
-			n.counts.rejected.Add(1)
+			if !errors.Is(err, io.EOF) {
+				n.counts.rejected.Add(1)
+			}
 			n.post(core.Closed{ID: id, Failure: networkFailure(err)})
 		}
 		return

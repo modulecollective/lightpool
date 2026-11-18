@@ -248,7 +248,7 @@ func (c *Core) beginMerge(s *stream) {
 		return
 	}
 	for _, n := range s.remote.Members {
-		if n.State == wire.Alive && n.Application != c.nodes[c.self].Application {
+		if n.State == wire.Alive && (n.Application != c.nodes[c.self].Application || !c.fitsAlive(n)) {
 			c.endStream(s.id.ID, Rejected)
 			return
 		}

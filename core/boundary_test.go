@@ -15,7 +15,7 @@ import (
 )
 
 func TestExecutionBoundary(t *testing.T) {
-	allowed := map[string]bool{"bytes": true, "cmp": true, "encoding/json": true, "errors": true, "math": true, "math/rand/v2": true, "net/netip": true, "slices": true, "time": true, "github.com/modulecollective/lightpool/wire": true}
+	allowed := map[string]bool{"bytes": true, "cmp": true, "encoding/json": true, "errors": true, "math": true, "math/rand/v2": true, "net/netip": true, "slices": true, "strconv": true, "time": true, "github.com/modulecollective/lightpool/wire": true}
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)

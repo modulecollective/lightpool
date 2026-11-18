@@ -283,3 +283,27 @@ type Snapshot struct {
 	Stopped, Left                   bool
 	Stats                           Stats
 }
+
+// CancelCommand cancels outstanding work or only the wait for a broadcast whose
+// membership change already happened; it never rolls back protocol state.
+type CancelCommand struct{ Command uint64 }
+
+func (CancelCommand) event() {}
+func (f Failure) String() string {
+	switch f {
+	case Success:
+		return "success"
+	case LocalFailure:
+		return "local facility failure"
+	case RemoteFailure:
+		return "remote transport failure"
+	case Timeout:
+		return "timeout"
+	case Rejected:
+		return "application rejection"
+	case Canceled:
+		return "canceled"
+	default:
+		return "unknown failure"
+	}
+}

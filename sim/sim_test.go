@@ -314,3 +314,53 @@ func TestFreshProcessReplay(t *testing.T) {
 	}
 	t.Logf("10 fresh processes, GOMAXPROCS=1/2/3: identical %d-byte traces and measurements", len(reference))
 }
+
+func TestPausedReceiveBufferOverflow(t *testing.T) {
+	s := fixture()
+	s.DatagramCapacity = 1000
+	s.Actions = append(s.Actions, Action{At: core.Instant(500 * time.Millisecond), Node: "b", Kind: "pause", Duration: 200 * time.Millisecond}, Action{At: core.Instant(510 * time.Millisecond), Node: "a", Kind: "send", Peer: "b", Data: bytes.Repeat([]byte{'q'}, 700)}, Action{At: core.Instant(520 * time.Millisecond), Node: "a", Kind: "send", Peer: "b", Data: bytes.Repeat([]byte{'q'}, 700)})
+	r := run(t, s)
+	found := false
+	for _, m := range r.Measurements {
+		if m.Name == "b" && m.DatagramDrops > 0 {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("finite receive buffer never overflowed")
+	}
+	users := 0
+	for _, raw := range effects(r, "core.Notification") {
+		var n core.Notification
+		_ = json.Unmarshal(raw, &n)
+		if n.Kind == "user" && len(n.Data) == 700 {
+			users++
+		}
+	}
+	if users != 1 {
+		t.Fatal("expected exactly one buffered user message", users)
+	}
+}
+func TestStreamClosesMidFrame(t *testing.T) {
+	s := fixture()
+	s.Actions = append(s.Actions, Action{At: core.Instant(500 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: bytes.Repeat([]byte{'z'}, 10000)}, Action{At: core.Instant(510 * time.Millisecond), Node: "b", Kind: "crash"})
+	r := run(t, s)
+	failed := false
+	for _, raw := range effects(r, "core.Result") {
+		var result core.Result
+		_ = json.Unmarshal(raw, &result)
+		if result.Failure == core.RemoteFailure {
+			failed = true
+		}
+	}
+	for _, raw := range effects(r, "core.Notification") {
+		var n core.Notification
+		_ = json.Unmarshal(raw, &n)
+		if n.Kind == "user" && len(n.Data) == 10000 {
+			t.Fatal("partial frame delivered")
+		}
+	}
+	if !failed {
+		t.Fatal("mid-frame close not surfaced")
+	}
+}

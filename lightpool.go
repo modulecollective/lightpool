@@ -9,7 +9,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"github.com/modulecollective/lightpool/core"
 	"github.com/modulecollective/lightpool/wire"
 	"log"
@@ -218,6 +217,7 @@ func (n *Node) run() {
 		case cmd := <-n.commands:
 			if cmd.abandon != 0 {
 				delete(n.waiters, cmd.abandon)
+				n.step(core.CancelCommand{Command: cmd.abandon})
 				continue
 			}
 			if cmd.reply != nil {
@@ -320,7 +320,7 @@ func (n *Node) call(ctx context.Context, makeEvent func(uint64) core.Event) (cor
 	select {
 	case r := <-reply:
 		if r.Failure != core.Success {
-			return r, fmt.Errorf("protocol operation failed: %d", r.Failure)
+			return r, OperationError{Failure: r.Failure}
 		}
 		return r, nil
 	case <-ctx.Done():
@@ -456,3 +456,8 @@ func (n *Node) notificationWorker() {
 		}
 	}
 }
+
+// OperationError retains the core's failure class for errors.As inspection.
+type OperationError struct{ Failure core.Failure }
+
+func (e OperationError) Error() string { return "lightpool: " + e.Failure.String() }
