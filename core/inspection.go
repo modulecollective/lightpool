@@ -12,7 +12,17 @@ type Inspection struct {
 	Helpers                                []string
 }
 
-func (c *Core) EnableInspection() { c.inspect = true }
+// EnableInspection begins with the current membership baseline. Read it before
+// the next Step if inspection is enabled after construction.
+func (c *Core) EnableInspection() {
+	if c.inspect {
+		return
+	}
+	c.inspect = true
+	for _, name := range c.names() {
+		c.recordMember(c.nodes[name].Member)
+	}
+}
 
 // Inspection returns data owned by the caller. The next Step starts a new journal.
 func (c *Core) Inspection() []Inspection {

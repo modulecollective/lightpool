@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"unicode/utf8"
 
 	"github.com/modulecollective/lightpool/core"
 	"github.com/modulecollective/lightpool/wire"
@@ -163,7 +164,7 @@ func (w *Writer) Write(v any) error {
 	if err != nil {
 		return err
 	}
-	if len(b) > 64<<20 {
+	if len(b)+1 > 64<<20 {
 		return fmt.Errorf("trace record exceeds 64 MiB")
 	}
 	n, err := w.buffer.Write(append(b, '\n'))
@@ -185,6 +186,9 @@ func Read(r io.Reader, visit func(json.RawMessage) error) (bool, error) {
 	for {
 		b, err := readLine(scanner)
 		if err == io.EOF {
+			if line == 0 {
+				return false, fmt.Errorf("line 1: missing complete header")
+			}
 			return complete, nil
 		}
 		if err != nil {
@@ -200,6 +204,9 @@ func Read(r io.Reader, visit func(json.RawMessage) error) (bool, error) {
 			Complete                bool
 		}
 		fail := func(err error) (bool, error) { return false, fmt.Errorf("line %d: %w", line, err) }
+		if !utf8.Valid(b) {
+			return fail(fmt.Errorf("invalid UTF-8"))
+		}
 		if err = json.Unmarshal(b, &e); err != nil {
 			return fail(err)
 		}
@@ -216,6 +223,9 @@ func Read(r io.Reader, visit func(json.RawMessage) error) (bool, error) {
 			}
 			n, err := strconv.ParseUint(e.Seq, 10, 64)
 			if err != nil {
+				return fail(err)
+			}
+			if err := instant(e.Time); err != nil {
 				return fail(err)
 			}
 			t, err := strconv.ParseInt(e.Time, 10, 64)

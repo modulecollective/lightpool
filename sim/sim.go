@@ -156,6 +156,7 @@ type connection struct {
 	readExpired    [2]bool
 	openDeadline   core.Instant
 	waitingDrain   *event
+	opening        trace.Traffic
 }
 type runner struct {
 	scenario       Scenario
@@ -288,6 +289,9 @@ func execute(s Scenario, x *exporter) (Result, error) {
 		case "connect":
 			if conn := r.streams[e.stream]; conn != nil && conn.connecting {
 				conn.connecting = false
+				t := conn.opening
+				t.Stage = "arrival"
+				r.traffic(t)
 				r.readDeadline(conn, 0, conn.openDeadline)
 				r.readDeadline(conn, 1, r.now.Add(r.scenario.Protocol.StreamTimeout))
 				r.coreEvent(conn.names[1], r.now, core.Accepted{ID: conn.tokens[1], Peer: r.nodes[conn.names[0]].spec.Identity.Address})
@@ -671,23 +675,35 @@ func (r *runner) datagramArrival(e *event) {
 	}
 }
 func (r *runner) open(name string, e core.OpenStream) {
+	to := r.addresses[netipKey(e.To.String())]
+	t := r.attempt("stream", name, to, nil, 0)
+	t.Detail = "open"
+	if r.export != nil {
+		r.export.event.Traffic[len(r.export.event.Traffic)-1].Detail = "open"
+	}
+
 	if e.Deadline <= r.now {
+		t.Stage = "drop"
+		t.Detail = "open deadline"
+		r.traffic(t)
 		r.coreEvent(name, r.now, core.Opened{ID: e.ID, Failure: core.Timeout})
 		return
 	}
-	to := r.addresses[netipKey(e.To.String())]
 	if to == "" || !r.nodes[to].alive || r.fault(name, to, r.now).StreamFailure {
 		at, failure := r.now.Add(r.scenario.Latency), core.RemoteFailure
 		if at > e.Deadline {
 			at, failure = e.Deadline, core.Timeout
 		}
+		t.Stage = "drop"
+		t.Detail = "open: " + failure.String()
+		r.traffic(t)
 		r.enqueue(&event{at: at, kind: "open-failed", from: name, life: r.nodes[name].life, input: core.Opened{ID: e.ID, Failure: failure}})
 		return
 	}
 	r.streamID++
 	id := r.streamID
 	token := core.Token{Lifetime: r.nodes[to].life, ID: 1<<63 | id}
-	conn := &connection{id: id, names: [2]string{name, to}, tokens: [2]core.Token{e.ID, token}, connecting: true, openDeadline: e.Deadline}
+	conn := &connection{id: id, names: [2]string{name, to}, tokens: [2]core.Token{e.ID, token}, connecting: true, openDeadline: e.Deadline, opening: t}
 	r.streams[id] = conn
 	r.tokens[name][e.ID] = id
 	r.tokens[to][token] = id
@@ -704,7 +720,19 @@ func (r *runner) readDeadline(conn *connection, side int, at core.Instant) {
 func (r *runner) write(name string, e core.WriteStream) {
 	id := r.tokens[name][e.ID]
 	conn := r.streams[id]
+	to := ""
+	if conn != nil {
+		to = conn.names[1]
+		if name == to {
+			to = conn.names[0]
+		}
+	}
+	b, encodeErr := wire.Encode(e.Messages, wire.Options{Label: r.scenario.Protocol.Label, Compress: r.scenario.Compression})
+	t := r.attempt("stream", name, to, e.Messages, len(b))
 	if conn == nil || conn.closed {
+		t.Stage = "drop"
+		t.Detail = "stream closed"
+		r.traffic(t)
 		r.coreEvent(name, r.now, core.Written{ID: e.ID, Failure: core.RemoteFailure})
 		return
 	}
@@ -713,24 +741,35 @@ func (r *runner) write(name string, e core.WriteStream) {
 		side = 1
 	}
 	if conn.readExpired[1-side] {
+		t.Stage = "drop"
+		t.Detail = "read expired"
+		r.traffic(t)
 		r.coreEvent(name, r.now, core.Written{ID: e.ID, Failure: core.Timeout})
 		return
 	}
 	if conn.closedSide[1-side] {
+		t.Stage = "drop"
+		t.Detail = "peer closed"
+		r.traffic(t)
 		r.coreEvent(name, r.now, core.Written{ID: e.ID, Failure: core.RemoteFailure})
 		return
 	}
 	d := &conn.directions[side]
 	if d.writing {
+		t.Stage = "drop"
+		t.Detail = "write already pending"
+		r.traffic(t)
 		r.coreEvent(name, r.now, core.Written{ID: e.ID, Failure: core.LocalFailure})
 		return
 	}
-	b, err := wire.Encode(e.Messages, wire.Options{Label: r.scenario.Protocol.Label, Compress: r.scenario.Compression})
-	if err != nil {
+	if encodeErr != nil {
+		t.Stage = "drop"
+		t.Detail = "encoding failed"
+		r.traffic(t)
 		r.coreEvent(name, r.now, core.Written{ID: e.ID, Failure: core.LocalFailure})
 		return
 	}
-	d.traffic = r.attempt("stream", name, conn.names[1-side], e.Messages, len(b))
+	d.traffic = t
 	d.frame = b
 	d.offset = 0
 	d.assembled = nil
@@ -769,31 +808,48 @@ func (r *runner) pump(conn *connection, side int) {
 		t.Bytes = trace.Decimal(count)
 		r.traffic(t)
 	}
-	r.enqueue(&event{at: r.now.Add(r.scenario.Latency + r.fault(from, to, r.now).Delay), kind: "chunk", stream: conn.id, direction: side, life: d.generation, frame: chunk})
+	t := d.traffic
+	r.enqueue(&event{at: r.now.Add(r.scenario.Latency + r.fault(from, to, r.now).Delay), kind: "chunk", stream: conn.id, direction: side, life: d.generation, frame: chunk, traffic: &t})
 }
 func (r *runner) chunkArrival(e *event) {
+	if e.traffic != nil {
+		t := *e.traffic
+		t.Stage = "arrival"
+		t.Bytes = trace.Decimal(len(e.frame))
+		r.traffic(t)
+	}
+	drop := func(reason string) {
+		if e.traffic != nil {
+			t := *e.traffic
+			t.Stage = "drop"
+			t.Bytes = trace.Decimal(len(e.frame))
+			t.Detail = reason
+			r.traffic(t)
+		}
+	}
 	conn := r.streams[e.stream]
 	if conn == nil || conn.closed {
+		drop("stream closed before chunk arrived")
 		return
 	}
 	side := e.direction
 	d := &conn.directions[side]
 	if d.generation != e.life || conn.readExpired[1-side] {
+		drop("obsolete write or expired read")
 		return
 	}
 	to := conn.names[1-side]
 	m := r.nodes[to]
 	if !m.alive || r.fault(conn.names[side], to, r.now).StreamFailure {
+		drop("receiver stopped or directional stream fault")
 		r.close(conn, core.RemoteFailure)
 		return
 	}
 	m.received += uint64(len(e.frame))
 	if r.export != nil {
 		t := d.traffic
-		t.Stage = "arrival"
-		t.Bytes = trace.Decimal(len(e.frame))
-		r.traffic(t)
 		t.Stage = "received"
+		t.Bytes = trace.Decimal(len(e.frame))
 		r.traffic(t)
 	}
 	d.received = r.now
@@ -843,6 +899,12 @@ func (r *runner) close(conn *connection, f core.Failure) {
 		return
 	}
 	conn.closed = true
+	if conn.connecting {
+		t := conn.opening
+		t.Stage = "drop"
+		t.Detail = "open: " + f.String()
+		r.traffic(t)
+	}
 	if r.export != nil {
 		for _, d := range conn.directions {
 			if d.writing {

@@ -114,7 +114,6 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
 	case Start:
 		if !c.started {
 			c.started = true
-			c.recordMember(c.nodes[c.self].Member)
 			c.queue(wire.Message{Alive: ptrMember(c.nodes[c.self].Member)}, c.self, 0)
 			c.startSchedules()
 		}

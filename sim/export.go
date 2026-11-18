@@ -100,10 +100,14 @@ func (r *runner) finishExport(e *event, events int) error {
 		x.event.Lifetime = p.Lifetime
 		x.event.Changes = append(x.event.Changes, trace.Change{Kind: "process", Node: e.action.Node, Phase: e.action.Kind, Process: &p})
 	}
-	if e.kind == "core" {
-		m := r.nodes[e.node]
+	if e.kind == "core" || e.kind == "action" && e.action.Kind == "start" {
+		name := e.node
+		if name == "" {
+			name = e.action.Node
+		}
+		m := r.nodes[name]
 		for _, j := range m.engine.Inspection() {
-			c := trace.Change{Kind: j.Kind, Node: e.node, Subject: j.Subject, Phase: j.Phase, Purpose: j.Purpose, Outcome: j.Outcome, Helpers: j.Helpers}
+			c := trace.Change{Kind: j.Kind, Node: name, Subject: j.Subject, Phase: j.Phase, Purpose: j.Purpose, Outcome: j.Outcome, Helpers: j.Helpers}
 			if j.Member != nil {
 				c.Member = trace.Membership(*j.Member)
 			}
@@ -117,7 +121,7 @@ func (r *runner) finishExport(e *event, events int) error {
 			}
 			x.event.Changes = append(x.event.Changes, c)
 		}
-		x.event.Changes = append(x.event.Changes, trace.Change{Kind: "summary", Node: e.node, Summary: trace.Counters(m.engine.Summary())})
+		x.event.Changes = append(x.event.Changes, trace.Change{Kind: "summary", Node: name, Summary: trace.Counters(m.engine.Summary())})
 	}
 	if err := x.writer.Write(x.event); err != nil {
 		return err
