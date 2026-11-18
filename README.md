@@ -3,7 +3,8 @@
 Lightpool is a Go 1.25 library for gossip membership and failure detection,
 derived from HashiCorp memberlist (MPL-2.0). One serial protocol core runs
 under an ordinary UDP/TCP driver or a deterministic message simulator.
-Production code and tests use only the Go standard library.
+Go production code and tests use only the standard library. The separate
+static explorer under `web/` has its own frontend dependencies.
 
 This is a new Lightpool baseline. Its API, framing costs and event ordering
 semantics differ from memberlist. The comparison reference is fork commit
@@ -78,6 +79,32 @@ membership/detection/byte measurements. Pin the actual source revision in
 `Scenario.Code`. Budget exhaustion explicitly reports an incomplete run.
 See `ExampleRun` (`go test ./sim -run ExampleRun -v`). This is a message model,
 not a packet-level TCP stack or calibrated operating-system model.
+
+## Record and explore a simulation
+
+```sh
+go build -o lightpool-sim ./cmd/lightpool-sim
+./lightpool-sim -scenario examples/sim/pause.json -out pause.ndjson
+cd web
+npm ci
+npm run dev
+```
+
+Open the trace in the viewer, or start with its bundled teaching recordings.
+The producer never overwrites an existing file. An unstamped or modified
+build requires `-revision <explicit-source-identity>`; `go run` may need
+that flag. Progress goes to stderr; trace output is NDJSON only. Scenario
+files use the `sim.Scenario` field names and integer nanosecond durations;
+the CLI bounds input at 16 MiB and rejects unknown fields. Event-budget
+exhaustion writes an incomplete end and exits with an error. An I/O failure
+leaves an inspectable prefix and stops execution.
+
+`sim.Export(scenario, writer, options)` uses the same event loop as
+`sim.Run`, without retaining the legacy trace or final membership matrix.
+The caller owns and closes the writer; errors propagate. The opt-in
+`core.EnableInspection` journal records authoritative membership changes,
+probe facts and timer lifecycle separately from protocol effects.
+See [trace format](docs/trace-v1.md) and [viewer usage](web/README.md).
 
 ## Frame contract (wire version 1)
 
