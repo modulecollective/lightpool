@@ -13,6 +13,7 @@ import (
 type probe struct {
 	id                                uint64
 	peer                              wire.Identity
+	incarnation                       uint64
 	command                           uint64
 	start, deadline                   Instant
 	explicit, periodic, indirect, tcp bool
@@ -69,6 +70,9 @@ func (c *Core) startProbe(peer wire.Identity, command uint64, explicit, periodic
 	id := c.token().ID
 	window := c.config.ProbeInterval * time.Duration(c.health+1)
 	p := &probe{id: id, peer: peer.Clone(), command: command, start: c.now, deadline: c.now.Add(window), explicit: explicit, periodic: periodic, nacks: make(map[netip.AddrPort]bool)}
+	if n := c.nodes[peer.Name]; n != nil {
+		p.incarnation = n.Incarnation
+	}
 	c.probes[id] = p
 	c.stats.Probes++
 	if periodic {
@@ -174,8 +178,10 @@ func (c *Core) finishProbe(id uint64, f Failure, rtt time.Duration, payload []by
 				delta = len(p.helpers) - len(p.nacks)
 			}
 			c.adjustHealth(delta)
-			if n := c.nodes[p.peer.Name]; n != nil {
-				c.suspect(wire.Accusation{Node: n.Name, Incarnation: n.Incarnation, From: c.self})
+			// Failure is evidence about the membership we probed, even if its
+			// name has since been refuted or reclaimed at another address.
+			if n := c.nodes[p.peer.Name]; n != nil && n.Address == p.peer.Address && n.Incarnation == p.incarnation {
+				c.suspect(wire.Accusation{Node: p.peer.Name, Incarnation: p.incarnation, From: c.self})
 			}
 		}
 	}

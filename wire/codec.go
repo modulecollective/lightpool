@@ -54,9 +54,21 @@ func body(messages []Message) ([]byte, error) {
 	if len(messages) == 0 || len(messages) > MaxBatch {
 		return nil, errors.New("invalid batch count")
 	}
-	for _, m := range messages {
+	// A nil byte slice marshals as null, which would erase the User variant
+	// on decode. Canonicalize it to the empty base64 string without mutating
+	// caller-owned records.
+	copied := false
+	for i, m := range messages {
 		if err := m.Validate(); err != nil {
 			return nil, err
+		}
+		if m.User != nil && *m.User == nil {
+			if !copied {
+				messages = append([]Message(nil), messages...)
+				copied = true
+			}
+			empty := []byte{}
+			messages[i].User = &empty
 		}
 	}
 	b, err := json.Marshal(messages)

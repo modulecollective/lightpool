@@ -213,6 +213,135 @@ func TestPauseBuffersAndBackpressure(t *testing.T) {
 		t.Fatal("frame larger than capacity stalled")
 	}
 }
+
+func TestTransportDeadlineDuringBothEndpointPauses(t *testing.T) {
+	for _, paused := range []bool{false, true} {
+		t.Run(fmt.Sprint("paused=", paused), func(t *testing.T) {
+			s := fixture()
+			s.Nodes = s.Nodes[:2]
+			for i := range s.Nodes {
+				s.Nodes[i].Service = time.Millisecond
+			}
+			s.Protocol.ProbeInterval, s.Protocol.GossipInterval, s.Protocol.PushPullInterval = 0, 0, 0
+			s.Protocol.StreamTimeout = 100 * time.Millisecond
+			s.Seeds = Seeds{1, 2, 7}
+			s.Latency = 0
+			s.Horizon = core.Instant(1200 * time.Millisecond)
+			s.Actions = []Action{{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: bytes.Repeat([]byte{'x'}, 200)}}
+			if paused {
+				for _, name := range []string{"a", "b"} {
+					s.Actions = append(s.Actions, Action{At: core.Instant(13 * time.Millisecond), Node: name, Kind: "pause", Duration: time.Second})
+				}
+			}
+			r := run(t, s)
+			users := 0
+			for _, raw := range effects(r, "core.Notification") {
+				var n core.Notification
+				_ = json.Unmarshal(raw, &n)
+				if n.Kind == "user" {
+					users++
+				}
+			}
+			results := effects(r, "core.Result")
+			if len(results) != 1 {
+				t.Fatalf("terminal results: %s", results)
+			}
+			var result core.Result
+			_ = json.Unmarshal(results[0], &result)
+			if paused {
+				if users != 0 || result.Failure != core.Timeout {
+					t.Fatalf("expired transfer delivered: users=%d result=%+v", users, result)
+				}
+				for _, tr := range r.Trace {
+					if tr.Kind == "chunk" && tr.Time > core.Instant(111*time.Millisecond) {
+						t.Fatalf("transfer progressed after deadline: %+v", tr)
+					}
+				}
+			} else if users != 1 || result.Failure != core.Success {
+				t.Fatalf("healthy transfer: users=%d result=%+v", users, result)
+			}
+		})
+	}
+}
+
+func TestConnectDeadlineDuringInitiatorPause(t *testing.T) {
+	s := fixture()
+	s.Nodes = s.Nodes[:2]
+	s.Protocol.ProbeInterval, s.Protocol.GossipInterval, s.Protocol.PushPullInterval = 0, 0, 0
+	s.Protocol.StreamTimeout = 100 * time.Millisecond
+	s.Latency = 200 * time.Millisecond
+	s.Horizon = core.Instant(1200 * time.Millisecond)
+	s.Actions = []Action{
+		{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: []byte("late")},
+		{At: core.Instant(13 * time.Millisecond), Node: "a", Kind: "pause", Duration: time.Second},
+	}
+	r := run(t, s)
+	if len(effects(r, "core.WriteStream")) != 0 || len(effects(r, "core.Notification")) != 0 {
+		t.Fatal("expired connect established a stream")
+	}
+	results := effects(r, "core.Result")
+	if len(results) != 1 {
+		t.Fatalf("terminal results: %s", results)
+	}
+	var result core.Result
+	_ = json.Unmarshal(results[0], &result)
+	if result.Failure != core.Timeout {
+		t.Fatal("expired connect did not report timeout", result)
+	}
+	for _, tr := range r.Trace {
+		if tr.Kind == "core.Accepted" {
+			t.Fatal("expired connect reached receiver", tr)
+		}
+	}
+}
+
+func TestShutdownInvalidatesPendingConnect(t *testing.T) {
+	s := fixture()
+	s.Nodes = s.Nodes[:2]
+	s.Protocol.ProbeInterval, s.Protocol.GossipInterval, s.Protocol.PushPullInterval = 0, 0, 0
+	s.Protocol.StreamTimeout = time.Second
+	s.Latency = 200 * time.Millisecond
+	s.Actions = []Action{
+		{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: []byte("canceled")},
+		{At: core.Instant(20 * time.Millisecond), Node: "a", Kind: "shutdown"},
+	}
+	r := run(t, s)
+	for _, tr := range r.Trace {
+		if tr.Kind == "core.Accepted" {
+			t.Fatal("canceled connection reached receiver", tr)
+		}
+	}
+}
+
+func TestUserPayloadBoundariesInSimulation(t *testing.T) {
+	for _, mode := range []string{"send", "reliable", "broadcast"} {
+		for _, data := range [][]byte{nil, {}, {1}} {
+			t.Run(fmt.Sprintf("%s/%#v", mode, data), func(t *testing.T) {
+				s := fixture()
+				s.Nodes = s.Nodes[:2]
+				s.Actions = []Action{
+					{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"},
+					{At: core.Instant(100 * time.Millisecond), Node: "a", Kind: mode, Peer: "b", Data: data},
+				}
+				r := run(t, s)
+				users := 0
+				for _, raw := range effects(r, "core.Notification") {
+					var n core.Notification
+					_ = json.Unmarshal(raw, &n)
+					if n.Kind == "user" {
+						users++
+						if !bytes.Equal(n.Data, data) {
+							t.Fatalf("payload changed: %x", n.Data)
+						}
+					}
+				}
+				if users == 0 {
+					t.Fatal("accepted user payload was not delivered")
+				}
+			})
+		}
+	}
+}
 func TestFaultsDuplicateDelayAndIncomplete(t *testing.T) {
 	s := fixture()
 	s.Faults = []Fault{{From: "a", To: "b", Start: 0, End: s.Horizon, Delay: time.Millisecond, Jitter: time.Millisecond, Duplicate: true}}

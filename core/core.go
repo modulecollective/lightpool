@@ -289,7 +289,10 @@ func (c *Core) shutdown(command uint64) {
 		}
 	}
 	c.stopped = true
-	c.app = make(map[uint64]pending)
+	for _, id := range sortedIDs(c.app) {
+		c.emit(CancelRequest{ID: Token{Lifetime: c.life, ID: id}})
+		delete(c.app, id)
+	}
 	c.sends = make(map[uint64]sendPending)
 	c.high = nil
 	c.low = nil
@@ -310,6 +313,7 @@ func key(prefix string, id uint64) string { return prefix + strconv.FormatUint(i
 func (c *Core) cancelOperationApps(op uint64) {
 	for _, id := range sortedIDs(c.app) {
 		if c.app[id].op == op {
+			c.emit(CancelRequest{ID: Token{Lifetime: c.life, ID: id}})
 			delete(c.app, id)
 		}
 	}

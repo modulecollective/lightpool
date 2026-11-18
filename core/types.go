@@ -264,6 +264,12 @@ type Request struct {
 
 func (Request) effect() {}
 
+// CancelRequest ends a pending or executing application request. Drivers must
+// cancel its context and avoid invoking queued work that has been canceled.
+type CancelRequest struct{ ID Token }
+
+func (CancelRequest) effect() {}
+
 type Notification struct {
 	Kind          string
 	Member, Other wire.Member

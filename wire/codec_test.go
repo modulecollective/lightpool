@@ -18,6 +18,39 @@ import (
 
 var ackFixture = "4c504c21010000000000001c5b7b2261636b223a7b2273657175656e6365223a377d7d5da1448745"
 
+func TestEmptyUserRoundTrip(t *testing.T) {
+	for _, payload := range [][]byte{nil, {}, {1}} {
+		for _, clone := range []bool{false, true} {
+			m := Message{User: &payload}
+			if clone {
+				m = m.Clone()
+			}
+			frame, err := Encode([]Message{m}, Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			size, err := Size([]Message{m}, "", false)
+			if err != nil || size != len(frame) {
+				t.Fatalf("empty-user frame budget: size=%d encoded=%d err=%v", size, len(frame), err)
+			}
+			if !clone && payload == nil && *m.User != nil {
+				t.Fatal("codec mutated caller's nil payload")
+			}
+			decoded, err := Decode(frame, Options{})
+			if err != nil {
+				t.Errorf("payload=%v clone=%v: %v", payload, clone, err)
+				continue
+			}
+			if len(decoded) != 1 || decoded[0].User == nil || !bytes.Equal(*decoded[0].User, payload) {
+				t.Fatalf("payload changed: %+v", decoded)
+			}
+			if len(payload) == 0 && !bytes.Contains(frame, []byte(`{"user":""}`)) {
+				t.Fatalf("empty user is not canonical: %s", frame)
+			}
+		}
+	}
+}
+
 func TestIndependentFixture(t *testing.T) {
 	frame, err := hex.DecodeString(ackFixture)
 	if err != nil {

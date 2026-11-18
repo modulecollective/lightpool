@@ -23,8 +23,9 @@ import (
 )
 
 // Application runs outside the owner loop. Request calls can overlap and must
-// honor cancellation. Notify calls are ordered. Both may read Snapshot or call
-// APIs reentrantly. Shutdown cancels callbacks; it never waits for user code.
+// honor cancellation. A request's context ends with its operation or response.
+// Notify calls are ordered. Both may read Snapshot or call APIs reentrantly.
+// Shutdown cancels callbacks; it never waits for user code.
 type Application interface {
 	Request(context.Context, core.Request) (core.Response, error)
 	Notify(context.Context, core.Notification)
@@ -57,6 +58,10 @@ type ioStream struct {
 	cancel context.CancelFunc
 	conn   net.Conn
 }
+type applicationRequest struct {
+	ctx     context.Context
+	request core.Request
+}
 type Traffic struct{ SentBytes, ReceivedBytes, RejectedFrames, NotificationDrops uint64 }
 type counters struct{ sent, received, rejected, drops atomic.Uint64 }
 type Node struct {
@@ -72,7 +77,8 @@ type Node struct {
 	commands           chan command
 	deferred           chan core.Event
 	writes             chan core.SendDatagram
-	requests           chan core.Request
+	requests           chan applicationRequest
+	requestCancels     map[core.Token]context.CancelFunc // owner only
 	notices            chan core.Notification
 	done               chan struct{}
 	workers            sync.WaitGroup
@@ -161,8 +167,9 @@ func New(cfg Config) (*Node, error) {
 		ctx: ctx, cancel: cancel, udp: udp, tcp: tcp,
 		inbox: make(chan core.Event, 256), commands: make(chan command, 256),
 		deferred: make(chan core.Event, 1), writes: make(chan core.SendDatagram, 256),
-		requests: make(chan core.Request, 256), notices: make(chan core.Notification, 1024),
-		done: make(chan struct{}), streams: make(map[core.Token]*ioStream),
+		requests: make(chan applicationRequest, 256), notices: make(chan core.Notification, 1024),
+		requestCancels: make(map[core.Token]context.CancelFunc),
+		done:           make(chan struct{}), streams: make(map[core.Token]*ioStream),
 		timers: make(map[core.Timer]*time.Timer), waiters: make(map[uint64]chan core.Result),
 	}
 	n.saveSnapshot()
@@ -247,6 +254,12 @@ func (n *Node) run() {
 	}
 }
 func (n *Node) step(e core.Event) {
+	if response, ok := e.(core.Response); ok {
+		if cancel := n.requestCancels[response.ID]; cancel != nil {
+			cancel()
+			delete(n.requestCancels, response.ID)
+		}
+	}
 	effects, err := n.engine.Step(n.now(), e)
 	if err != nil {
 		if n.cfg.Logger != nil {
@@ -287,10 +300,17 @@ func (n *Node) step(e core.Event) {
 				panic("duplicate deferred turn")
 			}
 		case core.Request:
+			ctx, cancel := context.WithCancel(n.ctx)
+			n.requestCancels[e.ID] = cancel
 			select {
-			case n.requests <- e:
+			case n.requests <- applicationRequest{ctx: ctx, request: e}:
 			default:
 				immediate = append(immediate, core.Response{ID: e.ID, Reject: true})
+			}
+		case core.CancelRequest:
+			if cancel := n.requestCancels[e.ID]; cancel != nil {
+				cancel()
+				delete(n.requestCancels, e.ID)
 			}
 		case core.Notification:
 			if n.cfg.Application != nil {
@@ -444,9 +464,12 @@ func (n *Node) Shutdown() error {
 func (n *Node) applicationWorker() {
 	for {
 		select {
-		case r := <-n.requests:
-			response, err := n.cfg.Application.Request(n.ctx, r)
-			response.ID = r.ID
+		case work := <-n.requests:
+			if work.ctx.Err() != nil {
+				continue
+			}
+			response, err := n.cfg.Application.Request(work.ctx, work.request)
+			response.ID = work.request.ID
 			response.Reject = response.Reject || err != nil
 			n.post(response)
 		case <-n.ctx.Done():

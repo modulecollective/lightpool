@@ -190,6 +190,44 @@ func (a app) Notify(ctx context.Context, n core.Notification) {
 		a.notify(ctx, n)
 	}
 }
+
+func TestUserPayloadBoundariesOverLoopback(t *testing.T) {
+	for _, mode := range []string{"datagram", "reliable", "broadcast"} {
+		for _, data := range [][]byte{nil, {}, {1}} {
+			t.Run(fmt.Sprintf("%s/%#v", mode, data), func(t *testing.T) {
+				received := make(chan []byte, 16)
+				cfg := testConfig("b")
+				cfg.Application = app{notify: func(_ context.Context, n core.Notification) {
+					if n.Kind == "user" {
+						received <- n.Data
+					}
+				}}
+				b := newNode(t, cfg)
+				a := newNode(t, testConfig("a"))
+				join(t, a, b)
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+				var err error
+				if mode == "broadcast" {
+					err = a.Broadcast(ctx, data)
+				} else {
+					err = a.Send(ctx, b.Identity(), data, mode == "reliable")
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				select {
+				case got := <-received:
+					if !bytes.Equal(got, data) {
+						t.Fatalf("user payload changed: %x", got)
+					}
+				case <-ctx.Done():
+					t.Fatal("accepted user payload was not delivered", ctx.Err())
+				}
+			})
+		}
+	}
+}
 func TestApplicationReentrancyDataAndDelayedState(t *testing.T) {
 	var reference atomic.Pointer[Node]
 	var merge atomic.Bool

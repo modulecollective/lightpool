@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"github.com/modulecollective/lightpool/wire"
 	"testing"
+	"time"
 )
 
 func findOpen(t testing.TB, es []Effect) OpenStream {
@@ -18,6 +19,42 @@ func findOpen(t testing.TB, es []Effect) OpenStream {
 	}
 	t.Fatal("missing open")
 	return OpenStream{}
+}
+
+func TestOperationEndCancelsApplicationRequest(t *testing.T) {
+	for _, reason := range []string{"cancel", "timeout", "shutdown"} {
+		t.Run(reason, func(t *testing.T) {
+			c := testCore(t)
+			c.config.Application = true
+			o := findOpen(t, step(t, c, 0, Join{Command: 7, Peer: identity("b", 2)}))
+			req := findRequest(t, step(t, c, 0, Opened{ID: o.ID}), LocalState)
+			var es []Effect
+			switch reason {
+			case "cancel":
+				es = step(t, c, 1, CancelCommand{Command: 7})
+			case "timeout":
+				d := c.timers[key("stream:", o.ID.ID)]
+				es = step(t, c, d.at, Fired{Timer: d.timer})
+			case "shutdown":
+				es = step(t, c, 1, Shutdown{})
+			}
+			cancels := 0
+			for _, e := range es {
+				if cancel, ok := e.(CancelRequest); ok {
+					if cancel.ID != req.ID {
+						t.Fatal("wrong request canceled", cancel)
+					}
+					cancels++
+				}
+			}
+			if cancels != 1 || countResults(es, 7) != 1 {
+				t.Fatal("missing unique cancellation/result", es)
+			}
+			if es = step(t, c, c.now.Add(time.Nanosecond), Response{ID: req.ID, Data: []byte("late")}); len(es) != 0 {
+				t.Fatal("late response acted", es)
+			}
+		})
+	}
 }
 func findRequest(t testing.TB, es []Effect, kind RequestKind) Request {
 	t.Helper()

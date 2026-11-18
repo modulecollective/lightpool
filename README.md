@@ -46,7 +46,9 @@ An optional `Application` handles explicit data/approval requests outside
 the owner loop. Requests can overlap; notifications are ordered. Only the
 request's operation waits, and late approvals revalidate membership.
 Snapshots can be read reentrantly. Callbacks must honor cancellation;
-Shutdown cancels them without waiting for user code. Request admission and
+request contexts end when the response completes or the owning operation ends
+(including cancellation and timeout). Canceled queued requests are skipped.
+Shutdown cancels callbacks without waiting for user code. Request admission and
 notification buffers are bounded; saturated requests are rejected and
 notification drops appear in `Traffic`. `ApplicationVersion` is an exact
 application-data compatibility identifier, separate from the wire version.
@@ -98,6 +100,8 @@ Names/application identifiers and labels are limited to 64 UTF-8 bytes,
 metadata/ACK data to 512 bytes, user/state data to 1 MiB, exchanges to
 16,384 nodes, and uncompressed bodies to 8 MiB. The aggregate body limit
 still applies when individual fields fit. These bounds are fork contracts.
+Empty and nil user payloads both encode as `{"user":""}`; `user:null`
+does not identify a message variant and is rejected.
 
 Plaintext ends in a four-byte IEEE CRC32 over header, label and body.
 Encrypted bodies use standard-library AES-GCM with a random 12-byte nonce

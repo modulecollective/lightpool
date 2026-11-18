@@ -197,7 +197,7 @@ func (m Message) Clone() Message {
 		m.Exchange = &p
 	}
 	if m.User != nil {
-		p := append([]byte(nil), (*m.User)...)
+		p := append([]byte{}, (*m.User)...)
 		m.User = &p
 	}
 	return m

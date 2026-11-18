@@ -131,13 +131,14 @@ func (h *eventHeap) Push(v any)   { *h = append(*h, v.(*event)) }
 func (h *eventHeap) Pop() any     { old := *h; v := old[len(old)-1]; *h = old[:len(old)-1]; return v }
 
 type direction struct {
-	frame      []byte
-	offset     int
-	assembled  []byte
-	received   core.Instant
-	writing    bool
-	generation uint64
-	delivered  bool
+	frame         []byte
+	offset        int
+	assembled     []byte
+	received      core.Instant
+	writing       bool
+	writeComplete bool
+	generation    uint64
+	delivered     bool
 }
 type connection struct {
 	id           uint64
@@ -147,6 +148,7 @@ type connection struct {
 	closed       bool
 	closedSide   [2]bool
 	accepted     bool
+	connecting   bool
 	waitingDrain *event
 }
 type runner struct {
@@ -270,6 +272,28 @@ func Run(s Scenario) (Result, error) {
 			trace.Hash = hash(e.frame)
 		case "drain":
 			r.drain(e)
+		case "connect":
+			if conn := r.streams[e.stream]; conn != nil && conn.connecting {
+				conn.connecting = false
+				r.coreEvent(conn.names[1], r.now, core.Accepted{ID: conn.tokens[1], Peer: r.nodes[conn.names[0]].spec.Identity.Address})
+				r.coreEvent(conn.names[0], r.now, core.Opened{ID: conn.tokens[0]})
+			}
+		case "connect-expire":
+			if conn := r.streams[e.stream]; conn != nil && conn.connecting {
+				r.coreEvent(conn.names[0], r.now, core.Opened{ID: conn.tokens[0], Failure: core.Timeout})
+				r.close(conn, core.Timeout)
+			}
+		case "open-failed":
+			if m := r.nodes[e.from]; m.alive && m.life == e.life {
+				r.coreEvent(e.from, r.now, e.input)
+			}
+		case "write-expire":
+			if conn := r.streams[e.stream]; conn != nil {
+				d := &conn.directions[e.direction]
+				if d.generation == e.life && d.writing && !d.writeComplete {
+					r.close(conn, core.Timeout)
+				}
+			}
 		default:
 			err = errors.New("unknown simulation event")
 		}
@@ -503,7 +527,7 @@ func (r *runner) effect(name string, e core.Effect) {
 		}
 	case core.Arm:
 		r.coreEvent(name, e.At, core.Fired{Timer: e.Timer})
-	case core.Cancel: // Queued generations deliberately remain to test cancellation.
+	case core.Cancel, core.CancelRequest: // Queued generations deliberately remain to test cancellation.
 	case core.Defer:
 		r.coreEvent(name, r.now, core.Work{ID: e.ID})
 	case core.OpenStream:
@@ -549,22 +573,31 @@ func (r *runner) datagramArrival(e *event) {
 	r.enqueue(&event{at: r.now, node: to, life: m.life, kind: "core", input: core.Datagram{From: r.nodes[e.from].spec.Identity.Address, Received: r.now, Messages: messages}, frame: e.frame})
 }
 func (r *runner) open(name string, e core.OpenStream) {
+	if e.Deadline <= r.now {
+		r.coreEvent(name, r.now, core.Opened{ID: e.ID, Failure: core.Timeout})
+		return
+	}
 	to := r.addresses[netipKey(e.To.String())]
 	if to == "" || !r.nodes[to].alive || r.fault(name, to, r.now).StreamFailure {
-		r.coreEvent(name, r.now.Add(r.scenario.Latency), core.Opened{ID: e.ID, Failure: core.RemoteFailure})
+		at, failure := r.now.Add(r.scenario.Latency), core.RemoteFailure
+		if at > e.Deadline {
+			at, failure = e.Deadline, core.Timeout
+		}
+		r.enqueue(&event{at: at, kind: "open-failed", from: name, life: r.nodes[name].life, input: core.Opened{ID: e.ID, Failure: failure}})
 		return
 	}
 	r.streamID++
 	id := r.streamID
 	token := core.Token{Lifetime: r.nodes[to].life, ID: 1<<63 | id}
-	conn := &connection{id: id, names: [2]string{name, to}, tokens: [2]core.Token{e.ID, token}}
+	conn := &connection{id: id, names: [2]string{name, to}, tokens: [2]core.Token{e.ID, token}, connecting: true}
 	r.streams[id] = conn
 	r.tokens[name][e.ID] = id
 	r.tokens[to][token] = id
 	at := r.now.Add(r.scenario.Latency + r.fault(name, to, r.now).Delay)
-	// Open and accept are distinct events; delivery cannot precede accept.
-	r.coreEvent(to, at, core.Accepted{ID: token, Peer: r.nodes[name].spec.Identity.Address})
-	r.coreEvent(name, at, core.Opened{ID: e.ID})
+	// Transport progress and expiry run outside node service/pause scheduling.
+	// Only their core completion notifications wait for the node to resume.
+	r.enqueue(&event{at: at, kind: "connect", stream: id})
+	r.enqueue(&event{at: e.Deadline, kind: "connect-expire", stream: id})
 }
 func (r *runner) write(name string, e core.WriteStream) {
 	id := r.tokens[name][e.ID]
@@ -595,7 +628,13 @@ func (r *runner) write(name string, e core.WriteStream) {
 	d.offset = 0
 	d.assembled = nil
 	d.writing = true
+	d.writeComplete = false
 	d.generation++
+	if e.Deadline <= r.now {
+		r.close(conn, core.Timeout)
+		return
+	}
+	r.enqueue(&event{at: e.Deadline, kind: "write-expire", stream: id, direction: side, life: d.generation})
 	r.pump(conn, side)
 }
 func (r *runner) pump(conn *connection, side int) {
@@ -633,6 +672,7 @@ func (r *runner) chunkArrival(e *event) {
 	m.received += uint64(len(e.frame))
 	d.received = r.now
 	if d.offset == len(d.frame) {
+		d.writeComplete = true
 		r.coreEvent(conn.names[side], r.now, core.Written{ID: conn.tokens[side]})
 	}
 	pending := &event{at: r.now, node: to, life: m.life, kind: "drain", stream: conn.id, direction: side, frame: e.frame}
@@ -686,6 +726,10 @@ func (r *runner) close(conn *connection, f core.Failure) {
 // Keep those bytes and buffer credits alive until the receiver drains them.
 func (r *runner) closeSide(conn *connection, name string) {
 	if conn == nil || conn.closed {
+		return
+	}
+	if conn.connecting {
+		r.close(conn, core.Canceled)
 		return
 	}
 	side := 0
