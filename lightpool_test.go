@@ -131,6 +131,15 @@ func TestOrdinaryClusterConcurrentOperations(t *testing.T) {
 		}
 		return true
 	})
+	wait(t, "broadcast backlog drains", func() bool {
+		for _, n := range nodes {
+			if n.Snapshot().Backlog != 0 {
+				return false
+			}
+		}
+		return true
+	})
+	t.Log("8 loopback nodes: convergence, concurrent updates, >=5 probes per node, backlog drained")
 	for _, n := range nodes {
 		if n.Snapshot().Stats.FailedProbes != 0 {
 			t.Fatal("routine probe deadlines missed", n.Snapshot())

@@ -386,6 +386,9 @@ func (c *Core) response(e Response) {
 }
 
 func (c *Core) cancelCommand(command uint64) {
+	if command == 0 {
+		return
+	}
 	for _, id := range sortedIDs(c.probes) {
 		if c.probes[id].command == command {
 			c.finishProbe(id, Canceled, 0, nil)
