@@ -141,15 +141,18 @@ type direction struct {
 	delivered     bool
 }
 type connection struct {
-	id           uint64
-	names        [2]string
-	tokens       [2]core.Token
-	directions   [2]direction
-	closed       bool
-	closedSide   [2]bool
-	accepted     bool
-	connecting   bool
-	waitingDrain *event
+	id             uint64
+	names          [2]string
+	tokens         [2]core.Token
+	directions     [2]direction
+	closed         bool
+	closedSide     [2]bool
+	accepted       bool
+	connecting     bool
+	readGeneration [2]uint64
+	readExpired    [2]bool
+	openDeadline   core.Instant
+	waitingDrain   *event
 }
 type runner struct {
 	scenario       Scenario
@@ -275,6 +278,8 @@ func Run(s Scenario) (Result, error) {
 		case "connect":
 			if conn := r.streams[e.stream]; conn != nil && conn.connecting {
 				conn.connecting = false
+				r.readDeadline(conn, 0, conn.openDeadline)
+				r.readDeadline(conn, 1, r.now.Add(r.scenario.Protocol.StreamTimeout))
 				r.coreEvent(conn.names[1], r.now, core.Accepted{ID: conn.tokens[1], Peer: r.nodes[conn.names[0]].spec.Identity.Address})
 				r.coreEvent(conn.names[0], r.now, core.Opened{ID: conn.tokens[0]})
 			}
@@ -292,6 +297,23 @@ func Run(s Scenario) (Result, error) {
 				d := &conn.directions[e.direction]
 				if d.generation == e.life && d.writing && !d.writeComplete {
 					r.close(conn, core.Timeout)
+				}
+			}
+		case "read-expire":
+			if conn := r.streams[e.stream]; conn != nil && conn.readGeneration[e.direction] == e.life {
+				side := e.direction
+				incoming := &conn.directions[1-side]
+				if !conn.closedSide[side] && !incoming.writeComplete && !incoming.delivered {
+					// A timed-out read stops accepting bytes even while its core is
+					// paused. Keep the opposite, possibly complete frame intact.
+					conn.readExpired[side] = true
+					r.coreEvent(conn.names[side], r.now, core.Closed{ID: conn.tokens[side], Failure: core.Timeout})
+					if incoming.writing {
+						r.coreEvent(conn.names[1-side], r.now, core.Written{ID: conn.tokens[1-side], Failure: core.Timeout})
+						incoming.writing = false
+						incoming.generation++
+						incoming.frame, incoming.assembled = nil, nil
+					}
 				}
 			}
 		default:
@@ -589,7 +611,7 @@ func (r *runner) open(name string, e core.OpenStream) {
 	r.streamID++
 	id := r.streamID
 	token := core.Token{Lifetime: r.nodes[to].life, ID: 1<<63 | id}
-	conn := &connection{id: id, names: [2]string{name, to}, tokens: [2]core.Token{e.ID, token}, connecting: true}
+	conn := &connection{id: id, names: [2]string{name, to}, tokens: [2]core.Token{e.ID, token}, connecting: true, openDeadline: e.Deadline}
 	r.streams[id] = conn
 	r.tokens[name][e.ID] = id
 	r.tokens[to][token] = id
@@ -598,6 +620,10 @@ func (r *runner) open(name string, e core.OpenStream) {
 	// Only their core completion notifications wait for the node to resume.
 	r.enqueue(&event{at: at, kind: "connect", stream: id})
 	r.enqueue(&event{at: e.Deadline, kind: "connect-expire", stream: id})
+}
+func (r *runner) readDeadline(conn *connection, side int, at core.Instant) {
+	conn.readGeneration[side]++
+	r.enqueue(&event{at: at, kind: "read-expire", stream: conn.id, direction: side, life: conn.readGeneration[side]})
 }
 func (r *runner) write(name string, e core.WriteStream) {
 	id := r.tokens[name][e.ID]
@@ -609,6 +635,10 @@ func (r *runner) write(name string, e core.WriteStream) {
 	side := 0
 	if conn.names[1] == name {
 		side = 1
+	}
+	if conn.readExpired[1-side] {
+		r.coreEvent(name, r.now, core.Written{ID: e.ID, Failure: core.Timeout})
+		return
 	}
 	if conn.closedSide[1-side] {
 		r.coreEvent(name, r.now, core.Written{ID: e.ID, Failure: core.RemoteFailure})
@@ -633,6 +663,11 @@ func (r *runner) write(name string, e core.WriteStream) {
 	if e.Deadline <= r.now {
 		r.close(conn, core.Timeout)
 		return
+	}
+	// Ordinary writes use SetDeadline, updating this endpoint's read deadline
+	// as well as its write deadline. A read that already expired stays failed.
+	if !conn.readExpired[side] {
+		r.readDeadline(conn, side, e.Deadline)
 	}
 	r.enqueue(&event{at: e.Deadline, kind: "write-expire", stream: id, direction: side, life: d.generation})
 	r.pump(conn, side)
@@ -660,7 +695,7 @@ func (r *runner) chunkArrival(e *event) {
 	}
 	side := e.direction
 	d := &conn.directions[side]
-	if d.generation != e.life {
+	if d.generation != e.life || conn.readExpired[1-side] {
 		return
 	}
 	to := conn.names[1-side]
@@ -688,6 +723,9 @@ func (r *runner) drain(e *event) {
 		return
 	}
 	d := &conn.directions[e.direction]
+	if conn.readExpired[1-e.direction] {
+		return
+	}
 	d.assembled = append(d.assembled, e.frame...)
 	if len(d.assembled) > wire.MaxFrame {
 		panic("unbounded stream reassembly")
@@ -742,7 +780,7 @@ func (r *runner) closeSide(conn *connection, name string) {
 		r.close(conn, core.RemoteFailure)
 		return
 	}
-	if !d.writing && !d.delivered {
+	if !d.writing && !d.delivered && !conn.readExpired[1-side] {
 		r.coreEvent(conn.names[1-side], r.now, core.Closed{ID: conn.tokens[1-side], Failure: core.RemoteFailure})
 	}
 	if conn.closedSide[0] && conn.closedSide[1] && !conn.directions[0].writing && !conn.directions[1].writing {

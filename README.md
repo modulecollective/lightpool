@@ -67,8 +67,10 @@ protocol/fault/scheduling seeds, node service durations, timed actions and
 directional fault windows. It models datagram delay, loss, duplication and
 reordering; finite receive buffers; ordered streams with finite credits,
 backpressure, close and deadlines; pauses, crashes and restarts. Complete
-frames larger than transport capacity drain incrementally. Encryption is
-rejected, and application behavior requires deterministic response fixtures.
+frames larger than transport capacity drain incrementally. Connect, read and
+write deadlines advance during pauses; fully accepted frames can wait for
+receiver processing. Encryption is rejected, and application behavior requires
+deterministic response fixtures.
 DNS, clock skew and arbitrary application callbacks have no simulator API.
 
 Results carry a code/toolchain/seed manifest, canonical semantic traces and

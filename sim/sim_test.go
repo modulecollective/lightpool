@@ -264,6 +264,104 @@ func TestTransportDeadlineDuringBothEndpointPauses(t *testing.T) {
 	}
 }
 
+// A delayed application response starts the writer's deadline later than the
+// reader's. Only independent read expiry can stop this partial frame on pause.
+func TestReadDeadlineDuringReceiverPause(t *testing.T) {
+	for _, tc := range []struct {
+		name, reader string
+		pauseAt      core.Instant
+		readDeadline core.Instant
+	}{
+		{name: "unpaused"},
+		{name: "accepted-reader", reader: "b", pauseAt: core.Instant(52 * time.Millisecond), readDeadline: core.Instant(110 * time.Millisecond)},
+		{name: "dialed-reader", reader: "a", pauseAt: core.Instant(96 * time.Millisecond), readDeadline: core.Instant(151 * time.Millisecond)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := fixture()
+			s.Nodes = s.Nodes[:2]
+			for i := range s.Nodes {
+				s.Nodes[i].Service = time.Millisecond
+			}
+			s.Protocol.ProbeInterval, s.Protocol.GossipInterval, s.Protocol.PushPullInterval = 0, 0, 0
+			s.Protocol.StreamTimeout = 100 * time.Millisecond
+			s.Protocol.Application = true
+			s.Fixtures = []Fixture{{Kind: core.LocalState, Delay: 40 * time.Millisecond, Data: bytes.Repeat([]byte{'x'}, 500)}}
+			s.Seeds = Seeds{1, 2, 5}
+			s.Latency = 0
+			s.StreamCapacity = 256
+			s.Horizon = core.Instant(400 * time.Millisecond)
+			s.Actions = []Action{
+				{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"},
+				{At: core.Instant(180 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"},
+			}
+			if tc.reader != "" {
+				s.Actions = append(s.Actions, Action{At: tc.pauseAt, Node: tc.reader, Kind: "pause", Duration: 73 * time.Millisecond})
+			}
+			r := run(t, s)
+			chunks, receiverRequests := 0, 0
+			for _, tr := range r.Trace {
+				if tr.Time >= core.Instant(180*time.Millisecond) {
+					continue
+				}
+				if tr.Kind == "chunk" {
+					chunks++
+					if tc.reader != "" && tr.Time > tc.readDeadline {
+						t.Errorf("partial frame transferred after read deadline %v: %+v", time.Duration(tc.readDeadline), tr)
+					}
+				}
+				for _, raw := range tr.Effects {
+					var e tagged
+					if err := json.Unmarshal(raw, &e); err != nil {
+						t.Fatal(err)
+					}
+					if e.Kind == "core.Request" && tr.Node == "b" {
+						var request core.Request
+						if err := json.Unmarshal(e.Effect, &request); err != nil {
+							t.Fatal(err)
+						}
+						if request.Kind == core.LocalState {
+							receiverRequests++
+						}
+					}
+				}
+			}
+			if chunks < 2 {
+				t.Fatal("partial-frame transport path absent", chunks)
+			}
+			wantRequests := 1
+			if tc.reader == "b" {
+				wantRequests = 0
+			}
+			if receiverRequests != wantRequests {
+				t.Errorf("receiver LocalState requests before retry: %d", receiverRequests)
+			}
+			results := effects(r, "core.Result")
+			if len(results) != 2 {
+				t.Fatalf("initial join and retry results: %s", results)
+			}
+			for i, raw := range results {
+				var result core.Result
+				if err := json.Unmarshal(raw, &result); err != nil {
+					t.Fatal(err)
+				}
+				want := core.Success
+				if tc.reader != "" && i == 0 {
+					want = core.Timeout
+				}
+				if result.Failure != want {
+					t.Errorf("join %d: failure=%v want=%v", i, result.Failure, want)
+				}
+			}
+			for _, m := range r.Measurements {
+				if len(m.Snapshot.Members) != 2 || m.Snapshot.PendingStreams != 0 {
+					t.Fatal("retry did not recover", m)
+				}
+			}
+			t.Logf("paused reader=%q: initial chunks=%d, receiver requests=%d; retry converged with zero pending streams", tc.reader, chunks, receiverRequests)
+		})
+	}
+}
+
 func TestConnectDeadlineDuringInitiatorPause(t *testing.T) {
 	s := fixture()
 	s.Nodes = s.Nodes[:2]
@@ -292,6 +390,47 @@ func TestConnectDeadlineDuringInitiatorPause(t *testing.T) {
 		if tr.Kind == "core.Accepted" {
 			t.Fatal("expired connect reached receiver", tr)
 		}
+	}
+}
+
+func TestStreamWriteRenewsReadDeadline(t *testing.T) {
+	s := fixture()
+	s.Nodes = s.Nodes[:2]
+	for i := range s.Nodes {
+		s.Nodes[i].Service = time.Millisecond
+	}
+	s.Protocol.ProbeInterval, s.Protocol.GossipInterval, s.Protocol.PushPullInterval = 0, 0, 0
+	s.Protocol.StreamTimeout = 100 * time.Millisecond
+	s.Protocol.Application = true
+	s.Fixtures = []Fixture{{Kind: core.LocalState, Delay: 30 * time.Millisecond, Data: bytes.Repeat([]byte{'x'}, 100)}}
+	s.Seeds = Seeds{1, 2, 5}
+	s.Latency = 10 * time.Millisecond
+	s.StreamCapacity = 256
+	s.Horizon = core.Instant(300 * time.Millisecond)
+	s.Actions = []Action{{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"}}
+	r := run(t, s)
+	results := 0
+	for _, tr := range r.Trace {
+		for _, raw := range tr.Effects {
+			var e tagged
+			if err := json.Unmarshal(raw, &e); err != nil {
+				t.Fatal(err)
+			}
+			if e.Kind == "core.Result" {
+				var result core.Result
+				if err := json.Unmarshal(e.Effect, &result); err != nil {
+					t.Fatal(err)
+				}
+				if result.Failure != core.Success || tr.Time <= core.Instant(110*time.Millisecond) {
+					t.Fatal("exchange must outlive the original read deadline", time.Duration(tr.Time), result)
+				}
+				t.Logf("join succeeded at %v after original 110ms read deadline", time.Duration(tr.Time))
+				results++
+			}
+		}
+	}
+	if results != 1 || len(members(r, "a")) != 2 || len(members(r, "b")) != 2 {
+		t.Fatal("renewed deadline did not permit exchange completion", results, r.Measurements)
 	}
 }
 
