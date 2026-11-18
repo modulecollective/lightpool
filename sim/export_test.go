@@ -143,6 +143,14 @@ func TestExportFailuresAndBudget(t *testing.T) {
 			t.Fatal("writer failure ignored", limit)
 		}
 	}
+	var completeRecording bytes.Buffer
+	if _, err := Export(fixture(), &completeRecording, ExportOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	// Refuse the last encoded byte, which is only written by the final flush.
+	if _, err := Export(fixture(), &failWriter{completeRecording.Len() - 1}, ExportOptions{}); err == nil {
+		t.Fatal("final flush failure ignored")
+	}
 	s := fixture()
 	s.EventBudget = 3
 	var b bytes.Buffer
