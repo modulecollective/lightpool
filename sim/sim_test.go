@@ -313,6 +313,36 @@ func TestShutdownInvalidatesPendingConnect(t *testing.T) {
 	}
 }
 
+func TestAcceptedFrameSurvivesTransportExpiry(t *testing.T) {
+	s := fixture()
+	s.Nodes = s.Nodes[:2]
+	for i := range s.Nodes {
+		s.Nodes[i].Service = time.Millisecond
+	}
+	s.Protocol.ProbeInterval, s.Protocol.GossipInterval, s.Protocol.PushPullInterval = 0, 0, 0
+	s.Protocol.StreamTimeout = 100 * time.Millisecond
+	s.Seeds = Seeds{1, 2, 7}
+	s.Latency = 0
+	s.Horizon = core.Instant(1200 * time.Millisecond)
+	s.Actions = []Action{
+		{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: []byte("x")},
+		{At: core.Instant(9500 * time.Microsecond), Node: "b", Kind: "pause", Duration: time.Second},
+		{At: core.Instant(11500 * time.Microsecond), Node: "a", Kind: "pause", Duration: time.Second},
+	}
+	r := run(t, s)
+	users := 0
+	for _, raw := range effects(r, "core.Notification") {
+		var n core.Notification
+		_ = json.Unmarshal(raw, &n)
+		if n.Kind == "user" && bytes.Equal(n.Data, []byte("x")) {
+			users++
+		}
+	}
+	if users != 1 {
+		t.Fatal("transport expiry discarded a frame already fully accepted", users)
+	}
+}
+
 func TestUserPayloadBoundariesInSimulation(t *testing.T) {
 	for _, mode := range []string{"send", "reliable", "broadcast"} {
 		for _, data := range [][]byte{nil, {}, {1}} {
