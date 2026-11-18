@@ -6,6 +6,7 @@ package lightpool
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/modulecollective/lightpool/core"
 	"github.com/modulecollective/lightpool/wire"
@@ -408,4 +409,121 @@ func TestIPv6AndCIDRAdmission(t *testing.T) {
 	if count, err := a.Join(ctx, d.Identity().Address.String()); err == nil || count != 0 {
 		t.Fatal("empty admission list accepted network peer")
 	}
+}
+
+func TestRealStreamReadAndBlockedWriteDeadlines(t *testing.T) {
+	for _, blockedWrite := range []bool{false, true} {
+		t.Run(fmt.Sprint("write=", blockedWrite), func(t *testing.T) {
+			listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP("127.0.0.1")})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer listener.Close()
+			_ = listener.SetDeadline(time.Now().Add(2 * time.Second))
+			gate := make(chan struct{})
+			defer func() {
+				select {
+				case <-gate:
+				default:
+					close(gate)
+				}
+			}()
+			cfg := testConfig("deadline")
+			cfg.Protocol.ProbeInterval = 0
+			cfg.Protocol.GossipInterval = 0
+			cfg.Protocol.PushPullInterval = 0
+			cfg.Protocol.StreamTimeout = 200 * time.Millisecond
+			if blockedWrite {
+				cfg.Application = app{request: func(ctx context.Context, r core.Request) (core.Response, error) {
+					if r.Kind == core.LocalState {
+						select {
+						case <-gate:
+						case <-ctx.Done():
+							return core.Response{}, ctx.Err()
+						}
+						return core.Response{Data: bytes.Repeat([]byte{'x'}, wire.MaxData)}, nil
+					}
+					return core.Response{}, nil
+				}}
+			}
+			node := newNode(t, cfg)
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			result := make(chan error, 1)
+			go func() { _, err := node.Join(ctx, listener.Addr().String()); result <- err }()
+			conn, err := listener.AcceptTCP()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer conn.Close()
+			_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
+			if blockedWrite {
+				if err = conn.SetReadBuffer(1024); err != nil {
+					t.Fatal(err)
+				}
+				wait(t, "outbound stream connected", func() bool {
+					node.streamMu.Lock()
+					defer node.streamMu.Unlock()
+					for _, s := range node.streams {
+						if tcp, ok := s.conn.(*net.TCPConn); ok {
+							if err := tcp.SetWriteBuffer(1024); err != nil {
+								t.Error(err)
+							}
+							return true
+						}
+					}
+					return false
+				})
+				close(gate)
+			} else {
+				if _, err = wire.Read(conn, wire.Options{}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			err = <-result
+			var failure OperationError
+			if !errors.As(err, &failure) || failure.Failure != core.Timeout {
+				t.Fatal("expected protocol deadline", err)
+			}
+			wait(t, "timed-out stream cleaned up", func() bool { return node.Snapshot().PendingStreams == 0 })
+		})
+	}
+}
+func TestStreamAdmissionRecoversAfterOverflow(t *testing.T) {
+	cfg := testConfig("limited")
+	cfg.Protocol.MaxPushPull = 1
+	cfg.Protocol.ProbeInterval = 0
+	cfg.Protocol.GossipInterval = 0
+	cfg.Protocol.PushPullInterval = 0
+	node := newNode(t, cfg)
+	var held []net.Conn
+	defer func() {
+		for _, conn := range held {
+			_ = conn.Close()
+		}
+	}()
+	for range 2 {
+		conn, err := net.DialTimeout("tcp", node.Identity().Address.String(), time.Second)
+		if err != nil {
+			t.Fatal(err)
+		}
+		held = append(held, conn)
+	}
+	wait(t, "two admitted streams", func() bool { return node.Snapshot().PendingStreams == 2 })
+	overflow, err := net.DialTimeout("tcp", node.Identity().Address.String(), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer overflow.Close()
+	_ = overflow.SetReadDeadline(time.Now().Add(time.Second))
+	var b [1]byte
+	if _, err = overflow.Read(b[:]); err == nil {
+		t.Fatal("overflow connection remained open")
+	}
+	for _, conn := range held {
+		_ = conn.Close()
+	}
+	wait(t, "stream capacity released", func() bool { return node.Snapshot().PendingStreams == 0 })
+	peer := newNode(t, testConfig("peer"))
+	join(t, peer, node)
 }

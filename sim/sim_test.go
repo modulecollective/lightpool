@@ -364,3 +364,34 @@ func TestStreamClosesMidFrame(t *testing.T) {
 		t.Fatal("mid-frame close not surfaced")
 	}
 }
+
+func TestRestartUsesANewLifetime(t *testing.T) {
+	s := fixture()
+	s.Horizon = core.Instant(2 * time.Second)
+	s.Actions = append(s.Actions, Action{At: core.Instant(500 * time.Millisecond), Node: "b", Kind: "crash"}, Action{At: core.Instant(time.Second), Node: "b", Kind: "start"}, Action{At: core.Instant(1100 * time.Millisecond), Node: "b", Kind: "join", Peer: "a"})
+	r := run(t, s)
+	if members(r, "a")["b"] != wire.Alive {
+		t.Fatal("restart did not rejoin")
+	}
+	found := false
+	for _, trace := range r.Trace {
+		if trace.Node != "b" || trace.Time < core.Instant(time.Second) {
+			continue
+		}
+		for _, raw := range trace.Effects {
+			var tag tagged
+			_ = json.Unmarshal(raw, &tag)
+			if tag.Kind == "core.Arm" {
+				var arm core.Arm
+				_ = json.Unmarshal(tag.Effect, &arm)
+				if arm.Timer.Lifetime != 2 {
+					t.Fatal("old lifetime reused")
+				}
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatal("restart did not arm new work")
+	}
+}
