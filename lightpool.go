@@ -156,7 +156,15 @@ func New(cfg Config) (*Node, error) {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	n := &Node{cfg: cfg, engine: engine, epoch: time.Now(), life: seed.Lifetime, ctx: ctx, cancel: cancel, udp: udp, tcp: tcp, inbox: make(chan core.Event, 256), commands: make(chan command, 256), deferred: make(chan core.Event, 1), writes: make(chan core.SendDatagram, 256), requests: make(chan core.Request, 256), notices: make(chan core.Notification, 1024), done: make(chan struct{}), streams: make(map[core.Token]*ioStream), timers: make(map[core.Timer]*time.Timer), waiters: make(map[uint64]chan core.Result)}
+	n := &Node{
+		cfg: cfg, engine: engine, epoch: time.Now(), life: seed.Lifetime,
+		ctx: ctx, cancel: cancel, udp: udp, tcp: tcp,
+		inbox: make(chan core.Event, 256), commands: make(chan command, 256),
+		deferred: make(chan core.Event, 1), writes: make(chan core.SendDatagram, 256),
+		requests: make(chan core.Request, 256), notices: make(chan core.Notification, 1024),
+		done: make(chan struct{}), streams: make(map[core.Token]*ioStream),
+		timers: make(map[core.Timer]*time.Timer), waiters: make(map[uint64]chan core.Result),
+	}
 	n.saveSnapshot()
 	n.workers.Add(3)
 	go n.readUDP()

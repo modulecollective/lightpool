@@ -61,7 +61,14 @@ func DefaultConfig() Config {
 	}
 }
 func (c Config) Validate() error {
-	if c.ProbeInterval < 0 || c.ProbeTimeout <= 0 || (c.ProbeInterval > 0 && c.ProbeTimeout >= c.ProbeInterval) || c.PushPullInterval < 0 || c.GossipInterval < 0 || c.StreamTimeout <= 0 || c.GossipToDead < 0 || c.ReclaimAfter < 0 || c.IndirectChecks < 0 || c.RetransmitMult < 1 || c.SuspicionMult < 1 || c.SuspicionMaxMult < 1 || c.AwarenessMax < 1 || c.GossipNodes < 0 || c.QueueDepth < 1 || c.PacketBudget < 256 || c.PacketBudget > 65507 || c.MaxPushPull < 1 || !wire.ValidText(c.Label, wire.MaxLabel) {
+	if c.ProbeInterval < 0 || c.ProbeTimeout <= 0 ||
+		(c.ProbeInterval > 0 && c.ProbeTimeout >= c.ProbeInterval) ||
+		c.PushPullInterval < 0 || c.GossipInterval < 0 || c.StreamTimeout <= 0 ||
+		c.GossipToDead < 0 || c.ReclaimAfter < 0 || c.IndirectChecks < 0 ||
+		c.RetransmitMult < 1 || c.SuspicionMult < 1 || c.SuspicionMaxMult < 1 ||
+		c.AwarenessMax < 1 || c.GossipNodes < 0 || c.QueueDepth < 1 ||
+		c.PacketBudget < 256 || c.PacketBudget > 65507 || c.MaxPushPull < 1 ||
+		!wire.ValidText(c.Label, wire.MaxLabel) {
 		return errors.New("invalid protocol config")
 	}
 	for _, p := range c.Allowed {

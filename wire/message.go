@@ -39,7 +39,9 @@ type Identity struct {
 
 func ValidText(s string, max int) bool { return len(s) <= max && utf8.ValidString(s) }
 func (i Identity) Validate() error {
-	if i.Name == "" || !ValidText(i.Name, MaxName) || !ValidText(i.Application, MaxName) || !i.Address.IsValid() || i.Address.Port() == 0 || i.Address.Addr().IsUnspecified() || i.Address.Addr().Zone() != "" || len(i.Meta) > MaxMeta {
+	if i.Name == "" || !ValidText(i.Name, MaxName) || !ValidText(i.Application, MaxName) ||
+		!i.Address.IsValid() || i.Address.Port() == 0 || i.Address.Addr().IsUnspecified() ||
+		i.Address.Addr().Zone() != "" || len(i.Meta) > MaxMeta {
 		return errors.New("invalid identity")
 	}
 	return nil

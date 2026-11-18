@@ -68,7 +68,15 @@ func New(config Config, identity wire.Identity, seed Seed) (*Core, error) {
 	config.DisableTCPFor = slices.Clone(config.DisableTCPFor)
 	slices.Sort(config.DisableTCPFor)
 	config.Allowed = slices.Clone(config.Allowed)
-	c := &Core{config: config, self: identity.Name, rng: rand.New(rand.NewPCG(seed.State, seed.Stream)), life: seed.Lifetime, nodes: make(map[string]*member), timers: make(map[string]deadline), timerKeys: make(map[uint64]string), probes: make(map[uint64]*probe), streams: make(map[uint64]*stream), app: make(map[uint64]pending), sends: make(map[uint64]sendPending), broadcastKeys: make(map[string]*broadcast)}
+	c := &Core{
+		config: config, self: identity.Name, life: seed.Lifetime,
+		rng:    rand.New(rand.NewPCG(seed.State, seed.Stream)),
+		nodes:  make(map[string]*member),
+		timers: make(map[string]deadline), timerKeys: make(map[uint64]string),
+		probes: make(map[uint64]*probe), streams: make(map[uint64]*stream),
+		app: make(map[uint64]pending), sends: make(map[uint64]sendPending),
+		broadcastKeys: make(map[string]*broadcast),
+	}
 	c.susp = make(map[string]*suspicion)
 	c.next = c.rng.Uint64() >> 1
 	c.nodes[c.self] = &member{Member: wire.Member{Identity: identity.Clone(), Incarnation: 1, State: wire.Alive}}

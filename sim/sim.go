@@ -180,7 +180,11 @@ func Run(s Scenario) (Result, error) {
 	if err = json.Unmarshal(b, &s); err != nil {
 		return Result{}, err
 	}
-	r := &runner{scenario: s, nodes: make(map[string]*machine), addresses: make(map[netipKey]string), schedule: rand.New(rand.NewPCG(s.Seeds.Schedule, 0x7363686564756c65)), streams: make(map[uint64]*connection), tokens: make(map[string]map[core.Token]uint64)}
+	r := &runner{
+		scenario: s, nodes: make(map[string]*machine), addresses: make(map[netipKey]string),
+		schedule: rand.New(rand.NewPCG(s.Seeds.Schedule, 0x7363686564756c65)),
+		streams:  make(map[uint64]*connection), tokens: make(map[string]map[core.Token]uint64),
+	}
 	r.manifest = Manifest{Code: s.Code, Toolchain: runtime.Version(), Generator: "math/rand/v2.PCG", Platform: runtime.GOOS + "/" + runtime.GOARCH, Scenario: s}
 	faultRNG := rand.New(rand.NewPCG(s.Seeds.Fault, 0x6661756c74))
 	for _, f := range s.Faults {
@@ -294,7 +298,10 @@ func Run(s Scenario) (Result, error) {
 		if m.engine != nil {
 			snapshot = m.engine.Snapshot()
 		}
-		result.Measurements = append(result.Measurements, NodeMeasurement{Name: name, Running: m.alive, PausedUntil: m.paused, Snapshot: snapshot, SentBytes: m.sent, ReceivedBytes: m.received, DatagramDrops: m.drops, Detections: m.detections})
+		result.Measurements = append(result.Measurements, NodeMeasurement{
+			Name: name, Running: m.alive, PausedUntil: m.paused, Snapshot: snapshot,
+			SentBytes: m.sent, ReceivedBytes: m.received, DatagramDrops: m.drops, Detections: m.detections,
+		})
 	}
 	return result, nil
 }
