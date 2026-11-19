@@ -50,11 +50,13 @@ func TestJSONResourceBounds(t *testing.T) {
 		if !boundedJSON(b) {
 			t.Fatal("unexpected rejection")
 		}
+		// Race instrumentation may discard json.Valid's pooled scanner. Allow
+		// its constant startup cost, but never allocation growth with elements.
 		if a := testing.AllocsPerRun(10, func() {
 			if !boundedJSON(b) {
 				panic("unexpected rejection")
 			}
-		}); a != 0 {
+		}); a > 4 {
 			t.Fatalf("n=%d: preflight allocated %g times", n, a)
 		}
 	}
