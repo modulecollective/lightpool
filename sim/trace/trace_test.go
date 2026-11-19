@@ -27,6 +27,8 @@ func TestSharedFixtureAndRecovery(t *testing.T) {
 		{"after end", string(b) + lines[1], false, true},
 		{"empty", "", false, true},
 		{"references", strings.Replace(string(b), `"actor":"α"`, `"actor":"missing"`, 1), false, true},
+		{"peer reference", strings.Replace(string(b), `"actor":"α"`, `"actor":"α","peer":"missing"`, 1), false, true},
+		{"peer", strings.Replace(string(b), `"actor":"α"`, `"actor":"α","peer":"α"`, 1), true, false},
 		{"unsafe", strings.Replace(string(b), `"incarnation":"9007199254740993"`, `"incarnation":9007199254740993`, 1), false, true},
 	}
 	for _, c := range cases {

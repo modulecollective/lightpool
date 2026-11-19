@@ -95,6 +95,7 @@ type Event struct {
 	ID       string    `json:"id"`
 	Kind     string    `json:"kind"`
 	Actor    string    `json:"actor,omitempty"`
+	Peer     string    `json:"peer,omitempty"`
 	Lifetime string    `json:"lifetime"`
 	Changes  []Change  `json:"changes"`
 	Traffic  []Traffic `json:"traffic"`

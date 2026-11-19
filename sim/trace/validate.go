@@ -117,6 +117,11 @@ func (v *validator) payload(b []byte, kind string) error {
 				return err
 			}
 		}
+		if e.Peer != "" {
+			if err := v.node(e.Peer); err != nil {
+				return err
+			}
+		}
 		for _, c := range e.Changes {
 			if err := v.node(c.Node); err != nil {
 				return err

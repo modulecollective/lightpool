@@ -13,6 +13,7 @@ subtracting an exact origin. Arrays preserve producer order.
   per-node seeds and prepared faults), `nodes` (name, address), `initial`
   (per-node process state; running false, lifetime "0", empty membership).
 * `event`: `seq` (consecutive from "1"), `time`, `id` (scheduler event ID),
+  `peer` (optional action peer, added for join evidence),
   `kind` (action.*, core.*, datagram, chunk, drain, connect and transport
   expiry kinds), `actor` (optional for transport-only events), `lifetime`,
   `changes`, `traffic`. All arrays are present, even when empty. All changes
@@ -48,4 +49,4 @@ prefix without end, or with complete false (event budget), is incomplete.
 Ignore an unterminated trailing line; reject malformed complete lines,
 invalid references, non-monotone time, sequence gaps, a second header/end,
 records after end, and unknown format versions. Errors name the line.
-No browser formula reconstructs protocol behavior: reduce recorded changes.
+Consumers reduce authoritative recorded changes rather than reconstruct protocol behavior.

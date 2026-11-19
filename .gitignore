@@ -24,9 +24,5 @@ coverage.out
 *.test
 .vagrant/
 
-# Static explorer build and browser checks
-web/node_modules/
-web/dist/
-web/test-results/
-web/playwright-report/
 /lightpool-sim
+/lightpool-report

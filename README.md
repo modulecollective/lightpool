@@ -3,8 +3,7 @@
 Lightpool is a Go 1.25 library for gossip membership and failure detection,
 derived from HashiCorp memberlist (MPL-2.0). One serial protocol core runs
 under an ordinary UDP/TCP driver or a deterministic message simulator.
-Go production code and tests use only the standard library. The separate
-static explorer under `web/` has its own frontend dependencies.
+Production code, simulation, reporting and tests use only the Go standard library.
 
 This is a new Lightpool baseline. Its API, framing costs and event ordering
 semantics differ from memberlist. The comparison reference is fork commit
@@ -80,17 +79,15 @@ membership/detection/byte measurements. Pin the actual source revision in
 See `ExampleRun` (`go test ./sim -run ExampleRun -v`). This is a message model,
 not a packet-level TCP stack or calibrated operating-system model.
 
-## Record and explore a simulation
+## Record and report a simulation
 
 ```sh
 go build -o lightpool-sim ./cmd/lightpool-sim
 ./lightpool-sim -scenario examples/sim/pause.json -out pause.ndjson
-cd web
-npm ci
-npm run dev
+go run ./cmd/lightpool-report -trace pause.ndjson
+go run ./cmd/lightpool-report -trace pause.ndjson -format json
 ```
 
-Open the trace in the viewer, or start with its bundled teaching recordings.
 The producer never overwrites an existing file. An unstamped or modified
 build requires `-revision <explicit-source-identity>`; `go run` may need
 that flag. Progress goes to stderr; trace output is NDJSON only. Scenario
@@ -104,7 +101,7 @@ leaves an inspectable prefix and stops execution.
 The caller owns and closes the writer; errors propagate. The opt-in
 `(*core.Core).EnableInspection` journal records authoritative membership changes,
 probe facts and timer lifecycle separately from protocol effects.
-See [trace format](docs/trace-v1.md) and [viewer usage](web/README.md).
+See the [trace format](docs/trace-v1.md) and [report definitions](docs/report-v1.md).
 
 ## Frame contract (wire version 1)
 

@@ -360,3 +360,30 @@ func TestExportPausedDeliveryAndTeachingFacts(t *testing.T) {
 		t.Fatal("teaching recording lacks refutation or helper evidence")
 	}
 }
+
+func TestExportRecordsActionPeer(t *testing.T) {
+	s := fixture()
+	var out bytes.Buffer
+	if _, err := Export(s, &out, ExportOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	joins := 0
+	if _, err := trace.Read(bytes.NewReader(out.Bytes()), func(raw json.RawMessage) error {
+		var e trace.Event
+		if err := json.Unmarshal(raw, &e); err != nil {
+			return err
+		}
+		if e.Kind == "action.join" {
+			joins++
+			if (e.Actor != "b" && e.Actor != "c") || e.Peer != "a" {
+				t.Fatalf("missing authoritative join endpoints: %+v", e)
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if joins != 2 {
+		t.Fatalf("got %d joins", joins)
+	}
+}

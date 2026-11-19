@@ -84,6 +84,9 @@ func (r *runner) beginExport(e *event, seq int) {
 	}
 	r.export.time = r.now
 	r.export.event = trace.Event{Type: "event", Seq: trace.Decimal(seq), Time: trace.Decimal(r.now), ID: trace.Decimal(e.id), Kind: kind, Actor: actor, Lifetime: trace.Decimal(life), Changes: []trace.Change{}, Traffic: []trace.Traffic{}}
+	if e.kind == "action" {
+		r.export.event.Peer = e.action.Peer
+	}
 	if e.kind == "core" && e.traffic != nil {
 		t := *e.traffic
 		t.Stage = "handle"

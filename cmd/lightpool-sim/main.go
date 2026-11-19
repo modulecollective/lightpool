@@ -1,4 +1,4 @@
-// lightpool-sim records deterministic simulations for the static web explorer.
+// lightpool-sim records deterministic simulations for offline outcome reports.
 package main
 
 import (
