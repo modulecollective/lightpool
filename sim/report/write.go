@@ -1,6 +1,7 @@
 package report
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -48,18 +49,36 @@ func writeText(w io.Writer, r *Report) error {
 	}
 	fmt.Fprintf(&b, "%s — %s\nTrace SHA256: %s\nCalculator: %s\nNodes: %d; horizon: %s; observed through: %s; last event: %s\n\n", status, r.EndReason, r.TraceSHA256, r.Calculator, r.NodeCount, time.Duration(r.HorizonNS), time.Duration(r.ObservedThroughNS), position(r.LastEvent))
 	fmt.Fprintf(&b, "Dead declarations: %d running-target, %d stopped-target; %d distinct running targets, %d observer-lifetime/target pairs\n", r.RunningDeclarations, r.StoppedDeclarations, r.AffectedRunningTargets, r.AffectedRunningPairs)
+	faultIDs := map[Fault]int{}
+	faults := []Fault{}
 	t := tabwriter.NewWriter(&b, 0, 4, 2, ' ', 0)
 	if _, err := fmt.Fprintln(t, "observer/lifetime\tsubject/lifetime\tat/seq\ttarget running\ttarget core stopped/left\tobserver core stopped/left\ttarget paused\tobserver paused\tincident configured faults"); err != nil {
 		return err
 	}
 	for _, d := range r.Declarations {
-		faults, _ := json.Marshal(d.Faults)
-		if _, err := fmt.Fprintf(t, "%s/%s\t%s/%s\t%s\t%t\t%t/%t\t%t/%t\t%t\t%t\t%s\n", d.Observer, d.ObserverLifetime, d.Subject, d.TargetLifetime, position(d.Reference), d.TargetRunning, d.TargetStopped, d.TargetLeft, d.ObserverStopped, d.ObserverLeft, d.TargetPaused, d.ObserverPaused, faults); err != nil {
+		ids := make([]string, 0, len(d.Faults))
+		for _, f := range d.Faults {
+			id, ok := faultIDs[f]
+			if !ok {
+				faults = append(faults, f)
+				id = len(faults)
+				faultIDs[f] = id
+			}
+			ids = append(ids, fmt.Sprintf("F%d", id))
+		}
+		if _, err := fmt.Fprintf(t, "%s/%s\t%s/%s\t%s\t%t\t%t/%t\t%t/%t\t%t\t%t\t%s\n", d.Observer, d.ObserverLifetime, d.Subject, d.TargetLifetime, position(d.Reference), d.TargetRunning, d.TargetStopped, d.TargetLeft, d.ObserverStopped, d.ObserverLeft, d.TargetPaused, d.ObserverPaused, strings.Join(ids, ",")); err != nil {
 			return err
 		}
 	}
 	if err := t.Flush(); err != nil {
 		return err
+	}
+	if len(faults) > 0 {
+		fmt.Fprintln(&b, "Configured fault windows referenced above (context, not causes):")
+		for i, f := range faults {
+			data, _ := json.Marshal(f)
+			fmt.Fprintf(&b, "F%d %s\n", i+1, data)
+		}
 	}
 	fmt.Fprintln(&b, "\nCrash detection (new dead transitions only; pre-crash alive/suspect cohort):")
 	for _, c := range r.Crashes {
@@ -98,7 +117,13 @@ func writeText(w io.Writer, r *Report) error {
 	for _, s := range r.ModelLimits {
 		fmt.Fprintf(&b, "- %s\n", s)
 	}
-	fmt.Fprintf(&b, "\nProducer manifest (source, toolchain, seeds, protocol and scenario):\n%s\n", r.Producer)
+	var manifest bytes.Buffer
+	if len(r.Producer) > 0 {
+		if err := json.Indent(&manifest, r.Producer, "", "  "); err != nil {
+			return err
+		}
+	}
+	fmt.Fprintf(&b, "\nProducer manifest (source, toolchain, seeds, protocol and scenario):\n%s\n", manifest.String())
 	_, err := io.WriteString(w, b.String())
 	return err
 }

@@ -392,3 +392,27 @@ func TestGracefulTargetIsNotActiveOrAnInjectedCrash(t *testing.T) {
 		}
 	}
 }
+
+func TestTextKeepsFaultContextReadable(t *testing.T) {
+	faults := []Fault{}
+	for i := range 14 {
+		faults = append(faults, Fault{From: "c", To: "a", Start: "1", End: "10", Delay: fmt.Sprint(i), Drop: true})
+	}
+	f := newFixture(t, "20", faults)
+	f.event(2, "core.timer-delivery", "a", "", member("a", "dead"))
+	f.event(3, "core.timer-delivery", "a", "", trace.Change{Kind: "member.remove", Node: "a", Subject: "b"})
+	f.event(4, "core.timer-delivery", "a", "", member("a", "dead"))
+	f.end(true)
+	var out bytes.Buffer
+	if err := Write(&out, f.read(), "text"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(out.String(), `"From":"c"`) != 14 || !strings.Contains(out.String(), "F14 ") {
+		t.Fatal("fault legend missing or repeated")
+	}
+	for line := range strings.SplitSeq(out.String(), "\n") {
+		if len(line) > 350 {
+			t.Fatalf("unreadable report line (%d bytes): %.150s", len(line), line)
+		}
+	}
+}
