@@ -20,7 +20,7 @@ func connectedScenario(nodes, budget int) Scenario {
 	cfg.PushPullInterval = 0
 	cfg.MaxPushPull = wire.MaxNodes
 	s := Scenario{Code: "connected-benchmark-v1", Protocol: cfg, Seeds: Seeds{Protocol: 1, Fault: 2, Schedule: 3}, Horizon: core.Instant(3 * time.Second), EventBudget: budget, DatagramCapacity: 1 << 20, StreamCapacity: 1 << 20, Latency: time.Millisecond}
-	for i := 0; i < nodes; i++ {
+	for i := range nodes {
 		name := fmt.Sprintf("n%04d", i)
 		s.Nodes = append(s.Nodes, Node{Identity: wire.Identity{Name: name, Address: netip.AddrPortFrom(netip.AddrFrom4([4]byte{10, 0, byte(i / 256), byte(i % 256)}), 7946)}})
 		if i > 0 {

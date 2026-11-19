@@ -88,7 +88,7 @@ func differentialSeeds() [][]byte {
 		seeds = append(seeds, []byte(s))
 	}
 	seeds = append(seeds, []byte{0xff, '[', ']'})
-	for n := 0; n < 8; n++ {
+	for n := range 8 {
 		seeds = append(seeds, []byte(`[{"alive":{"name":"x`+strings.Repeat(`\`, n)+`","address":"127.0.0.1:1"}}]`))
 	}
 	member := `{"name":"n","address":"127.0.0.1:7946","incarnation":1,"state":0}`
@@ -110,7 +110,7 @@ func TestDecodeDifferential(t *testing.T) {
 		}
 	}
 	rng := rand.New(rand.NewPCG(11, 17))
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		name := fmt.Sprintf("n%d [,] \\ \" 😀", rng.Uint64())
 		b, err := json.Marshal([]any{map[string]any{"alive": map[string]any{"name": name, "address": "127.0.0.1:7946", "incarnation": rng.Uint64(), "state": 0}}})
 		if err != nil {
