@@ -312,42 +312,63 @@ func boundedJSON(b []byte) bool {
 		array bool
 		count int
 	}
-	stack := make([]level, 0, 8)
-	d := json.NewDecoder(bytes.NewReader(b))
-	for {
-		token, err := d.Token()
-		if err == io.EOF {
-			return len(stack) == 0
+	var stack [16]level
+	depth := 0
+	for i := 0; i < len(b); i++ {
+		c := b[i]
+		switch c {
+		case ' ', '\t', '\n', '\r', ',', ':':
+			continue
+		case ']', '}':
+			if depth == 0 {
+				return false
+			}
+			depth--
+			continue
 		}
-		if err != nil {
-			return false
-		}
-		delim, isDelim := token.(json.Delim)
-		closing := isDelim && (delim == ']' || delim == '}')
-		if !closing && len(stack) > 0 && stack[len(stack)-1].array {
-			l := &stack[len(stack)-1]
+		if depth > 0 && stack[depth-1].array {
+			l := &stack[depth-1]
 			l.count++
 			limit := MaxNodes
-			if len(stack) == 1 {
+			if depth == 1 {
 				limit = MaxBatch
 			}
 			if l.count > limit {
 				return false
 			}
 		}
-		if isDelim {
-			switch delim {
-			case '[', '{':
-				if len(stack) >= 16 {
-					return false
+		switch c {
+		case '[', '{':
+			if depth == len(stack) {
+				return false
+			}
+			stack[depth] = level{array: c == '['}
+			depth++
+		case '"':
+			// Skip the escaped byte too: even/odd backslash runs then naturally
+			// distinguish an escaped quote from the string's closing quote.
+			i++
+			for ; i < len(b) && b[i] != '"'; i++ {
+				if b[i] == '\\' {
+					i++
 				}
-				stack = append(stack, level{array: delim == '['})
-			case ']', '}':
-				if len(stack) == 0 {
-					return false
+			}
+			if i >= len(b) {
+				return false
+			}
+		default:
+			// Scalar tokens count once, regardless of their spelling or length.
+			// json.Valid below owns syntax, delimiters and token validation.
+			for i+1 < len(b) {
+				next := b[i+1]
+				if next == ',' || next == ']' || next == '}' || next == ' ' || next == '\t' || next == '\n' || next == '\r' {
+					break
 				}
-				stack = stack[:len(stack)-1]
+				i++
 			}
 		}
 	}
+	// Bound depth/counts before even the standard library's syntax scan can
+	// grow its nesting stack; typed member/message expansion happens later.
+	return depth == 0 && json.Valid(b)
 }
