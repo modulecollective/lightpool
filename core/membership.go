@@ -49,39 +49,25 @@ func (c *Core) allowed(ip netip.Addr) bool {
 	}
 	return false
 }
-func (c *Core) alive(n wire.Member, op uint64, approved bool) {
-	if !c.fitsAlive(n) {
-		c.emit(Observation{Kind: "oversize-alive", Node: n.Name, Value: 1})
-		return
-	}
-	if !c.allowed(n.Address.Addr()) || n.Application != c.nodes[c.self].Application {
-		if op != 0 {
-			if s := c.streams[op]; s != nil {
-				s.cursor++
-				c.mergeNext(s)
-			}
-		}
-		return
-	}
-	if c.config.Application && !approved {
-		c.request(pending{kind: ApproveAlive, op: op, msg: wire.Message{Alive: ptrMember(n)}}, Request{Kind: ApproveAlive, Member: n})
-		return
-	}
-	c.applyAlive(n)
-}
 func (c *Core) fitsAlive(n wire.Member) bool {
 	size, err := wire.Size([]wire.Message{{Alive: &n}}, c.config.Label, c.config.Protected)
 	return err == nil && size <= c.config.PacketBudget
 }
-func (c *Core) applyAlive(n wire.Member) {
-	// Every approval re-enters here against current state, not a retained pointer.
+func (c *Core) alive(n wire.Member) {
+	if !c.fitsAlive(n) {
+		c.emit(Observation{Kind: "oversize-alive", Node: n.Name, Value: 1})
+		return
+	}
+	if !c.allowed(n.Address.Addr()) {
+		return
+	}
 	if n.Name == c.self && c.left {
 		return
 	}
 	old := c.nodes[n.Name]
 	reclaim := false
 	if old != nil && old.Address != n.Address {
-		reclaim = old.State == wire.Left || (old.State == wire.Dead && c.config.ReclaimAfter > 0 && c.now-old.changed > Instant(c.config.ReclaimAfter))
+		reclaim = old.State == wire.Left
 		if !reclaim {
 			c.emit(Notification{Kind: "conflict", Member: old.Clone(), Other: n.Clone()})
 			return
@@ -92,7 +78,7 @@ func (c *Core) applyAlive(n wire.Member) {
 			if n.Incarnation < old.Incarnation {
 				return
 			}
-			if n.Incarnation == old.Incarnation && bytes.Equal(n.Meta, old.Meta) && n.Application == old.Application {
+			if n.Incarnation == old.Incarnation && bytes.Equal(n.Meta, old.Meta) {
 				return
 			}
 			c.refute(n.Incarnation)

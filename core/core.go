@@ -23,13 +23,6 @@ type deadline struct {
 	node  string
 }
 type handoff struct{ msg wire.Message }
-type pending struct {
-	kind     RequestKind
-	op       uint64
-	msg      wire.Message
-	peer     wire.Identity
-	sequence uint64
-}
 type Core struct {
 	config                 Config
 	self                   string
@@ -47,8 +40,7 @@ type Core struct {
 	activeProbe            uint64
 	pendingProbe           bool
 	streams                map[uint64]*stream
-	app                    map[uint64]pending
-	sends                  map[uint64]sendPending
+	sends                  map[uint64]uint64 // datagram send ID to probe ID
 	broadcasts             []*broadcast
 	broadcastKeys          map[string]*broadcast
 	high, low              []handoff
@@ -58,7 +50,6 @@ type Core struct {
 	inspect                bool
 	journal                []Inspection
 }
-type sendPending struct{ command, probe uint64 }
 
 func New(config Config, identity wire.Identity, seed Seed) (*Core, error) {
 	if err := config.Validate(); err != nil {
@@ -67,8 +58,6 @@ func New(config Config, identity wire.Identity, seed Seed) (*Core, error) {
 	if err := identity.Validate(); err != nil {
 		return nil, err
 	}
-	config.DisableTCPFor = slices.Clone(config.DisableTCPFor)
-	slices.Sort(config.DisableTCPFor)
 	config.Allowed = slices.Clone(config.Allowed)
 	c := &Core{
 		config: config, self: identity.Name, life: seed.Lifetime,
@@ -76,7 +65,7 @@ func New(config Config, identity wire.Identity, seed Seed) (*Core, error) {
 		nodes:  make(map[string]*member),
 		timers: make(map[string]deadline), timerKeys: make(map[uint64]string),
 		probes: make(map[uint64]*probe), streams: make(map[uint64]*stream),
-		app: make(map[uint64]pending), sends: make(map[uint64]sendPending),
+		sends:         make(map[uint64]uint64),
 		broadcastKeys: make(map[string]*broadcast),
 	}
 	c.susp = make(map[string]*suspicion)
@@ -123,7 +112,7 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
 		if err := e.Peer.Validate(); err != nil {
 			c.emit(Result{Command: e.Command, Failure: LocalFailure})
 		} else {
-			c.openExchange(e.Peer, e.Command, true, false)
+			c.openExchange(e.Peer, e.Command, false)
 		}
 	case Ping:
 		if e.Peer.Validate() != nil {
@@ -139,8 +128,6 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
 		c.update(e)
 	case Leave:
 		c.leave(e.Command)
-	case Send:
-		c.send(e)
 	case Datagram:
 		if e.Received > now {
 			return nil, errors.New("receive time exceeds processing time")
@@ -167,14 +154,10 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
 		c.fire(e.Timer)
 	case Sent:
 		if c.valid(e.ID) {
-			p, ok := c.sends[e.ID.ID]
-			if ok {
+			if probe, ok := c.sends[e.ID.ID]; ok {
 				delete(c.sends, e.ID.ID)
-				if p.command != 0 {
-					c.emit(Result{Command: p.command, Failure: e.Failure})
-				}
-				if p.probe != 0 && e.Failure != Success {
-					c.sendFailed(p.probe, e.Failure)
+				if e.Failure != Success {
+					c.sendFailed(probe, e.Failure)
 				}
 			}
 		}
@@ -207,10 +190,6 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
 	case Closed:
 		if c.valid(e.ID) {
 			c.closed(e)
-		}
-	case Response:
-		if c.valid(e.ID) {
-			c.response(e)
 		}
 	default:
 		return nil, errors.New("unknown event")
@@ -258,16 +237,6 @@ func (c *Core) adjustHealth(delta int) {
 func (c *Core) notify(kind string, n wire.Member) {
 	c.emit(Notification{Kind: kind, Member: n.Clone()})
 }
-func (c *Core) request(p pending, r Request) {
-	id := c.token()
-	r.ID = id
-	c.app[id.ID] = p
-	r.Member = r.Member.Clone()
-	for j := range r.Members {
-		r.Members[j] = r.Members[j].Clone()
-	}
-	c.emit(r)
-}
 func (c *Core) shutdown(command uint64) {
 	c.stopped = true
 	c.pendingProbe = false
@@ -283,22 +252,13 @@ func (c *Core) shutdown(command uint64) {
 		c.endStream(id, Canceled)
 	}
 	for _, id := range sortedIDs(c.probes) {
-		c.finishProbe(id, Canceled, 0, nil)
+		c.finishProbe(id, Canceled, 0)
 	}
 	for _, b := range c.broadcasts {
 		c.finishBroadcast(b, Canceled)
 	}
-	for _, id := range sortedIDs(c.sends) {
-		if p := c.sends[id]; p.command != 0 {
-			c.emit(Result{Command: p.command, Failure: Canceled})
-		}
-	}
 	c.stopped = true
-	for _, id := range sortedIDs(c.app) {
-		c.emit(CancelRequest{ID: Token{Lifetime: c.life, ID: id}})
-		delete(c.app, id)
-	}
-	c.sends = make(map[uint64]sendPending)
+	c.sends = make(map[uint64]uint64)
 	c.high = nil
 	c.low = nil
 	c.broadcasts = nil
@@ -315,18 +275,6 @@ func sortedIDs[V any](m map[uint64]V) []uint64 {
 	return ids
 }
 func key(prefix string, id uint64) string { return prefix + strconv.FormatUint(id, 10) }
-func (c *Core) cancelOperationApps(op uint64) {
-	for _, id := range sortedIDs(c.app) {
-		if c.app[id].op == op {
-			c.emit(CancelRequest{ID: Token{Lifetime: c.life, ID: id}})
-			delete(c.app, id)
-		}
-	}
-}
-func (c *Core) tcpDisabled(name string) bool {
-	_, found := slices.BinarySearch(c.config.DisableTCPFor, name)
-	return c.config.DisableTCP || found
-}
 func (c *Core) nextDeferred() {
 	if c.work == (Token{}) && len(c.high)+len(c.low) > 0 {
 		c.work = c.token()
@@ -345,70 +293,21 @@ func (c *Core) workOne() {
 	*q = (*q)[:len(*q)-1]
 	switch {
 	case m.Alive != nil:
-		c.alive(*m.Alive, 0, false)
+		c.alive(*m.Alive)
 	case m.Suspect != nil:
 		c.suspect(*m.Suspect)
 	case m.Dead != nil:
 		c.dead(*m.Dead)
-	case m.User != nil:
-		c.emit(Notification{Kind: "user", Data: append([]byte(nil), (*m.User)...)})
 	}
 	c.nextDeferred()
 }
-func (c *Core) response(e Response) {
-	p, ok := c.app[e.ID.ID]
-	if !ok {
-		return
-	}
-	delete(c.app, e.ID.ID)
-	switch p.kind {
-	case ApproveAlive:
-		if !e.Reject {
-			c.applyAlive(*p.msg.Alive)
-		}
-		if p.op != 0 {
-			if s := c.streams[p.op]; s != nil {
-				s.cursor++
-				c.mergeNext(s)
-			}
-		}
-	case ApproveMerge:
-		if e.Reject {
-			c.endStream(p.op, Rejected)
-		} else if s := c.streams[p.op]; s != nil {
-			s.phase = "merge"
-			c.mergeNext(s)
-		}
-	case LocalState:
-		if s := c.streams[p.op]; s != nil {
-			if e.Reject || len(e.Data) > wire.MaxData {
-				c.endStream(p.op, LocalFailure)
-			} else {
-				c.writeExchange(s, e.Data)
-			}
-		}
-	case AckPayload:
-		if e.Reject || len(e.Data) > wire.MaxMeta {
-			return
-		}
-		m := wire.Message{Ack: &wire.Ack{Sequence: p.sequence, Payload: append([]byte(nil), e.Data...)}}
-		if p.op != 0 {
-			if s := c.streams[p.op]; s != nil {
-				c.write(s, m, "reply")
-			}
-		} else {
-			c.datagram(p.peer.Address, []wire.Message{m}, 0, 0, true)
-		}
-	}
-}
-
 func (c *Core) cancelCommand(command uint64) {
 	if command == 0 {
 		return
 	}
 	for _, id := range sortedIDs(c.probes) {
 		if c.probes[id].command == command {
-			c.finishProbe(id, Canceled, 0, nil)
+			c.finishProbe(id, Canceled, 0)
 		}
 	}
 	for _, id := range sortedIDs(c.streams) {
@@ -419,12 +318,6 @@ func (c *Core) cancelCommand(command uint64) {
 	for _, b := range c.broadcasts {
 		if b.command == command {
 			c.finishBroadcast(b, Canceled)
-		}
-	}
-	for _, id := range sortedIDs(c.sends) {
-		if c.sends[id].command == command {
-			delete(c.sends, id)
-			c.emit(Result{Command: command, Failure: Canceled})
 		}
 	}
 }

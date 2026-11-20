@@ -14,7 +14,6 @@ const (
 	MaxName  = 64
 	MaxLabel = 64
 	MaxMeta  = 512
-	MaxData  = 1 << 20
 	MaxNodes = 16384
 	MaxBatch = 256
 	MaxBody  = 8 << 20
@@ -33,13 +32,11 @@ type Identity struct {
 	Name    string         `json:"name"`
 	Address netip.AddrPort `json:"address"`
 	Meta    []byte         `json:"meta,omitempty"`
-	// Application is a distinct application-data compatibility identifier.
-	Application string `json:"application,omitempty"`
 }
 
 func ValidText(s string, max int) bool { return len(s) <= max && utf8.ValidString(s) }
 func (i Identity) Validate() error {
-	if i.Name == "" || !ValidText(i.Name, MaxName) || !ValidText(i.Application, MaxName) ||
+	if i.Name == "" || !ValidText(i.Name, MaxName) ||
 		!i.Address.IsValid() || i.Address.Port() == 0 || i.Address.Addr().IsUnspecified() ||
 		i.Address.Addr().Zone() != "" || len(i.Meta) > MaxMeta {
 		return errors.New("invalid identity")
@@ -64,7 +61,6 @@ type Indirect struct {
 }
 type Ack struct {
 	Sequence uint64 `json:"sequence"`
-	Payload  []byte `json:"payload,omitempty"`
 }
 type Accusation struct {
 	Node        string `json:"node"`
@@ -72,9 +68,7 @@ type Accusation struct {
 	From        string `json:"from"`
 }
 type Exchange struct {
-	Join    bool     `json:"join"`
 	Members []Member `json:"members"`
-	Data    []byte   `json:"data,omitempty"`
 }
 
 // Message is a closed tagged union: exactly one field must be set. No maps or
@@ -88,7 +82,6 @@ type Message struct {
 	Suspect  *Accusation `json:"suspect,omitempty"`
 	Dead     *Accusation `json:"dead,omitempty"`
 	Exchange *Exchange   `json:"exchange,omitempty"`
-	User     *[]byte     `json:"user,omitempty"`
 }
 
 func (m Message) Validate() error {
@@ -105,13 +98,11 @@ func (m Message) Validate() error {
 			return errors.New("invalid indirect ping")
 		}
 	}
-	for _, a := range []*Ack{m.Ack, m.Nack} {
-		if a != nil {
-			count++
-			if len(a.Payload) > MaxMeta {
-				return errors.New("oversized ack")
-			}
-		}
+	if m.Ack != nil {
+		count++
+	}
+	if m.Nack != nil {
+		count++
 	}
 	if m.Alive != nil {
 		count++
@@ -129,19 +120,13 @@ func (m Message) Validate() error {
 	}
 	if m.Exchange != nil {
 		count++
-		if len(m.Exchange.Members) > MaxNodes || len(m.Exchange.Data) > MaxData {
+		if len(m.Exchange.Members) > MaxNodes {
 			return errors.New("oversized exchange")
 		}
 		for _, n := range m.Exchange.Members {
 			if n.Validate() != nil || n.State > Left {
 				return errors.New("invalid member")
 			}
-		}
-	}
-	if m.User != nil {
-		count++
-		if len(*m.User) > MaxData {
-			return errors.New("oversized user data")
 		}
 	}
 	if count != 1 {
@@ -167,12 +152,10 @@ func (m Message) Clone() Message {
 	}
 	if m.Ack != nil {
 		p := *m.Ack
-		p.Payload = append([]byte(nil), p.Payload...)
 		m.Ack = &p
 	}
 	if m.Nack != nil {
 		p := *m.Nack
-		p.Payload = append([]byte(nil), p.Payload...)
 		m.Nack = &p
 	}
 	if m.Alive != nil {
@@ -189,16 +172,11 @@ func (m Message) Clone() Message {
 	}
 	if m.Exchange != nil {
 		p := *m.Exchange
-		p.Data = append([]byte(nil), p.Data...)
 		p.Members = make([]Member, len(m.Exchange.Members))
 		for j, n := range m.Exchange.Members {
 			p.Members[j] = n.Clone()
 		}
 		m.Exchange = &p
-	}
-	if m.User != nil {
-		p := append([]byte{}, (*m.User)...)
-		m.User = &p
 	}
 	return m
 }

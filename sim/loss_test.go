@@ -115,8 +115,9 @@ func TestLossSendBoundary(t *testing.T) {
 	delete(r.addresses, netipKey(send.To.String()))
 	r.effect("a", send)
 	send.To = s.Nodes[1].Identity.Address
-	data := make([]byte, 2000)
-	send.Messages = []wire.Message{{User: &data}}
+	big := wire.Member{Identity: s.Nodes[0].Identity, Incarnation: 1}
+	big.Meta = make([]byte, wire.MaxMeta)
+	send.Messages = []wire.Message{{Alive: &big}, {Alive: &big}, {Alive: &big}}
 	r.effect("a", send)
 	if r.ordinals[[2]string{"a", "b"}] != 6 {
 		t.Fatal("invalid send counted")

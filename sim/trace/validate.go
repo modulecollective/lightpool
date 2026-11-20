@@ -228,6 +228,7 @@ func (v *validator) payload(b []byte, kind string) error {
 			}
 			for _, m := range t.Messages {
 				switch m {
+				// "user" is no longer produced; v1 traces that carry it still read.
 				case "ping", "indirect", "ack", "nack", "alive", "suspect", "dead", "exchange", "user":
 				default:
 					return fmt.Errorf("invalid message kind")

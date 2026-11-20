@@ -37,18 +37,13 @@ const (
 
 type Config struct {
 	ProbeInterval, ProbeTimeout, PushPullInterval, GossipInterval                 time.Duration
-	StreamTimeout, GossipToDead, ReclaimAfter                                     time.Duration
+	StreamTimeout, GossipToDead                                                   time.Duration
 	IndirectChecks, RetransmitMult, SuspicionMult, SuspicionMaxMult, AwarenessMax int
 	GossipNodes, QueueDepth, PacketBudget, MaxPushPull                            int
 	DisableTCP                                                                    bool
-	// Names with disabled TCP fallback, copied and sorted at construction.
-	DisableTCPFor []string
-	Label         string
-	Protected     bool
-	// Application enables explicit requests. With it disabled, data is empty
-	// and alive/merge approvals succeed without calling application code.
-	Application bool
-	Allowed     []netip.Prefix // nil allows all; empty denies all.
+	Label                                                                         string
+	Protected                                                                     bool
+	Allowed                                                                       []netip.Prefix // nil allows all; empty denies all.
 }
 
 func DefaultConfig() Config {
@@ -64,7 +59,7 @@ func (c Config) Validate() error {
 	if c.ProbeInterval < 0 || c.ProbeTimeout <= 0 ||
 		(c.ProbeInterval > 0 && c.ProbeTimeout >= c.ProbeInterval) ||
 		c.PushPullInterval < 0 || c.GossipInterval < 0 || c.StreamTimeout <= 0 ||
-		c.GossipToDead < 0 || c.ReclaimAfter < 0 || c.IndirectChecks < 0 ||
+		c.GossipToDead < 0 || c.IndirectChecks < 0 ||
 		c.RetransmitMult < 1 || c.SuspicionMult < 1 || c.SuspicionMaxMult < 1 ||
 		c.AwarenessMax < 1 || c.GossipNodes < 0 || c.QueueDepth < 1 ||
 		c.PacketBudget < 256 || c.PacketBudget > 65507 || c.MaxPushPull < 1 ||
@@ -116,15 +111,6 @@ func (Update) event() {}
 type Leave struct{ Command uint64 }
 
 func (Leave) event() {}
-
-type Send struct {
-	Command             uint64
-	Peer                wire.Identity
-	Data                []byte
-	Reliable, Broadcast bool
-}
-
-func (Send) event() {}
 
 type Datagram struct {
 	From     netip.AddrPort
@@ -185,14 +171,6 @@ type Closed struct {
 
 func (Closed) event() {}
 
-type Response struct {
-	ID     Token
-	Reject bool
-	Data   []byte
-}
-
-func (Response) event() {}
-
 type Effect interface{ effect() }
 type SendDatagram struct {
 	ID       Token
@@ -245,37 +223,9 @@ type Result struct {
 
 func (Result) effect() {}
 
-type RequestKind string
-
-const (
-	ApproveAlive RequestKind = "approve-alive"
-	ApproveMerge RequestKind = "approve-merge"
-	LocalState   RequestKind = "local-state"
-	AckPayload   RequestKind = "ack-payload"
-)
-
-type Request struct {
-	ID      Token
-	Kind    RequestKind
-	Member  wire.Member
-	Members []wire.Member
-	Join    bool
-}
-
-func (Request) effect() {}
-
-// CancelRequest ends a pending or executing application request. Drivers must
-// cancel its context and avoid invoking queued work that has been canceled.
-type CancelRequest struct{ ID Token }
-
-func (CancelRequest) effect() {}
-
 type Notification struct {
 	Kind          string
 	Member, Other wire.Member
-	Data          []byte
-	Join          bool
-	RTT           time.Duration
 }
 
 func (Notification) effect() {}
@@ -313,7 +263,7 @@ func (f Failure) String() string {
 	case Timeout:
 		return "timeout"
 	case Rejected:
-		return "application rejection"
+		return "rejected"
 	case Canceled:
 		return "canceled"
 	default:

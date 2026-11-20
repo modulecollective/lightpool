@@ -6,22 +6,20 @@ package core
 import (
 	"github.com/modulecollective/lightpool/wire"
 	"net/netip"
-	"slices"
 )
 
 type stream struct {
-	id                      Token
-	peer                    netip.AddrPort
-	command, probe          uint64
-	purpose, phase          string
-	join, periodic, passive bool
-	outgoing                wire.Message
-	remote                  *wire.Exchange
-	early                   *StreamMessage
-	cursor                  int
-	deadline                Instant
-	closedFailure           Failure
-	closedPending           bool
+	id                Token
+	peer              netip.AddrPort
+	command, probe    uint64
+	purpose, phase    string
+	periodic, passive bool
+	outgoing          wire.Message
+	remote            *wire.Exchange
+	early             *StreamMessage
+	deadline          Instant
+	closedFailure     Failure
+	closedPending     bool
 }
 
 func (c *Core) beginStream(peer wire.Identity, command uint64, purpose string) *stream {
@@ -30,7 +28,7 @@ func (c *Core) beginStream(peer wire.Identity, command uint64, purpose string) *
 	c.arm(key("stream:", s.id.ID), "stream", s.deadline, s.id.ID, "")
 	return s
 }
-func (c *Core) openExchange(peer wire.Identity, command uint64, join, periodic bool) {
+func (c *Core) openExchange(peer wire.Identity, command uint64, periodic bool) {
 	if c.exchanges() >= c.config.MaxPushPull {
 		if command != 0 {
 			c.emit(Result{Command: command, Failure: LocalFailure})
@@ -41,7 +39,6 @@ func (c *Core) openExchange(peer wire.Identity, command uint64, join, periodic b
 		return
 	}
 	s := c.beginStream(peer, command, "exchange")
-	s.join = join
 	s.periodic = periodic
 	c.emit(OpenStream{ID: s.id, To: s.peer, Deadline: s.deadline})
 }
@@ -51,11 +48,6 @@ func (c *Core) openPing(p *probe) {
 	s.deadline = p.deadline
 	c.arm(key("stream:", s.id.ID), "stream", s.deadline, s.id.ID, "")
 	s.outgoing = wire.Message{Ping: &wire.Ping{Sequence: p.id, Target: p.peer.Name, Source: routing(c.nodes[c.self].Identity)}}
-	c.emit(OpenStream{ID: s.id, To: s.peer, Deadline: s.deadline})
-}
-func (c *Core) openUser(peer wire.Identity, m wire.Message, command uint64) {
-	s := c.beginStream(peer, command, "user")
-	s.outgoing = m
 	c.emit(OpenStream{ID: s.id, To: s.peer, Deadline: s.deadline})
 }
 func (c *Core) exchanges() int {
@@ -89,25 +81,14 @@ func (c *Core) opened(e Opened) {
 		return
 	}
 	if s.purpose == "exchange" {
-		c.prepareExchange(s)
+		c.writeExchange(s)
 	} else {
 		c.write(s, s.outgoing, "request")
 	}
 }
-func (c *Core) prepareExchange(s *stream) {
-	s.phase = "local-state"
-	// Capture membership before asking for application state, matching the
-	// original sendLocalState order while unrelated operations keep advancing.
-	s.outgoing = wire.Message{Exchange: &wire.Exchange{Join: s.join, Members: c.Snapshot().Members}}
-	if c.config.Application {
-		c.request(pending{kind: LocalState, op: s.id.ID}, Request{Kind: LocalState, Join: s.join})
-	} else {
-		c.writeExchange(s, nil)
-	}
-}
-func (c *Core) writeExchange(s *stream, data []byte) {
-	m := s.outgoing.Clone()
-	m.Exchange.Data = slices.Clone(data)
+func (c *Core) writeExchange(s *stream) {
+	// Each side sends its membership before merging the peer's, as memberlist does.
+	m := wire.Message{Exchange: &wire.Exchange{Members: c.Snapshot().Members}}
 	stage := "request"
 	if s.passive {
 		stage = "response"
@@ -139,12 +120,12 @@ func (c *Core) written(e Written) {
 		c.endStream(s.id.ID, e.Failure)
 		return
 	}
-	if s.phase == "write-reply" || (s.purpose == "user" && !s.passive) {
+	if s.phase == "write-reply" {
 		c.endStream(s.id.ID, Success)
 		return
 	}
 	if s.passive {
-		c.beginMerge(s)
+		c.merge(s)
 		return
 	}
 	s.phase = "receive"
@@ -162,8 +143,7 @@ func (c *Core) written(e Written) {
 	}
 }
 
-// A read-side close cannot overtake the local write completion. Reliable user
-// sends report local write acceptance, including when the peer closes first.
+// A read-side close cannot overtake the local write completion.
 func (c *Core) closed(e Closed) {
 	s := c.streams[e.ID.ID]
 	if s == nil || s.id != e.ID {
@@ -185,7 +165,7 @@ func (c *Core) streamMessage(e StreamMessage) {
 		c.endStream(s.id.ID, RemoteFailure)
 		return
 	}
-	if s.phase == "write-request" || s.phase == "local-state" && !s.passive {
+	if s.phase == "write-request" {
 		if s.early != nil {
 			c.endStream(s.id.ID, RemoteFailure)
 			return
@@ -210,7 +190,7 @@ func (c *Core) streamMessage(e StreamMessage) {
 		}
 		if s.purpose == "exchange" && m.Exchange != nil {
 			s.remote = m.Exchange
-			c.beginMerge(s)
+			c.merge(s)
 			return
 		}
 		c.endStream(s.id.ID, RemoteFailure)
@@ -223,15 +203,7 @@ func (c *Core) streamMessage(e StreamMessage) {
 			return
 		}
 		s.purpose = "ping"
-		s.phase = "ack-payload"
-		if c.config.Application {
-			c.request(pending{kind: AckPayload, op: s.id.ID, sequence: m.Ping.Sequence}, Request{Kind: AckPayload})
-		} else {
-			c.write(s, wire.Message{Ack: &wire.Ack{Sequence: m.Ping.Sequence}}, "reply")
-		}
-	case m.User != nil:
-		c.emit(Notification{Kind: "user", Data: slices.Clone(*m.User)})
-		c.endStream(s.id.ID, Success)
+		c.write(s, wire.Message{Ack: &wire.Ack{Sequence: m.Ping.Sequence}}, "reply")
 	case m.Exchange != nil:
 		if c.exchanges() >= c.config.MaxPushPull {
 			c.endStream(s.id.ID, Rejected)
@@ -239,53 +211,31 @@ func (c *Core) streamMessage(e StreamMessage) {
 		}
 		s.purpose = "exchange"
 		s.remote = m.Exchange
-		s.join = m.Exchange.Join
-		c.prepareExchange(s)
+		c.writeExchange(s)
 	default:
 		c.endStream(s.id.ID, RemoteFailure)
 	}
 }
-func (c *Core) beginMerge(s *stream) {
+func (c *Core) merge(s *stream) {
 	if s.remote == nil {
 		c.endStream(s.id.ID, RemoteFailure)
 		return
 	}
 	for _, n := range s.remote.Members {
-		if n.State == wire.Alive && (n.Application != c.nodes[c.self].Application || !c.fitsAlive(n)) {
+		if n.State == wire.Alive && !c.fitsAlive(n) {
 			c.endStream(s.id.ID, Rejected)
 			return
 		}
 	}
-	if s.join && c.config.Application {
-		s.phase = "approve-merge"
-		members := make([]wire.Member, len(s.remote.Members))
-		copy(members, s.remote.Members)
-		c.request(pending{kind: ApproveMerge, op: s.id.ID}, Request{Kind: ApproveMerge, Members: members, Join: true})
-		return
-	}
-	s.phase = "merge"
-	c.mergeNext(s)
-}
-func (c *Core) mergeNext(s *stream) {
-	for s.cursor < len(s.remote.Members) {
-		n := s.remote.Members[s.cursor]
+	for _, n := range s.remote.Members {
 		switch n.State {
 		case wire.Alive:
-			if c.config.Application {
-				s.phase = "approve-alive"
-				c.alive(n, s.id.ID, false)
-				return
-			}
-			c.alive(n, 0, true)
+			c.alive(n)
 		case wire.Left:
 			c.dead(wire.Accusation{Node: n.Name, From: n.Name, Incarnation: n.Incarnation})
 		case wire.Dead, wire.Suspect:
 			c.suspect(wire.Accusation{Node: n.Name, From: c.self, Incarnation: n.Incarnation})
 		}
-		s.cursor++
-	}
-	if s.remote.Data != nil {
-		c.emit(Notification{Kind: "merge-state", Data: slices.Clone(s.remote.Data), Join: s.join})
 	}
 	c.endStream(s.id.ID, Success)
 }
@@ -296,7 +246,6 @@ func (c *Core) endStream(id uint64, f Failure) {
 	}
 	delete(c.streams, id)
 	c.cancel(key("stream:", id))
-	c.cancelOperationApps(id)
 	c.emit(CloseStream{ID: s.id})
 	if s.command != 0 {
 		c.emit(Result{Command: s.command, Failure: f})
