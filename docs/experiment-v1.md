@@ -203,7 +203,8 @@ and every target suspicion episode after warm-up. Evidence addresses use
 Backlog and timer diagnostics cover the full trace, including warm-up;
 population exposure and traffic retain the measured interval above.
 An invalid or incomplete input writes a diagnostic JSON result and exits
-nonzero. A complete null result succeeds. Unreadable evidence may only
+nonzero and cannot count eligible episodes or qualifying witnesses.
+A complete null result succeeds. Unreadable evidence may only
 supply a diagnostic reason; it cannot supply validated measurements.
 
 An acceleration witness requires an eligible O→T episode beginning in the

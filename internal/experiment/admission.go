@@ -350,7 +350,7 @@ func (x *admissionScan) record(raw json.RawMessage) error {
 					continue
 				}
 				pair := x.pair(c.Node)
-				eligible := at.TimeNS < x.spec.WarmupNS+16_384_000_000 && slices.Contains(x.spec.HealthyPairs, EligiblePair{c.Node, c.Subject}) && x.activeAt(c.Node, at.TimeNS) && x.activeAt(c.Subject, at.TimeNS) && pair.ObserverLifetime == x.cohort[c.Node] && pair.TargetLifetime == x.cohort[c.Subject]
+				eligible := x.out.Status == "complete" && at.TimeNS < x.spec.WarmupNS+16_384_000_000 && slices.Contains(x.spec.HealthyPairs, EligiblePair{c.Node, c.Subject}) && x.activeAt(c.Node, at.TimeNS) && x.activeAt(c.Subject, at.TimeNS) && pair.ObserverLifetime == x.cohort[c.Node] && pair.TargetLifetime == x.cohort[c.Subject]
 				ep := &AdmissionEpisode{Pair: pair, Incarnation: n.member.Incarnation, Origin: x.sender(ev), Eligible: eligible, Outcome: "censored", Confirmations: []SenderEvidence{}, Shortenings: []Shortening{}, Timers: []OrderedEvidence{}, Reasons: []string{}, seen: map[string]bool{sender: true}}
 				x.active[c.Node] = ep
 				x.out.Episodes = append(x.out.Episodes, ep)
@@ -405,6 +405,9 @@ func sameTimer(arm *OrderedEvidence, e OrderedEvidence) bool {
 	return arm != nil && arm.Fact.ID == e.Fact.ID && arm.Fact.Generation == e.Fact.Generation && arm.Fact.Deadline == e.Fact.Deadline
 }
 func (x *admissionScan) classify(ep *AdmissionEpisode) {
+	if x.out.Status != "complete" {
+		ep.Reasons = append(ep.Reasons, "recording or warm-up is not complete and valid")
+	}
 	for _, r := range x.generations {
 		if r.life == ep.TargetLifetime && incarnationAfter(r.incarnation, ep.Incarnation) {
 			ep.Refutation = &r.evidence

@@ -240,8 +240,23 @@ func TestAdmissionNullAndIncomplete(t *testing.T) {
 	}
 	b = admissionPositive(t)
 	out = classifyEvidence(t, b, false)
-	if out.Status != "incomplete" {
-		t.Fatal("incomplete evidence became valid")
+	if out.Status != "incomplete" || out.Witnesses != 0 || out.Harmful != 0 || out.EligibleEpisodes != 0 {
+		t.Fatal("incomplete evidence counted eligible acceleration", out.Status, out.Witnesses, out.Harmful, out.EligibleEpisodes)
+	}
+}
+
+func TestAdmissionInvalidWarmupCannotQualify(t *testing.T) {
+	b := admissionPositive(t)
+	// An unrelated warm-up failure invalidates the entire recording, including
+	// an otherwise fully observed acceleration at O.
+	for _, c := range b.events[0].Changes {
+		if c.Member != nil && c.Member.Name == "n001" {
+			c.Member.State = "suspect"
+		}
+	}
+	out := classifyEvidence(t, b, true)
+	if out.Status != "invalid-warmup" || out.Witnesses != 0 || out.Harmful != 0 || out.EligibleEpisodes != 0 {
+		t.Fatal("invalid warm-up counted eligible acceleration", out.Status, out.Witnesses, out.Harmful, out.EligibleEpisodes)
 	}
 }
 
