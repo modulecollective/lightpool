@@ -10,6 +10,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/modulecollective/lightpool/core"
+	"github.com/modulecollective/lightpool/internal/ordinary"
 	"github.com/modulecollective/lightpool/wire"
 	"log"
 	"net"
@@ -48,10 +49,16 @@ func DefaultConfig(name string) Config {
 }
 
 type command struct {
-	event   core.Event
-	id      uint64
-	reply   chan core.Result
-	abandon uint64
+	event    core.Event
+	id       uint64
+	reply    chan core.Result
+	abandon  uint64
+	enqueued *int64
+}
+type driverInput struct {
+	frameRead *int64
+	event     core.Event
+	enqueued  *int64
 }
 type ioStream struct {
 	ctx    context.Context
@@ -73,9 +80,9 @@ type Node struct {
 	cancel             context.CancelFunc
 	udp                *net.UDPConn
 	tcp                *net.TCPListener
-	inbox              chan core.Event
+	inbox              chan driverInput
 	commands           chan command
-	deferred           chan core.Event
+	deferred           chan driverInput
 	writes             chan core.SendDatagram
 	requests           chan applicationRequest
 	requestCancels     map[core.Token]context.CancelFunc // owner only
@@ -90,9 +97,13 @@ type Node struct {
 	snapshot           atomic.Pointer[core.Snapshot]
 	counts             counters
 	shutdownOnce       sync.Once
+	recorder           *ordinaryRecorder
 }
 
 func New(cfg Config) (*Node, error) {
+	return newOrdinaryNode(cfg, nil)
+}
+func newOrdinaryNode(cfg Config, recording *recordingConfig) (*Node, error) {
 	if !cfg.Bind.IsValid() {
 		return nil, errors.New("explicit bind address required")
 	}
@@ -165,12 +176,22 @@ func New(cfg Config) (*Node, error) {
 	n := &Node{
 		cfg: cfg, engine: engine, epoch: time.Now(), life: seed.Lifetime,
 		ctx: ctx, cancel: cancel, udp: udp, tcp: tcp,
-		inbox: make(chan core.Event, 256), commands: make(chan command, 256),
-		deferred: make(chan core.Event, 1), writes: make(chan core.SendDatagram, 256),
+		inbox: make(chan driverInput, 256), commands: make(chan command, 256),
+		deferred: make(chan driverInput, 1), writes: make(chan core.SendDatagram, 256),
 		requests: make(chan applicationRequest, 256), notices: make(chan core.Notification, 1024),
 		requestCancels: make(map[core.Token]context.CancelFunc),
 		done:           make(chan struct{}), streams: make(map[core.Token]*ioStream),
 		timers: make(map[core.Timer]*time.Timer), waiters: make(map[uint64]chan core.Result),
+	}
+	if recording != nil {
+		engine.EnableInspection()
+		n.recorder, err = newOrdinaryRecorder(*recording, wire.Identity{Name: cfg.Name, Address: advertised, Meta: cfg.Meta, Application: cfg.ApplicationVersion}, seed, cfg.Protocol, cfg.Compression, n.epoch, engine.Inspection())
+		if err != nil {
+			cancel()
+			_ = tcp.Close()
+			_ = udp.Close()
+			return nil, err
+		}
 	}
 	n.saveSnapshot()
 	n.workers.Add(3)
@@ -195,10 +216,21 @@ func (n *Node) options() wire.Options {
 	return o
 }
 func (n *Node) post(e core.Event) {
+	n.postRead(e, nil)
+}
+func (n *Node) postRead(e core.Event, frameRead *int64) {
+	input := driverInput{event: e, enqueued: n.enqueueTime(), frameRead: frameRead}
 	select {
-	case n.inbox <- e:
+	case n.inbox <- input:
 	case <-n.ctx.Done():
 	}
+}
+func (n *Node) enqueueTime() *int64 {
+	if n.recorder == nil {
+		return nil
+	}
+	at := int64(n.now())
+	return &at
 }
 func (n *Node) saveSnapshot() { s := n.engine.Snapshot(); n.snapshot.Store(&s) }
 func (n *Node) Snapshot() core.Snapshot {
@@ -222,25 +254,25 @@ func (n *Node) Traffic() Traffic {
 }
 func (n *Node) run() {
 	defer close(n.done)
-	n.step(core.Start{})
+	n.step(driverInput{event: core.Start{}}, 0)
 	for {
 		select {
 		case e := <-n.inbox:
-			n.step(e)
+			n.step(e, 0)
 		case e := <-n.deferred:
-			n.step(e)
+			n.step(e, 0)
 		case cmd := <-n.commands:
 			if cmd.abandon != 0 {
 				delete(n.waiters, cmd.abandon)
-				n.step(core.CancelCommand{Command: cmd.abandon})
+				n.step(driverInput{event: core.CancelCommand{Command: cmd.abandon}, enqueued: cmd.enqueued}, 0)
 				continue
 			}
 			if cmd.reply != nil {
 				n.waiters[cmd.id] = cmd.reply
 			}
-			n.step(cmd.event)
+			n.step(driverInput{event: cmd.event, enqueued: cmd.enqueued}, 0)
 		case <-n.ctx.Done():
-			n.step(core.Shutdown{})
+			n.step(driverInput{event: core.Shutdown{}}, 0)
 			for _, timer := range n.timers {
 				timer.Stop()
 			}
@@ -253,17 +285,30 @@ func (n *Node) run() {
 		}
 	}
 }
-func (n *Node) step(e core.Event) {
+func (n *Node) step(input driverInput, parent uint64) {
+	e := input.event
+	var captured *ordinary.Step
+	var recorderNS int64
+	if n.recorder != nil {
+		captured, recorderNS = n.recordInput(input, parent)
+	}
 	if response, ok := e.(core.Response); ok {
 		if cancel := n.requestCancels[response.ID]; cancel != nil {
 			cancel()
 			delete(n.requestCancels, response.ID)
 		}
 	}
-	effects, err := n.engine.Step(n.now(), e)
+	coreAt := n.now()
+	effects, err := n.engine.Step(coreAt, e)
+	if captured != nil {
+		recorderNS += n.recordTransition(captured, coreAt, n.now(), effects, err)
+	}
 	if err != nil {
 		if n.cfg.Logger != nil {
 			n.cfg.Logger.Printf("protocol input rejected: %v", err)
+		}
+		if captured != nil {
+			n.recordStepEnd(captured.Sequence, recorderNS)
 		}
 		return
 	}
@@ -286,16 +331,22 @@ func (n *Node) step(e core.Event) {
 		case core.CloseStream:
 			n.closeStream(e.ID)
 		case core.Arm:
+			if n.recorder != nil {
+				n.recorder.due[e.Timer] = int64(e.At)
+			}
 			event := core.Fired{Timer: e.Timer}
 			n.timers[e.Timer] = time.AfterFunc(time.Duration(max(0, e.At-n.now())), func() { n.post(event) })
 		case core.Cancel:
+			if n.recorder != nil {
+				delete(n.recorder.due, e.Timer)
+			}
 			if t := n.timers[e.Timer]; t != nil {
 				t.Stop()
 				delete(n.timers, e.Timer)
 			}
 		case core.Defer:
 			select {
-			case n.deferred <- core.Work(e):
+			case n.deferred <- driverInput{event: core.Work(e), enqueued: n.enqueueTime()}:
 			default:
 				panic("duplicate deferred turn")
 			}
@@ -330,16 +381,24 @@ func (n *Node) step(e core.Event) {
 	}
 	if fired, ok := e.(core.Fired); ok {
 		delete(n.timers, fired.Timer)
+		if n.recorder != nil {
+			delete(n.recorder.due, fired.Timer)
+		}
+	}
+	var sequence uint64
+	if captured != nil {
+		sequence = captured.Sequence
+		n.recordStepEnd(sequence, recorderNS)
 	}
 	for _, next := range immediate {
-		n.step(next)
+		n.step(driverInput{event: next}, sequence)
 	}
 }
 func (n *Node) call(ctx context.Context, makeEvent func(uint64) core.Event) (core.Result, error) {
 	id := n.sequence.Add(1)
 	reply := make(chan core.Result, 1)
 	select {
-	case n.commands <- command{event: makeEvent(id), id: id, reply: reply}:
+	case n.commands <- command{event: makeEvent(id), id: id, reply: reply, enqueued: n.enqueueTime()}:
 	case <-ctx.Done():
 		return core.Result{}, ctx.Err()
 	case <-n.done:
@@ -353,7 +412,7 @@ func (n *Node) call(ctx context.Context, makeEvent func(uint64) core.Event) (cor
 		return r, nil
 	case <-ctx.Done():
 		select {
-		case n.commands <- command{abandon: id}:
+		case n.commands <- command{abandon: id, enqueued: n.enqueueTime()}:
 		case <-n.done:
 		}
 		return core.Result{}, ctx.Err()
@@ -459,6 +518,9 @@ func (n *Node) Shutdown() error {
 	})
 	<-n.done
 	n.workers.Wait()
+	if n.recorder != nil {
+		return n.recorder.finish()
+	}
 	return nil
 }
 func (n *Node) applicationWorker() {

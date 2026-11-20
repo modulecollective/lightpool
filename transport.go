@@ -29,11 +29,13 @@ func (n *Node) readUDP() {
 		n.counts.received.Add(uint64(count))
 		if count > n.cfg.Protocol.PacketBudget {
 			n.counts.rejected.Add(1)
+			n.diagnostic("udp.socket-read-return/oversize", errors.New("datagram exceeds packet budget"))
 			continue
 		}
 		messages, err := wire.Decode(buf[:count], n.options())
 		if err != nil {
 			n.counts.rejected.Add(1)
+			n.diagnostic("udp.decode", err)
 			continue
 		}
 		n.post(core.Datagram{From: normalized(from), Received: received, Messages: messages})
@@ -141,10 +143,17 @@ func (n *Node) dial(e core.OpenStream) bool {
 func (n *Node) readStream(id core.Token, s *ioStream, conn net.Conn) {
 	// Each exchange carries one request and one response. After a complete
 	// frame, the core owns closure; EOF cannot overtake a pending write result.
-	messages, err := wire.Read(countingReader{conn, &n.counts}, n.options())
+	reader := countingReader{r: conn, counts: &n.counts}
+	var frameRead *int64
+	if n.recorder != nil {
+		reader.node = n
+		frameRead = &reader.lastReadNS
+	}
+	messages, err := wire.Read(&reader, n.options())
 	received := n.now()
 	if err != nil {
 		if s.ctx.Err() == nil {
+			n.diagnostic("tcp.frame-read-return", err)
 			if !errors.Is(err, io.EOF) {
 				n.counts.rejected.Add(1)
 			}
@@ -152,7 +161,7 @@ func (n *Node) readStream(id core.Token, s *ioStream, conn net.Conn) {
 		}
 		return
 	}
-	n.post(core.StreamMessage{ID: id, Received: received, Messages: messages})
+	n.postRead(core.StreamMessage{ID: id, Received: received, Messages: messages}, frameRead)
 }
 func (n *Node) writeStream(e core.WriteStream) {
 	n.streamMu.Lock()
@@ -203,12 +212,17 @@ func (n *Node) closeStream(id core.Token) {
 }
 
 type countingReader struct {
-	r      io.Reader
-	counts *counters
+	node       *Node
+	lastReadNS int64
+	r          io.Reader
+	counts     *counters
 }
 
-func (c countingReader) Read(b []byte) (int, error) {
+func (c *countingReader) Read(b []byte) (int, error) {
 	n, err := c.r.Read(b)
+	if c.node != nil {
+		c.lastReadNS = int64(c.node.now())
+	}
 	c.counts.received.Add(uint64(n))
 	return n, err
 }
