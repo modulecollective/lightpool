@@ -19,6 +19,7 @@ import (
 	"math/rand/v2"
 	"runtime"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -176,7 +177,7 @@ type netipKey string
 func Run(s Scenario) (Result, error) { return execute(s, nil) }
 
 func execute(s Scenario, x *exporter) (Result, error) {
-	if err := validate(s); err != nil {
+	if err := Validate(s); err != nil {
 		return Result{}, err
 	}
 	// Freeze caller-owned scenario buffers, including nested protocol settings.
@@ -207,7 +208,7 @@ func execute(s Scenario, x *exporter) (Result, error) {
 	}
 	r.manifest.PreparedFaults = slices.Clone(r.faults)
 	nodes := slices.Clone(s.Nodes)
-	slices.SortFunc(nodes, func(a, b Node) int { return stringsCompare(a.Identity.Name, b.Identity.Name) })
+	slices.SortFunc(nodes, func(a, b Node) int { return strings.Compare(a.Identity.Name, b.Identity.Name) })
 	for _, n := range nodes {
 		name := n.Identity.Name
 		r.order = append(r.order, name)
@@ -377,20 +378,9 @@ func execute(s Scenario, x *exporter) (Result, error) {
 	}
 	return result, nil
 }
-func stringsCompare(a, b string) int {
-	if a < b {
-		return -1
-	}
-	if a > b {
-		return 1
-	}
-	return 0
-}
 
 // Validate checks the simulator scenario boundary.
-func Validate(s Scenario) error { return validate(s) }
-
-func validate(s Scenario) error {
+func Validate(s Scenario) error {
 	if s.Code == "" || s.Horizon < 0 || s.EventBudget <= 0 || s.DatagramCapacity <= 0 || s.StreamCapacity <= 0 || s.Latency < 0 || len(s.Nodes) == 0 {
 		return errors.New("invalid scenario bounds or code revision")
 	}
