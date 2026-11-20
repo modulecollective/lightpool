@@ -5,7 +5,6 @@ package core
 
 import (
 	"cmp"
-	"encoding/json"
 	"github.com/modulecollective/lightpool/wire"
 	"net/netip"
 	"slices"
@@ -26,7 +25,7 @@ func (c *Core) finishBroadcast(b *broadcast, f Failure) {
 	}
 }
 func (c *Core) queue(m wire.Message, name string, command uint64) {
-	if old := c.broadcastKeys[name]; name != "" && old != nil {
+	if old := c.broadcastKeys[name]; old != nil {
 		c.finishBroadcast(old, Success)
 		c.broadcasts = slices.DeleteFunc(c.broadcasts, func(b *broadcast) bool { return b == old })
 	}
@@ -34,15 +33,9 @@ func (c *Core) queue(m wire.Message, name string, command uint64) {
 		c.emit(Result{Command: command})
 		command = 0
 	}
-	b, err := json.Marshal(m)
-	if err != nil {
-		panic(err)
-	}
-	record := &broadcast{message: m.Clone(), key: name, id: c.token().ID, size: len(b), command: command}
+	record := &broadcast{message: m.Clone(), key: name, id: c.token().ID, size: wire.MessageSize(m), command: command}
 	c.broadcasts = append(c.broadcasts, record)
-	if name != "" {
-		c.broadcastKeys[name] = record
-	}
+	c.broadcastKeys[name] = record
 }
 func broadcastCompare(a, b *broadcast) int {
 	if v := cmp.Compare(a.transmits, b.transmits); v != 0 {
@@ -70,22 +63,16 @@ func (c *Core) pack(base []wire.Message) []wire.Message {
 	sent := make(map[*broadcast]bool)
 	limit := retransmitLimit(c.config.RetransmitMult, len(c.nodes))
 	for _, b := range records {
-		cost := b.size
-		if len(messages) > 0 {
-			cost++
-		}
-		if used+cost > c.config.PacketBudget || len(messages) >= wire.MaxBatch {
+		if used+b.size > c.config.PacketBudget || len(messages) >= wire.MaxBatch {
 			continue
 		}
-		used += cost
+		used += b.size
 		messages = append(messages, b.message.Clone())
 		b.transmits++
 		if b.transmits >= limit {
 			sent[b] = true
 			c.finishBroadcast(b, Success)
-			if b.key != "" {
-				delete(c.broadcastKeys, b.key)
-			}
+			delete(c.broadcastKeys, b.key)
 		}
 	}
 	if len(sent) > 0 {
@@ -94,9 +81,9 @@ func (c *Core) pack(base []wire.Message) []wire.Message {
 	return messages
 }
 
-// frameOverhead includes the JSON batch brackets, checksum, label and AEAD overhead.
+// frameOverhead is the header, label, checksum and AEAD overhead of a frame.
 func frameOverhead(config Config) int {
-	n := wire.HeaderSize + len(config.Label) + 4 + 2
+	n := wire.HeaderSize + len(config.Label) + 4
 	if config.Protected {
 		n += 24
 	}

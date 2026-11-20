@@ -71,8 +71,7 @@ type Exchange struct {
 	Members []Member `json:"members"`
 }
 
-// Message is a closed tagged union: exactly one field must be set. No maps or
-// custom JSON decoding hooks occur anywhere in the body grammar.
+// Message is a closed tagged union: exactly one field must be set.
 type Message struct {
 	Ping     *Ping       `json:"ping,omitempty"`
 	Indirect *Indirect   `json:"indirect,omitempty"`
