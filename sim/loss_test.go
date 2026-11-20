@@ -75,6 +75,7 @@ func TestLossValidation(t *testing.T) {
 func TestLossSendBoundary(t *testing.T) {
 	s := fixture()
 	r := &runner{scenario: s, nodes: map[string]*machine{}, addresses: map[netipKey]string{}, ordinals: map[[2]string]uint64{}}
+	r.export = &exporter{event: trace.Event{Traffic: []trace.Traffic{}}}
 	for _, n := range s.Nodes {
 		r.nodes[n.Identity.Name] = &machine{spec: n, alive: true, life: 1}
 		r.addresses[netipKey(n.Identity.Address.String())] = n.Identity.Name
@@ -87,6 +88,15 @@ func TestLossSendBoundary(t *testing.T) {
 	}
 	if r.ordinals[[2]string{"a", "b"}] != 5 || r.nodes["a"].drops != 3 {
 		t.Fatal("window/count", r.ordinals, r.nodes["a"].drops)
+	}
+	reasons := map[string]int{}
+	for _, traffic := range r.export.event.Traffic {
+		if traffic.Stage == "drop" {
+			reasons[traffic.Detail]++
+		}
+	}
+	if reasons["directional fault"] != 1 || reasons["independent datagram loss"] != 2 {
+		t.Fatal("deterministic drop did not take precedence", reasons)
 	}
 	r.now = 21
 	r.faults = []Fault{{From: "a", To: "b", Start: 20, End: 30, Duplicate: true}}

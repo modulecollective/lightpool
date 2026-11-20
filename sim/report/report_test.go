@@ -416,3 +416,21 @@ func TestTextKeepsFaultContextReadable(t *testing.T) {
 		}
 	}
 }
+
+func TestIndependentLossFaultSurvivesOfflineReport(t *testing.T) {
+	f := newFixture(t, "100", []Fault{{From: "a", To: "b", Start: "10", End: "90", LossPPM: "100000"}})
+	f.event(1, "core.datagram", "a", "", member("a", "alive"))
+	f.event(20, "core.datagram", "a", "", member("a", "dead"))
+	f.end(true)
+	r := f.read()
+	if len(r.Declarations) != 1 || len(r.Declarations[0].Faults) != 1 || r.Declarations[0].Faults[0].LossPPM != "100000" {
+		t.Fatal("loss field was discarded", r.Declarations)
+	}
+	var text bytes.Buffer
+	if err := Write(&text, r, "text"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(text.String(), `"LossPPM":"100000"`) || strings.Contains(text.String(), "No loss probabilities") {
+		t.Fatal("loss context/model limit lost", text.String())
+	}
+}
