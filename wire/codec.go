@@ -8,16 +8,13 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"hash/crc32"
 	"io"
-	"strconv"
-	"unicode/utf8"
 )
 
 const HeaderSize = 12
-const Version = 1
+const Version = 2
 const encrypted = 2
 const MaxFrame = HeaderSize + MaxLabel + MaxBody + 28
 
@@ -47,29 +44,15 @@ func (o Options) Clone() Options {
 	}
 	return o
 }
-func body(messages []Message) ([]byte, error) {
-	if len(messages) == 0 || len(messages) > MaxBatch {
-		return nil, errors.New("invalid batch count")
-	}
-	for _, m := range messages {
-		if err := m.Validate(); err != nil {
-			return nil, err
-		}
-	}
-	b, err := json.Marshal(messages)
-	if len(b) > MaxBody {
-		return nil, errors.New("body exceeds limit")
-	}
-	return b, err
-}
 
-// Size is the exact frame size, including all protection overhead.
+// Size is the exact frame size, including all protection overhead, computed
+// without encoding.
 func Size(messages []Message, label string, protect bool) (int, error) {
-	b, err := body(messages)
+	n, err := bodySize(messages)
 	if err != nil {
 		return 0, err
 	}
-	n := HeaderSize + len(label) + len(b) + 4
+	n += HeaderSize + len(label) + 4
 	if protect {
 		n += 24
 	}
@@ -185,141 +168,4 @@ func Decode(frame []byte, o Options) ([]Message, error) {
 		b = b[:len(b)-4]
 	}
 	return DecodeBody(b)
-}
-
-// DecodeBody also serves external drivers and native fuzzing. JSON's normal
-// replacement of invalid UTF-8 or unpaired surrogates is refused before decode.
-func DecodeBody(b []byte) ([]Message, error) {
-	if len(b) > MaxBody || !utf8.Valid(b) || !validStrings(b) || !boundedJSON(b) {
-		return nil, errors.New("invalid body text")
-	}
-	var messages []Message
-	d := json.NewDecoder(bytes.NewReader(b))
-	d.DisallowUnknownFields()
-	if err := d.Decode(&messages); err != nil {
-		return nil, err
-	}
-	var trailing any
-	if d.Decode(&trailing) != io.EOF {
-		return nil, errors.New("trailing body content")
-	}
-	if len(messages) == 0 || len(messages) > MaxBatch {
-		return nil, errors.New("invalid batch count")
-	}
-	for _, m := range messages {
-		if err := m.Validate(); err != nil {
-			return nil, err
-		}
-	}
-	return messages, nil
-}
-func validStrings(b []byte) bool {
-	for j := 0; j < len(b); j++ {
-		if b[j] != '"' {
-			continue
-		}
-		j++
-		for ; j < len(b) && b[j] != '"'; j++ {
-			if b[j] != '\\' {
-				continue
-			}
-			j++
-			if j >= len(b) {
-				return false
-			}
-			if b[j] != 'u' {
-				continue
-			}
-			if j+4 >= len(b) {
-				return false
-			}
-			v, err := strconv.ParseUint(string(b[j+1:j+5]), 16, 16)
-			if err != nil {
-				return false
-			}
-			j += 4
-			if v >= 0xdc00 && v <= 0xdfff {
-				return false
-			}
-			if v >= 0xd800 && v <= 0xdbff {
-				if j+6 >= len(b) || b[j+1] != '\\' || b[j+2] != 'u' {
-					return false
-				}
-				w, e := strconv.ParseUint(string(b[j+3:j+7]), 16, 16)
-				if e != nil || w < 0xdc00 || w > 0xdfff {
-					return false
-				}
-				j += 6
-			}
-		}
-	}
-	return true
-}
-
-// Check array counts before encoding/json allocates the typed slices. A tiny
-// frame containing millions of empty objects must not expand into a huge batch.
-func boundedJSON(b []byte) bool {
-	type level struct {
-		array bool
-		count int
-	}
-	var stack [16]level
-	depth := 0
-	for i := 0; i < len(b); i++ {
-		c := b[i]
-		switch c {
-		case ' ', '\t', '\n', '\r', ',', ':':
-			continue
-		case ']', '}':
-			if depth == 0 {
-				return false
-			}
-			depth--
-			continue
-		}
-		if depth > 0 && stack[depth-1].array {
-			l := &stack[depth-1]
-			l.count++
-			limit := MaxNodes
-			if depth == 1 {
-				limit = MaxBatch
-			}
-			if l.count > limit {
-				return false
-			}
-		}
-		switch c {
-		case '[', '{':
-			if depth == len(stack) {
-				return false
-			}
-			stack[depth] = level{array: c == '['}
-			depth++
-		case '"':
-			// Skip the escaped byte too: even/odd backslash runs then naturally
-			// distinguish an escaped quote from the string's closing quote.
-			i++
-			for ; i < len(b) && b[i] != '"'; i++ {
-				if b[i] == '\\' {
-					i++
-				}
-			}
-			if i >= len(b) {
-				return false
-			}
-		default:
-			// Scalar tokens count once, regardless of their spelling or length.
-			// json.Valid below owns syntax, delimiters and token validation.
-			for i+1 < len(b) {
-				next := b[i+1]
-				if next == ',' || next == ']' || next == '}' || next == ' ' || next == '\t' || next == '\n' || next == '\r' {
-					break
-				}
-				i++
-			}
-		}
-	}
-	// Bound depth/counts before even the standard library's syntax scan can
-	// grow its nesting stack; typed member/message expansion happens later.
-	return depth == 0 && json.Valid(b)
 }

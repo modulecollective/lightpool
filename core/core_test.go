@@ -445,12 +445,8 @@ func TestBroadcastReferenceAndBudget(t *testing.T) {
 			var want []wire.Message
 			for idx := range ref {
 				i := &ref[idx]
-				cost := i.size
-				if len(want) > 0 {
-					cost++
-				}
-				if used+cost <= c.config.PacketBudget {
-					used += cost
+				if used+i.size <= c.config.PacketBudget {
+					used += i.size
 					want = append(want, i.message)
 					i.transmits++
 				}

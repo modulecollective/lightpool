@@ -103,40 +103,61 @@ new directory. See the [pilot contract](docs/experiment-v1.md) for implemented
 cases, exact populations, independent datagram loss and the opt-in Linux process
 probe. Resource limits and invalid warm-up remain explicit failed results.
 
-## Frame contract (wire version 1)
+## Frame contract (wire version 2)
 
-One envelope carries one bounded JSON message batch. UDP requires exactly
+One envelope carries one bounded binary message batch. UDP requires exactly
 one envelope; stream readers consume a header followed by its declared body.
-All multibyte integers use network byte order.
+All fixed-width integers use network byte order.
 
 | Offset | Size | Meaning |
 | --- | --- | --- |
 | 0 | 4 | ASCII `LPL!` |
-| 4 | 1 | Version `1` |
+| 4 | 1 | Version `2`; version 1 (JSON bodies) is rejected |
 | 5 | 1 | Flags: bit 1 AES-GCM; other bits rejected |
 | 6 | 2 | Label byte length, at most 64 |
 | 8 | 4 | Protected body length, at most 8 MiB + 28 |
 | 12 | variable | Label, then protected body |
 
-The JSON body is an array of 1–256 `wire.Message` records,
-encoded by `encoding/json.Marshal` with explicit field names. Exactly one
-message variant is permitted per record. Unknown fields, invalid text,
-trailing values, oversized arrays and invalid addresses are rejected.
-Names and labels are limited to 64 UTF-8 bytes, metadata to 512 bytes,
-exchanges to 16,384 nodes, and bodies to 8 MiB. The aggregate body limit
-still applies when individual fields fit. These bounds are fork contracts.
+The body is 1–256 messages concatenated, consuming the body exactly. Each
+message is one tag byte followed by its fields in fixed order:
+
+| Tag | Message | Fields |
+| --- | --- | --- |
+| 1 | ping | sequence, target text, source identity |
+| 2 | indirect | sequence, target identity, source identity |
+| 3 | ack | sequence |
+| 4 | nack | sequence |
+| 5 | alive | member |
+| 6 | suspect | node text, incarnation, accuser text |
+| 7 | dead | node text, incarnation, accuser text |
+| 8 | exchange | member count, members |
+
+A sequence is 8 bytes. Incarnations, lengths and counts are unsigned
+varints (`encoding/binary` uvarint) in their shortest form. Text and bytes
+are a length followed by the bytes; text is UTF-8. An identity is name text,
+address and metadata bytes. An address is one length byte (4 or 16), the IP
+and a 2-byte port. A member is an identity, incarnation and one state byte
+(0 alive, 1 suspect, 2 dead, 3 left). Every value has exactly one encoding:
+overlong varints, unknown tags, out-of-range states and address lengths,
+trailing bytes and invalid identities are rejected, and an accepted body
+re-encodes to the same bytes. Names and labels are limited to 64 bytes,
+metadata to 512 bytes, exchanges to 16,384 members and bodies to 8 MiB.
+Lengths and counts are checked against these limits and against the bytes
+remaining before anything is allocated. These bounds are fork contracts.
 
 Plaintext ends in a four-byte IEEE CRC32 over header, label and body.
 Encrypted bodies use standard-library AES-GCM with a random 12-byte nonce
 and 16-byte tag; the header and label are authenticated additional data.
 A configured keyring requires encrypted input and output. Datagram budgeting
-uses the exact frame size, including base64 metadata, batch
-punctuation, label and protection. The default budget remains 1,400 bytes.
+uses the exact frame size, computed without encoding, including label and
+protection. The default budget remains 1,400 bytes. A suspect record costs
+about 20 bytes and an alive record with 24 bytes of metadata about 44, so a
+datagram carries roughly 69 or 31 of them.
 
 The independent unencrypted ACK fixture (sequence 7, no label) is:
 
 ```text
-4c504c21010000000000001c5b7b2261636b223a7b2273657175656e6365223a377d7d5da1448745
+4c504c21020000000000000d030000000000000007ce2ece0b
 ```
 
 ## Checks
@@ -148,6 +169,7 @@ go mod tidy -diff
 go test ./...
 go test -race -count=1 ./...
 go test ./wire -run '^$' -fuzz FuzzFrame -fuzztime 10s
+go test ./wire -run '^$' -fuzz FuzzBody -fuzztime 10s
 ```
 
 Inherited copyright notices and the MPL-2.0 license remain in the repository.
