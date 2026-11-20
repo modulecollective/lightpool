@@ -208,7 +208,7 @@ func TestNotifyDeliversMembershipInOrder(t *testing.T) {
 	}
 }
 func TestEncryptedLabeledLoopbackAndRotation(t *testing.T) {
-	old, newKey := bytes.Repeat([]byte{1}, 16), bytes.Repeat([]byte{2}, 32)
+	old, newKey := bytes.Repeat([]byte{1}, 32), bytes.Repeat([]byte{2}, 32)
 	ka, err := NewKeyring(old)
 	if err != nil {
 		t.Fatal(err)
@@ -269,7 +269,7 @@ func TestEncryptedLabeledLoopbackAndRotation(t *testing.T) {
 	}
 	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(time.Second))
-	frame, err := wire.Encode([]wire.Message{{Ping: &wire.Ping{Sequence: 123, Target: "a", Source: b.Identity()}}}, wire.Options{Label: ca.Protocol.Label, Keys: ka.Keys()})
+	frame, err := wire.Encode([]wire.Message{{Ping: &wire.Ping{Sequence: 123, Target: "a", Source: b.Identity()}}}, wire.Options{Label: ca.Protocol.Label, Keys: ka.frameKeys()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +278,7 @@ func TestEncryptedLabeledLoopbackAndRotation(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	reply, err := wire.Read(conn, wire.Options{Label: ca.Protocol.Label, Keys: ka.Keys()})
+	reply, err := wire.Read(conn, wire.Options{Label: ca.Protocol.Label, Keys: ka.frameKeys()})
 	if err != nil || len(reply) != 1 || reply[0].Ack == nil || reply[0].Ack.Sequence != 123 {
 		t.Fatal(reply, err)
 	}
@@ -296,7 +296,12 @@ func TestBindRulesAndKeyOwnership(t *testing.T) {
 	if _, err := New(c); err == nil {
 		t.Fatal("wildcard advertised implicitly")
 	}
-	key := bytes.Repeat([]byte{1}, 16)
+	for _, size := range []int{16, 24, 31, 33} {
+		if _, err := NewKeyring(make([]byte, size)); err == nil {
+			t.Fatalf("accepted a %d-byte key", size)
+		}
+	}
+	key := bytes.Repeat([]byte{1}, 32)
 	k, err := NewKeyring(key)
 	if err != nil {
 		t.Fatal(err)
@@ -309,6 +314,12 @@ func TestBindRulesAndKeyOwnership(t *testing.T) {
 	}
 	if err = k.Remove(k.Keys()[0]); err == nil {
 		t.Fatal("removed primary key")
+	}
+	if err = k.Add(make([]byte, 24)); err == nil || len(k.Keys()) != 1 {
+		t.Fatal("accepted a 24-byte key")
+	}
+	if _, err = New(Config{Name: "z", Bind: netip.MustParseAddrPort("127.0.0.1:0"), Protocol: c.Protocol, Keyring: &Keyring{}}); err == nil {
+		t.Fatal("accepted an empty keyring")
 	}
 }
 
