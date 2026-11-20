@@ -407,3 +407,28 @@ completed experiment. The existing `run.sh` remains the independent recipe
 and refuses cells whose regenerated rows differ. It does not inventory or
 package attempts automatically; archive its working attempt directories and
 available external sidecars/diagnostics before discarding them.
+
+### Ordinary recorder timing and virtual companions
+
+`experiments/2026-11-20-ordinary-witness/verify.sh NEW_DIRECTORY` restores the
+26 original attempts, verifies raw checksums and binary identities, replays
+the recorded healthy nodes, and checks the derived virtual and timing tables.
+The virtual table includes chain stopping points, exposure and validity.
+Interpret counts only in rows with complete status.
+
+From the same record, `run.sh NEW_DIRECTORY` regenerates the 18 virtual
+fixtures and checks their deterministic outputs. `healthy.sh NEW_DIRECTORY`
+runs four pairs of fresh healthy processes with the observer recorder off
+and on, alternating mode order. Each process runs eight loopback nodes and
+measures 200 rounds of eight concurrent pings. Each output directory must be
+new. Keep the original evidence when comparing regenerated timing samples.
+
+The timing table reports nearest-rank quantiles separately for each process.
+Time columns use nanoseconds. Queue depth counts pending input, command and
+deferred events after dequeue. UDP read-to-handle begins when the socket read
+returns. A TCP frame sample, when present, begins at the final socket read.
+Owner time includes effects through dispatch. Recorder time covers preparing
+and submitting the input and transition data, through capture of the end
+timestamp. Encoding and submitting the end record falls outside that sample.
+Only enabled processes supply internal timing. Local replay reproduces the
+core inputs, effects and inspection for one node in sequence.

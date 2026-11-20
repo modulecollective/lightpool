@@ -15,6 +15,8 @@ uname -a > "$out/host.txt"
 go version -m "$out/driver.test" >> "$out/host.txt"
 printf 'attempt\tdirectory\tprovenance\texitCode\tstatus\trawBytes\tstoredBytes\n' > "$out/evidence.tsv"
 size() { find "$1" -maxdepth 1 -type f -printf '%s\n' | awk '{n+=$1}END{printf "%.0f",n}'; }
+provenance=original
+if [[ -e "$record/evidence.tsv" ]]; then provenance=regenerated; fi
 for pair in 1 2 3 4; do
   modes=(off on)
   if (( pair % 2 == 0 )); then modes=(on off); fi
@@ -32,7 +34,7 @@ for pair in 1 2 3 4; do
     "$repo/experiments/evidence.sh" pack "$raw" "$out/evidence/$id"
     status=complete
     if ((code!=0)); then status=incomplete; fi
-    printf '%s\tevidence/%s\toriginal\t%s\t%s\t%s\t%s\n' "$id" "$id" "$code" "$status" "$(size "$raw")" "$(size "$out/evidence/$id")" >> "$out/evidence.tsv"
+    printf '%s\tevidence/%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$id" "$provenance" "$code" "$status" "$(size "$raw")" "$(size "$out/evidence/$id")" >> "$out/evidence.tsv"
     echo "retained $id ($status)"
   done
 done
