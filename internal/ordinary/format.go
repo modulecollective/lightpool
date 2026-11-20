@@ -25,6 +25,7 @@ func Encode(v any) (Value, error) {
 	b, err := json.Marshal(v)
 	return Value{Kind: reflect.TypeOf(v).Name(), Body: b}, err
 }
+
 func (v Value) Event() (core.Event, error) {
 	var event core.Event
 	switch v.Kind {
@@ -70,6 +71,7 @@ func (v Value) Event() (core.Event, error) {
 	}
 	return reflect.ValueOf(event).Elem().Interface().(core.Event), nil
 }
+
 func Decode(b []byte, v any) error {
 	d := json.NewDecoder(bytes.NewReader(b))
 	d.DisallowUnknownFields()
@@ -130,11 +132,13 @@ type End struct {
 	EndNS      int64  `json:"endNS"`
 	RecorderNS int64  `json:"recorderNS"`
 }
+
 type Diagnostic struct {
 	Boundary string `json:"boundary"`
 	AtNS     int64  `json:"atNS"`
 	Error    string `json:"error"`
 }
+
 type Footer struct {
 	Sequence uint64 `json:"sequence"`
 	Records  uint64 `json:"records"`

@@ -8,8 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/modulecollective/lightpool/core"
-	"github.com/modulecollective/lightpool/wire"
 	"net/netip"
 	"os"
 	"os/exec"
@@ -18,6 +16,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modulecollective/lightpool/core"
+	"github.com/modulecollective/lightpool/wire"
 )
 
 func fixture() Scenario {
@@ -33,6 +34,7 @@ func fixture() Scenario {
 	}
 	return Scenario{Code: "test-reference", Protocol: cfg, Nodes: nodes, Seeds: Seeds{1, 2, 3}, Horizon: core.Instant(time.Second), EventBudget: 100000, DatagramCapacity: 4096, StreamCapacity: 64, Latency: time.Millisecond, Actions: []Action{{At: core.Instant(10 * time.Millisecond), Kind: "join", Node: "b", Peer: "a"}, {At: core.Instant(100 * time.Millisecond), Kind: "join", Node: "c", Peer: "a"}}}
 }
+
 func run(t testing.TB, s Scenario) Result {
 	t.Helper()
 	r, err := Run(s)
@@ -63,6 +65,7 @@ func effects(r Result, kind string) []json.RawMessage {
 	}
 	return found
 }
+
 func members(r Result, node string) map[string]wire.State {
 	out := make(map[string]wire.State)
 	for _, m := range r.Measurements {
@@ -117,6 +120,7 @@ func chunked(t testing.TB, s *Scenario, parts int) {
 	}
 	s.StreamCapacity = len(b)/parts + 1
 }
+
 func TestHealthyJoinAndEncodedTraffic(t *testing.T) {
 	r := run(t, fixture())
 	for _, name := range []string{"a", "b", "c"} {
@@ -133,6 +137,7 @@ func TestHealthyJoinAndEncodedTraffic(t *testing.T) {
 		}
 	}
 }
+
 func TestIndirectAndTCPOnly(t *testing.T) {
 	for _, tcpOnly := range []bool{false, true} {
 		s := fixture()
@@ -177,6 +182,7 @@ func TestIndirectAndTCPOnly(t *testing.T) {
 		}
 	}
 }
+
 func TestCrashPartitionHealingAndRejoin(t *testing.T) {
 	crash := fixture()
 	crash.Horizon = core.Instant(2 * time.Second)
@@ -211,6 +217,7 @@ func TestCrashPartitionHealingAndRejoin(t *testing.T) {
 		t.Fatal("partition never exercised suspicion")
 	}
 }
+
 func TestPauseBuffersAndBackpressure(t *testing.T) {
 	s := fixture()
 	s.Horizon = core.Instant(2 * time.Second)
@@ -492,6 +499,7 @@ func TestFaultsDuplicateDelayAndIncomplete(t *testing.T) {
 		t.Fatal("encryption silently ignored")
 	}
 }
+
 func raceScenario(seed uint64) Scenario {
 	s := fixture()
 	s.Nodes = s.Nodes[:2]
@@ -507,6 +515,7 @@ func raceScenario(seed uint64) Scenario {
 	s.Seeds.Schedule = seed
 	return s
 }
+
 func TestScheduleSeedExploresEqualTimeRace(t *testing.T) {
 	seen := map[core.Failure]bool{}
 	var reference Manifest
@@ -532,12 +541,14 @@ func TestScheduleSeedExploresEqualTimeRace(t *testing.T) {
 		t.Fatal("equal-time race did not explore both outcomes", seen)
 	}
 }
+
 func replayScenario() Scenario {
 	s := fixture()
 	s.Faults = []Fault{{From: "a", To: "b", Start: core.Instant(500 * time.Millisecond), End: s.Horizon, Drop: true, Duplicate: true, Delay: time.Millisecond, Jitter: time.Millisecond}}
 	s.Actions = append(s.Actions, Action{At: core.Instant(600 * time.Millisecond), Node: "a", Kind: "probe", Peer: "b"}, Action{At: core.Instant(700 * time.Millisecond), Node: "c", Kind: "pause", Duration: 50 * time.Millisecond})
 	return s
 }
+
 func TestReplayProcess(t *testing.T) {
 	if os.Getenv("LIGHTPOOL_REPLAY_CHILD") != "1" {
 		return
@@ -551,6 +562,7 @@ func TestReplayProcess(t *testing.T) {
 	_, _ = os.Stdout.Write(b)
 	os.Exit(0)
 }
+
 func TestFreshProcessReplay(t *testing.T) {
 	var reference []byte
 	for j := range 10 {
@@ -597,6 +609,7 @@ func TestPausedReceiveBufferOverflow(t *testing.T) {
 		t.Fatal("buffered datagram was not delivered on resume")
 	}
 }
+
 func TestStreamClosesMidFrame(t *testing.T) {
 	s := fixture()
 	chunked(t, &s, 8)

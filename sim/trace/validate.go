@@ -15,6 +15,7 @@ func number(v string) error {
 	}
 	return nil
 }
+
 func instant(v string) error {
 	if err := number(v); err != nil {
 		return err
@@ -22,12 +23,14 @@ func instant(v string) error {
 	_, err := strconv.ParseInt(v, 10, 64)
 	return err
 }
+
 func (v *validator) node(n string) error {
 	if !v.names[n] {
 		return fmt.Errorf("invalid node reference %q", n)
 	}
 	return nil
 }
+
 func (v *validator) process(p Process) error {
 	if err := v.node(p.Node); err != nil {
 		return err
@@ -37,6 +40,7 @@ func (v *validator) process(p Process) error {
 	}
 	return instant(p.PausedUntil)
 }
+
 func (v *validator) summary(s *Summary) error {
 	if s == nil {
 		return fmt.Errorf("missing summary")
@@ -53,6 +57,7 @@ func (v *validator) summary(s *Summary) error {
 	}
 	return nil
 }
+
 func (v *validator) totals(t Totals) error {
 	for _, n := range []string{t.SentBytes, t.ReceivedBytes, t.DatagramDrops, t.Detections} {
 		if err := number(n); err != nil {
@@ -61,6 +66,7 @@ func (v *validator) totals(t Totals) error {
 	}
 	return nil
 }
+
 func (v *validator) payload(b []byte, kind string) error {
 	switch kind {
 	case "header":

@@ -36,11 +36,13 @@ func (c *Core) Inspection() []Inspection {
 	}
 	return out
 }
+
 func (c *Core) record(e Inspection) {
 	if c.inspect {
 		c.journal = append(c.journal, e)
 	}
 }
+
 func (c *Core) recordMember(n wire.Member) {
 	if c.inspect {
 		c.record(Inspection{Kind: "member.upsert", Member: ptrMember(n)})
@@ -51,6 +53,7 @@ func (c *Core) recordMember(n wire.Member) {
 func (c *Core) Summary() Snapshot {
 	return Snapshot{Now: c.now, Health: c.health, Backlog: len(c.broadcasts), PendingStreams: len(c.streams), Stopped: c.stopped, Left: c.left, Stats: c.stats}
 }
+
 func (c *Core) recordProbe(p *probe, phase, outcome string) {
 	if !c.inspect {
 		return

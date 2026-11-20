@@ -29,6 +29,7 @@ func smallFixture(t *testing.T) (Spec, sim.Scenario) {
 	spec.HorizonNS = int64(s.Horizon)
 	return spec, s
 }
+
 func TestRunnerSavedInputReplayAndOverwriteRefusal(t *testing.T) {
 	spec, s := smallFixture(t)
 	directory := filepath.Join(t.TempDir(), "run")
@@ -78,6 +79,7 @@ func TestRunnerSavedInputReplayAndOverwriteRefusal(t *testing.T) {
 		t.Fatal("accepted inconsistent report")
 	}
 }
+
 func TestRunnerRetainsIncompleteAndInvalidEvidence(t *testing.T) {
 	for _, kind := range []string{"event-budget", "trace-cap", "header-cap", "invalid-warmup"} {
 		t.Run(kind, func(t *testing.T) {
@@ -151,6 +153,7 @@ type brokenOutput struct {
 
 func (w *brokenOutput) Write([]byte) (int, error) { return 0, w.writeErr }
 func (w *brokenOutput) Close() error              { w.closed = true; return w.closeErr }
+
 func TestRecordingPropagatesWriteAndCloseFailures(t *testing.T) {
 	_, s := smallFixture(t)
 	closeErr := errors.New("close failed")
@@ -160,6 +163,7 @@ func TestRecordingPropagatesWriteAndCloseFailures(t *testing.T) {
 		t.Fatal("write/close failures lost", err, out.closed)
 	}
 }
+
 func TestFixtureShapesAndSeedNamespaces(t *testing.T) {
 	for _, name := range []string{"healthy", "crash", "threshold", "interval", "loss", "correlated", "threshold-128", "ordinary-healthy", "ordinary-pause", "ordinary-crash"} {
 		spec, s, err := Fixture(name, 1, "source")

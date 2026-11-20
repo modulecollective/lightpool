@@ -5,10 +5,11 @@ package core
 
 import (
 	"bytes"
-	"github.com/modulecollective/lightpool/wire"
 	"math"
 	"net/netip"
 	"time"
+
+	"github.com/modulecollective/lightpool/wire"
 )
 
 type suspicion struct {
@@ -23,13 +24,16 @@ func suspicionTimeout(mult, n int, interval time.Duration) time.Duration {
 	scale := math.Max(1, math.Log10(math.Max(1, float64(n))))
 	return time.Duration(mult) * time.Duration(scale*1000) * interval / 1000
 }
+
 func retransmitLimit(mult, n int) int { return mult * int(math.Ceil(math.Log10(float64(n+1)))) }
+
 func pushPullScale(interval time.Duration, n int) time.Duration {
 	if n <= 32 {
 		return interval
 	}
 	return time.Duration(math.Ceil(math.Log2(float64(n))-5)+1) * interval
 }
+
 func (s *suspicion) duration() time.Duration {
 	if s.k < 1 {
 		return s.min
@@ -38,6 +42,7 @@ func (s *suspicion) duration() time.Duration {
 	raw := s.max.Seconds() - frac*(s.max.Seconds()-s.min.Seconds())
 	return max(s.min, time.Duration(math.Floor(1000*raw))*time.Millisecond)
 }
+
 func (c *Core) allowed(ip netip.Addr) bool {
 	if c.config.Allowed == nil {
 		return true
@@ -49,10 +54,12 @@ func (c *Core) allowed(ip netip.Addr) bool {
 	}
 	return false
 }
+
 func (c *Core) fitsAlive(n wire.Member) bool {
 	size, err := wire.Size([]wire.Message{{Alive: &n}}, c.config.Label, c.config.Protected)
 	return err == nil && size <= c.config.PacketBudget
 }
+
 func (c *Core) alive(n wire.Member) {
 	if !c.fitsAlive(n) {
 		c.emit(Observation{Kind: "oversize-alive", Node: n.Name, Value: 1})
@@ -114,6 +121,7 @@ func (c *Core) alive(n wire.Member) {
 		c.notify(kind, n)
 	}
 }
+
 func (c *Core) refute(inc uint64) {
 	n := c.nodes[c.self]
 	if c.left {
@@ -127,6 +135,7 @@ func (c *Core) refute(inc uint64) {
 	c.queue(wire.Message{Alive: ptrMember(n.Member)}, c.self, 0)
 	c.notify("refute", n.Member)
 }
+
 func (c *Core) suspect(a wire.Accusation) {
 	n := c.nodes[a.Node]
 	if n == nil || a.Incarnation < n.Incarnation {
@@ -168,6 +177,7 @@ func (c *Core) suspect(a wire.Accusation) {
 	c.record(Inspection{Kind: "suspicion", Subject: a.Node, Outcome: "started:" + a.From})
 	c.arm("suspect:"+a.Node, "suspicion", c.now.Add(s.duration()), 0, a.Node)
 }
+
 func (c *Core) dead(a wire.Accusation) {
 	n := c.nodes[a.Node]
 	if n == nil || a.Incarnation < n.Incarnation {
@@ -192,6 +202,7 @@ func (c *Core) dead(a wire.Accusation) {
 	c.queue(wire.Message{Dead: &a}, a.Node, 0)
 	c.notify("leave", n.Member)
 }
+
 func (c *Core) update(e Update) {
 	if c.left || len(e.Meta) > wire.MaxMeta {
 		c.emit(Result{Command: e.Command, Failure: LocalFailure})
@@ -211,6 +222,7 @@ func (c *Core) update(e Update) {
 	c.queue(wire.Message{Alive: ptrMember(n.Member)}, c.self, e.Command)
 	c.notify("update", n.Member)
 }
+
 func (c *Core) leave(command uint64) {
 	if c.left {
 		c.emit(Result{Command: command})
@@ -224,6 +236,7 @@ func (c *Core) leave(command uint64) {
 	// as Update: queue completion, including invalidation, never remote receipt.
 	c.queue(wire.Message{Dead: &a}, c.self, command)
 }
+
 func (c *Core) hasPeers() bool {
 	for _, name := range c.order {
 		if name != c.self {
@@ -235,6 +248,7 @@ func (c *Core) hasPeers() bool {
 	}
 	return false
 }
+
 func (c *Core) randomNodes(k int, exclude func(*member) bool) []*member {
 	n := len(c.order)
 	out := make([]*member, 0, k)
@@ -270,6 +284,7 @@ func (c *Core) randomNodes(k int, exclude func(*member) bool) []*member {
 	}
 	return out
 }
+
 func (c *Core) resetNodes() {
 	kept := c.order[:0]
 	for _, name := range c.order {

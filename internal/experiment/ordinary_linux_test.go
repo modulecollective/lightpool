@@ -26,6 +26,7 @@ import (
 const ordinaryPoll = 100 * time.Millisecond
 
 type pilotCommand struct{ Kind, Peer string }
+
 type pilotMessage struct {
 	Kind     string             `json:"kind"`
 	Node     string             `json:"node"`
@@ -50,6 +51,7 @@ func TestOrdinaryPilotNode(t *testing.T) {
 	}
 	os.Exit(0)
 }
+
 func pilotNode(name string) error {
 	cfg := lightpool.DefaultConfig(name)
 	cfg.Bind = netip.MustParseAddrPort("127.0.0.1:0")
@@ -134,22 +136,26 @@ type child struct {
 	identity wire.Identity
 	log      *os.File
 }
+
 type received struct {
 	message pilotMessage
 	at      time.Time
 	err     error
 }
+
 type sampleState struct {
 	StartNS    int64        `json:"startNS,string"`
 	EndNS      int64        `json:"endNS,string"`
 	ReceivedNS int64        `json:"receivedNS,string"`
 	Message    pilotMessage `json:"message"`
 }
+
 type observedTransition struct {
 	Observer, Subject, Before, After string
 	LowerNS                          int64 `json:"lowerNS,string"`
 	UpperNS                          int64 `json:"upperNS,string"`
 }
+
 type ordinaryEvidence struct {
 	Status                                string      `json:"status"`
 	Reason                                string      `json:"reason"`
@@ -170,6 +176,7 @@ type ordinaryEvidence struct {
 	Joins                                 []pilotMessage       `json:"joins"`
 	Limits                                []string             `json:"limits"`
 }
+
 type signalEvidence struct {
 	Signal      string
 	RequestedNS int64 `json:"requestedNS,string"`
@@ -196,6 +203,7 @@ func TestOrdinaryPilot(t *testing.T) {
 		}
 	}
 }
+
 func runOrdinary(t *testing.T, root, name string, replicate uint64) {
 	directory := filepath.Join(root, fmt.Sprintf("%s-%d", name, replicate))
 	if err := os.Mkdir(directory, 0700); err != nil {
@@ -479,6 +487,7 @@ func runOrdinary(t *testing.T, root, name string, replicate uint64) {
 		}
 	}
 }
+
 func snapshotStates(s *core.Snapshot) map[string]string {
 	out := map[string]string{}
 	if s != nil {
@@ -488,6 +497,7 @@ func snapshotStates(s *core.Snapshot) map[string]string {
 	}
 	return out
 }
+
 func fullMembership(s *core.Snapshot, children []*child) bool {
 	if s == nil || len(s.Members) != 8 {
 		return false
@@ -500,6 +510,7 @@ func fullMembership(s *core.Snapshot, children []*child) bool {
 	}
 	return true
 }
+
 func awaitProcessState(pid int, stopped bool) (string, error) {
 	deadline := time.Now().Add(time.Second)
 	for {
@@ -545,6 +556,7 @@ func TestPilotOutputChild(t *testing.T) {
 	}
 	os.Exit(0)
 }
+
 func TestChildExitDoesNotCloseUndrainedSamples(t *testing.T) {
 	executable, err := os.Executable()
 	if err != nil {

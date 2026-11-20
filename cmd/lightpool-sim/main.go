@@ -22,6 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 }
+
 func run(args []string, stderr io.Writer) error {
 	flags := flag.NewFlagSet("lightpool-sim", flag.ContinueOnError)
 	flags.SetOutput(stderr)
@@ -83,6 +84,7 @@ func run(args []string, stderr io.Writer) error {
 	}
 	return nil
 }
+
 func readScenario(path string) (sim.Scenario, error) {
 	var s = sim.Scenario{Protocol: core.DefaultConfig()}
 	f, err := os.Open(path)

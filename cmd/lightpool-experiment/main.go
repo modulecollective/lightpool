@@ -20,6 +20,7 @@ func main() {
 		os.Exit(1)
 	}
 }
+
 func run(args []string, stderr io.Writer) error {
 	flags := flag.NewFlagSet("lightpool-experiment", flag.ContinueOnError)
 	flags.SetOutput(stderr)
@@ -76,6 +77,7 @@ func run(args []string, stderr io.Writer) error {
 		_, _ = fmt.Fprintf(stderr, "sim=%s events=%d trace=%d bytes\n", time.Duration(p.Time), p.Events, p.Bytes)
 	})
 }
+
 func sourceIdentity(explicit string) string {
 	if explicit != "" {
 		return explicit

@@ -13,27 +13,31 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/modulecollective/lightpool/core"
-	"github.com/modulecollective/lightpool/sim/trace"
-	"github.com/modulecollective/lightpool/wire"
 	"math/rand/v2"
 	"runtime"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/modulecollective/lightpool/core"
+	"github.com/modulecollective/lightpool/sim/trace"
+	"github.com/modulecollective/lightpool/wire"
 )
 
 type Seeds struct{ Protocol, Fault, Schedule uint64 }
+
 type Node struct {
 	Identity wire.Identity
 	Service  time.Duration
 }
+
 type Action struct {
 	At               core.Instant
 	Node, Kind, Peer string
 	Data             []byte
 	Duration         time.Duration
 }
+
 type Fault struct {
 	From, To      string
 	Start, End    core.Instant
@@ -43,6 +47,7 @@ type Fault struct {
 	StreamFailure bool
 	LossPPM       int `json:",omitempty"`
 }
+
 type Scenario struct {
 	Code                             string
 	Protocol                         core.Config
@@ -55,10 +60,12 @@ type Scenario struct {
 	DatagramCapacity, StreamCapacity int
 	Latency                          time.Duration
 }
+
 type NodeSeed struct {
 	Name string
 	Seed core.Seed
 }
+
 type Manifest struct {
 	Code, Toolchain, Generator string
 	Platform                   string
@@ -67,12 +74,14 @@ type Manifest struct {
 	PreparedFaults             []Fault
 	LossDraw                   string `json:",omitempty"`
 }
+
 type Trace struct {
 	Order, ID        uint64
 	Time             core.Instant
 	Node, Kind, Hash string
 	Effects          []json.RawMessage
 }
+
 type NodeMeasurement struct {
 	Name                                                string
 	Running                                             bool
@@ -80,6 +89,7 @@ type NodeMeasurement struct {
 	Snapshot                                            core.Snapshot
 	SentBytes, ReceivedBytes, DatagramDrops, Detections uint64
 }
+
 type Result struct {
 	Manifest     Manifest
 	Trace        []Trace
@@ -101,6 +111,7 @@ type machine struct {
 	buffered                          int
 	sent, received, drops, detections uint64
 }
+
 type event struct {
 	at         core.Instant
 	id         uint64
@@ -114,15 +125,18 @@ type event struct {
 	direction  int
 	traffic    *trace.Traffic
 }
+
 type eventHeap []*event
 
 func (h eventHeap) Len() int { return len(h) }
+
 func (h eventHeap) Less(i, j int) bool {
 	if h[i].at != h[j].at {
 		return h[i].at < h[j].at
 	}
 	return h[i].id < h[j].id
 }
+
 func (h eventHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
 func (h *eventHeap) Push(v any)   { *h = append(*h, v.(*event)) }
 func (h *eventHeap) Pop() any     { old := *h; v := old[len(old)-1]; *h = old[:len(old)-1]; return v }
@@ -138,6 +152,7 @@ type direction struct {
 	generation    uint64
 	delivered     bool
 }
+
 type connection struct {
 	id             uint64
 	names          [2]string
@@ -153,6 +168,7 @@ type connection struct {
 	waitingDrain   *event
 	opening        trace.Traffic
 }
+
 type runner struct {
 	scenario       Scenario
 	manifest       Manifest
@@ -427,6 +443,7 @@ func Validate(s Scenario) error {
 	}
 	return nil
 }
+
 func nodeSeed(seed uint64, name string, life uint64) core.Seed {
 	b := binary.LittleEndian.AppendUint64(nil, seed)
 	b = append(b, []byte(name)...)
@@ -436,8 +453,10 @@ func nodeSeed(seed uint64, name string, life uint64) core.Seed {
 	sum := sha256.Sum256(b)
 	return core.Seed{State: binary.LittleEndian.Uint64(sum[:8]), Stream: binary.LittleEndian.Uint64(sum[8:16]), Lifetime: life}
 }
+
 func hash(b []byte) string         { sum := sha256.Sum256(b); return hex.EncodeToString(sum[:]) }
 func (r *runner) enqueue(e *event) { r.next++; e.id = r.next; heap.Push(&r.heap, e) }
+
 func (r *runner) pop() *event {
 	first := heap.Pop(&r.heap).(*event)
 	same := []*event{first}
@@ -454,6 +473,7 @@ func (r *runner) pop() *event {
 	}
 	return out
 }
+
 func (r *runner) coreEvent(name string, at core.Instant, input core.Event) *event {
 	m := r.nodes[name]
 	if m != nil && m.alive {
@@ -463,6 +483,7 @@ func (r *runner) coreEvent(name string, at core.Instant, input core.Event) *even
 	}
 	return nil
 }
+
 func (r *runner) action(a Action) error {
 	m := r.nodes[a.Node]
 	switch a.Kind {
@@ -531,6 +552,7 @@ func (r *runner) action(a Action) error {
 	r.coreEvent(a.Node, r.now, input)
 	return nil
 }
+
 func (r *runner) fault(from, to string, at core.Instant) Fault {
 	result := Fault{}
 	for _, f := range r.faults {
@@ -544,6 +566,7 @@ func (r *runner) fault(from, to string, at core.Instant) Fault {
 	}
 	return result
 }
+
 func (r *runner) effect(name string, e core.Effect) {
 	m := r.nodes[name]
 	switch e := e.(type) {
@@ -611,6 +634,7 @@ func (r *runner) effect(name string, e core.Effect) {
 	case core.Observation, core.Result:
 	}
 }
+
 func (r *runner) datagramArrival(e *event) {
 	to := e.action.Node
 	m := r.nodes[to]
@@ -660,6 +684,7 @@ func (r *runner) datagramArrival(e *event) {
 		pending.traffic = &t
 	}
 }
+
 func (r *runner) open(name string, e core.OpenStream) {
 	to := r.addresses[netipKey(e.To.String())]
 	t := r.attempt("stream", name, to, nil, 0)
@@ -699,10 +724,12 @@ func (r *runner) open(name string, e core.OpenStream) {
 	r.enqueue(&event{at: at, kind: "connect", stream: id})
 	r.enqueue(&event{at: e.Deadline, kind: "connect-expire", stream: id})
 }
+
 func (r *runner) readDeadline(conn *connection, side int, at core.Instant) {
 	conn.readGeneration[side]++
 	r.enqueue(&event{at: at, kind: "read-expire", stream: conn.id, direction: side, life: conn.readGeneration[side]})
 }
+
 func (r *runner) write(name string, e core.WriteStream) {
 	id := r.tokens[name][e.ID]
 	conn := r.streams[id]
@@ -774,6 +801,7 @@ func (r *runner) write(name string, e core.WriteStream) {
 	r.enqueue(&event{at: e.Deadline, kind: "write-expire", stream: id, direction: side, life: d.generation})
 	r.pump(conn, side)
 }
+
 func (r *runner) pump(conn *connection, side int) {
 	if conn.closed {
 		return
@@ -797,6 +825,7 @@ func (r *runner) pump(conn *connection, side int) {
 	t := d.traffic
 	r.enqueue(&event{at: r.now.Add(r.scenario.Latency + r.fault(from, to, r.now).Delay), kind: "chunk", stream: conn.id, direction: side, life: d.generation, frame: chunk, traffic: &t})
 }
+
 func (r *runner) chunkArrival(e *event) {
 	if e.traffic != nil {
 		t := *e.traffic
@@ -850,6 +879,7 @@ func (r *runner) chunkArrival(e *event) {
 		r.enqueue(pending)
 	}
 }
+
 func (r *runner) drain(e *event) {
 	conn := r.streams[e.stream]
 	if conn == nil || conn.closed {
@@ -880,6 +910,7 @@ func (r *runner) drain(e *event) {
 	d.assembled = nil
 	d.frame = nil
 }
+
 func (r *runner) close(conn *connection, f core.Failure) {
 	if conn == nil || conn.closed {
 		return

@@ -5,9 +5,10 @@ package core
 
 import (
 	"cmp"
-	"github.com/modulecollective/lightpool/wire"
 	"net/netip"
 	"slices"
+
+	"github.com/modulecollective/lightpool/wire"
 )
 
 type broadcast struct {
@@ -24,6 +25,7 @@ func (c *Core) finishBroadcast(b *broadcast, f Failure) {
 		b.command = 0
 	}
 }
+
 func (c *Core) queue(m wire.Message, name string, command uint64) {
 	if old := c.broadcastKeys[name]; old != nil {
 		c.finishBroadcast(old, Success)
@@ -37,6 +39,7 @@ func (c *Core) queue(m wire.Message, name string, command uint64) {
 	c.broadcasts = append(c.broadcasts, record)
 	c.broadcastKeys[name] = record
 }
+
 func broadcastCompare(a, b *broadcast) int {
 	if v := cmp.Compare(a.transmits, b.transmits); v != 0 {
 		return v
@@ -46,6 +49,7 @@ func broadcastCompare(a, b *broadcast) int {
 	}
 	return cmp.Compare(b.id, a.id)
 }
+
 func (c *Core) pack(base []wire.Message) []wire.Message {
 	// Sort a selection snapshot before updating any transmit counts, ensuring
 	// each record appears at most once in a packet (memberlist queue semantics).
@@ -89,6 +93,7 @@ func frameOverhead(config Config) int {
 	}
 	return n
 }
+
 func (c *Core) datagram(to netip.AddrPort, messages []wire.Message, probe uint64) {
 	n, err := wire.Size(messages, c.config.Label, c.config.Protected)
 	if len(messages) > 0 && (err != nil || n > c.config.PacketBudget) {

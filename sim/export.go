@@ -14,10 +14,12 @@ type Progress struct {
 	Events int
 	Bytes  uint64
 }
+
 type ExportOptions struct {
 	// Progress is called after flushing, at most once per second of wall time.
 	Progress func(Progress)
 }
+
 type exporter struct {
 	writer  *trace.Writer
 	options ExportOptions
@@ -43,6 +45,7 @@ func Export(s Scenario, w io.Writer, options ExportOptions) (Result, error) {
 	}
 	return result, nil
 }
+
 func (r *runner) exportHeader() error {
 	if r.export == nil {
 		return nil
@@ -61,10 +64,12 @@ func (r *runner) exportHeader() error {
 	}
 	return r.export.writer.Flush()
 }
+
 func (r *runner) process(name string) trace.Process {
 	m := r.nodes[name]
 	return trace.Process{Node: name, Lifetime: trace.Decimal(m.life), Running: m.alive, PausedUntil: trace.Decimal(m.paused)}
 }
+
 func (r *runner) beginExport(e *event, seq int) {
 	if r.export == nil {
 		return
@@ -93,6 +98,7 @@ func (r *runner) beginExport(e *event, seq int) {
 		r.traffic(t)
 	}
 }
+
 func (r *runner) finishExport(e *event, events int) error {
 	if r.export == nil {
 		return nil
@@ -140,6 +146,7 @@ func (r *runner) finishExport(e *event, events int) error {
 	}
 	return nil
 }
+
 func (r *runner) exportEnd(result Result) error {
 	if r.export == nil {
 		return nil
@@ -162,11 +169,13 @@ func (r *runner) exportEnd(result Result) error {
 	end.Totals = trace.Totals{SentBytes: trace.Decimal(sent), ReceivedBytes: trace.Decimal(received), DatagramDrops: trace.Decimal(drops), Detections: trace.Decimal(detections)}
 	return r.export.writer.Write(end)
 }
+
 func (r *runner) traffic(t trace.Traffic) {
 	if r.export != nil {
 		r.export.event.Traffic = append(r.export.event.Traffic, t)
 	}
 }
+
 func (r *runner) attempt(transport, from, to string, messages []wire.Message, bytes int) trace.Traffic {
 	if r.export == nil {
 		return trace.Traffic{}
@@ -176,6 +185,7 @@ func (r *runner) attempt(transport, from, to string, messages []wire.Message, by
 	r.traffic(t)
 	return t
 }
+
 func messageKinds(ms []wire.Message) []string {
 	out := make([]string, 0, len(ms))
 	for _, m := range ms {
@@ -200,6 +210,7 @@ func messageKinds(ms []wire.Message) []string {
 	}
 	return out
 }
+
 func (r *runner) trafficCore(name string, input core.Event, t trace.Traffic) {
 	e := r.coreEvent(name, r.now, input)
 	if r.export != nil && e != nil {

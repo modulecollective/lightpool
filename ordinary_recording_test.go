@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/modulecollective/lightpool/core"
 	"io"
 	"net"
 	"os"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modulecollective/lightpool/core"
 
 	"github.com/modulecollective/lightpool/internal/experiment"
 	"github.com/modulecollective/lightpool/internal/ordinary"
@@ -91,6 +92,7 @@ func (w *stalledWriter) Write(b []byte) (int, error) {
 	<-w.release
 	return w.Buffer.Write(b)
 }
+
 func (*stalledWriter) Close() error { return nil }
 
 type brokenJournal struct{}

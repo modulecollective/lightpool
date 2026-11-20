@@ -9,9 +9,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
-	"github.com/modulecollective/lightpool/core"
-	"github.com/modulecollective/lightpool/internal/ordinary"
-	"github.com/modulecollective/lightpool/wire"
 	"log"
 	"net"
 	"net/netip"
@@ -21,6 +18,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/modulecollective/lightpool/core"
+	"github.com/modulecollective/lightpool/internal/ordinary"
+	"github.com/modulecollective/lightpool/wire"
 )
 
 type Config struct {
@@ -49,18 +50,22 @@ type command struct {
 	abandon  uint64
 	enqueued *int64
 }
+
 type driverInput struct {
 	frameRead *int64
 	event     core.Event
 	enqueued  *int64
 }
+
 type ioStream struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	conn   net.Conn
 }
+
 type Traffic struct{ SentBytes, ReceivedBytes, RejectedFrames, NotificationDrops uint64 }
 type counters struct{ sent, received, rejected, drops atomic.Uint64 }
+
 type Node struct {
 	cfg                Config
 	engine             *core.Core
@@ -91,6 +96,7 @@ type Node struct {
 func New(cfg Config) (*Node, error) {
 	return newOrdinaryNode(cfg, nil)
 }
+
 func newOrdinaryNode(cfg Config, recording *recordingConfig) (*Node, error) {
 	if !cfg.Bind.IsValid() {
 		return nil, errors.New("explicit bind address required")
@@ -190,7 +196,9 @@ func newOrdinaryNode(cfg Config, recording *recordingConfig) (*Node, error) {
 	go n.run()
 	return n, nil
 }
+
 func (n *Node) now() core.Instant { return core.Instant(time.Since(n.epoch)) }
+
 func (n *Node) options() wire.Options {
 	o := wire.Options{Label: n.cfg.Protocol.Label}
 	if n.cfg.Keyring != nil {
@@ -198,9 +206,11 @@ func (n *Node) options() wire.Options {
 	}
 	return o
 }
+
 func (n *Node) post(e core.Event) {
 	n.postRead(e, nil)
 }
+
 func (n *Node) postRead(e core.Event, frameRead *int64) {
 	input := driverInput{event: e, enqueued: n.enqueueTime(), frameRead: frameRead}
 	select {
@@ -208,6 +218,7 @@ func (n *Node) postRead(e core.Event, frameRead *int64) {
 	case <-n.ctx.Done():
 	}
 }
+
 func (n *Node) enqueueTime() *int64 {
 	if n.recorder == nil {
 		return nil
@@ -215,7 +226,9 @@ func (n *Node) enqueueTime() *int64 {
 	at := int64(n.now())
 	return &at
 }
+
 func (n *Node) saveSnapshot() { s := n.engine.Snapshot(); n.snapshot.Store(&s) }
+
 func (n *Node) Snapshot() core.Snapshot {
 	s := *n.snapshot.Load()
 	s.Members = slices.Clone(s.Members)
@@ -224,6 +237,7 @@ func (n *Node) Snapshot() core.Snapshot {
 	}
 	return s
 }
+
 func (n *Node) Identity() wire.Identity {
 	for _, m := range n.Snapshot().Members {
 		if m.Name == n.cfg.Name {
@@ -232,9 +246,11 @@ func (n *Node) Identity() wire.Identity {
 	}
 	panic("local identity missing")
 }
+
 func (n *Node) Traffic() Traffic {
 	return Traffic{n.counts.sent.Load(), n.counts.received.Load(), n.counts.rejected.Load(), n.counts.drops.Load()}
 }
+
 func (n *Node) run() {
 	defer close(n.done)
 	n.step(driverInput{event: core.Start{}}, 0)
@@ -268,6 +284,7 @@ func (n *Node) run() {
 		}
 	}
 }
+
 func (n *Node) step(input driverInput, parent uint64) {
 	e := input.event
 	var captured *ordinary.Step
@@ -358,6 +375,7 @@ func (n *Node) step(input driverInput, parent uint64) {
 		n.step(driverInput{event: next}, sequence)
 	}
 }
+
 func (n *Node) call(ctx context.Context, makeEvent func(uint64) core.Event) (core.Result, error) {
 	id := n.sequence.Add(1)
 	reply := make(chan core.Result, 1)
@@ -384,15 +402,18 @@ func (n *Node) call(ctx context.Context, makeEvent func(uint64) core.Event) (cor
 		return core.Result{}, errors.New("node is shut down")
 	}
 }
+
 func (n *Node) Ping(ctx context.Context, peer wire.Identity) (time.Duration, error) {
 	r, err := n.call(ctx, func(id uint64) core.Event { return core.Ping{Command: id, Peer: peer.Clone()} })
 	return r.RTT, err
 }
+
 func (n *Node) Update(ctx context.Context, meta []byte) error {
 	data := slices.Clone(meta)
 	_, err := n.call(ctx, func(id uint64) core.Event { return core.Update{Command: id, Meta: data} })
 	return err
 }
+
 func (n *Node) Leave(ctx context.Context) error {
 	_, err := n.call(ctx, func(id uint64) core.Event { return core.Leave{Command: id} })
 	return err
@@ -423,6 +444,7 @@ func (n *Node) Join(ctx context.Context, endpoints ...string) (int, error) {
 	}
 	return 0, errors.Join(errs...)
 }
+
 func (n *Node) resolve(ctx context.Context, endpoint string) ([]wire.Identity, error) {
 	name, hostport, hasName := strings.Cut(endpoint, "/")
 	if !hasName {
@@ -454,6 +476,7 @@ func (n *Node) resolve(ctx context.Context, endpoint string) ([]wire.Identity, e
 	}
 	return peers, nil
 }
+
 func (n *Node) Shutdown() error {
 	n.shutdownOnce.Do(func() {
 		n.cancel()
@@ -475,6 +498,7 @@ func (n *Node) Shutdown() error {
 	}
 	return nil
 }
+
 func (n *Node) notificationWorker() {
 	for {
 		select {

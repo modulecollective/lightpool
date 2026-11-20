@@ -20,12 +20,14 @@ type Node struct {
 	Name    string `json:"name"`
 	Address string `json:"address"`
 }
+
 type Process struct {
 	Node        string `json:"node"`
 	Lifetime    string `json:"lifetime"`
 	Running     bool   `json:"running"`
 	PausedUntil string `json:"pausedUntil"`
 }
+
 type Member struct {
 	Name        string `json:"name"`
 	Address     string `json:"address"`
@@ -70,6 +72,7 @@ type Change struct {
 	Deadline   string   `json:"deadline,omitempty"`
 	Helpers    []string `json:"helpers,omitempty"`
 }
+
 type Traffic struct {
 	ID        string   `json:"id"`
 	Transport string   `json:"transport"`
@@ -81,6 +84,7 @@ type Traffic struct {
 	Detail    string   `json:"detail,omitempty"`
 	Received  string   `json:"received,omitempty"`
 }
+
 type Header struct {
 	Type     string    `json:"type"`
 	Format   string    `json:"format"`
@@ -89,6 +93,7 @@ type Header struct {
 	Nodes    []Node    `json:"nodes"`
 	Initial  []Process `json:"initial"`
 }
+
 type Event struct {
 	Type     string    `json:"type"`
 	Seq      string    `json:"seq"`
@@ -101,17 +106,20 @@ type Event struct {
 	Changes  []Change  `json:"changes"`
 	Traffic  []Traffic `json:"traffic"`
 }
+
 type Totals struct {
 	SentBytes     string `json:"sentBytes"`
 	ReceivedBytes string `json:"receivedBytes"`
 	DatagramDrops string `json:"datagramDrops"`
 	Detections    string `json:"detections"`
 }
+
 type Measurement struct {
 	Process
 	Summary *Summary `json:"summary,omitempty"`
 	Totals
 }
+
 type End struct {
 	Type     string        `json:"type"`
 	Seq      string        `json:"seq"`
@@ -160,6 +168,7 @@ type Writer struct {
 }
 
 func NewWriter(w io.Writer) *Writer { b := bufio.NewWriterSize(w, 64<<10); return &Writer{buffer: b} }
+
 func (w *Writer) Write(v any) error {
 	// Marshal one record so Bytes describes committed encoding, including newline.
 	b, err := json.Marshal(v)
@@ -173,6 +182,7 @@ func (w *Writer) Write(v any) error {
 	w.Bytes += uint64(n)
 	return err
 }
+
 func (w *Writer) Flush() error { return w.buffer.Flush() }
 
 // Read validates envelope order and complete lines. Consumers may validate the

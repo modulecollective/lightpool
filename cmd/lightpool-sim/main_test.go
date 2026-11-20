@@ -44,6 +44,7 @@ func TestCLIRecordingAndRefusal(t *testing.T) {
 		t.Fatal("missing progress", progress.String())
 	}
 }
+
 func TestInvalidScenarioDoesNotCreateOutput(t *testing.T) {
 	dir := t.TempDir()
 	scenario := filepath.Join(dir, "bad.json")

@@ -39,6 +39,7 @@ func recording(t *testing.T, budget int) string {
 	}
 	return path
 }
+
 func TestCLIReportAndIncomplete(t *testing.T) {
 	for _, budget := range []int{0, 10} {
 		path := recording(t, budget)
@@ -74,6 +75,7 @@ func TestCLIReportAndIncomplete(t *testing.T) {
 type failedOutput struct{}
 
 func (failedOutput) Write([]byte) (int, error) { return 0, errors.New("output failed") }
+
 func TestCLIRejectsAndPropagates(t *testing.T) {
 	path := recording(t, 10)
 	for _, args := range [][]string{nil, {"-trace", path, "-format", "xml"}, {"-trace", path, "unexpected"}, {"-trace", path + "missing"}, {"-unknown"}} {

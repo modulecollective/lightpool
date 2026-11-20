@@ -5,8 +5,9 @@ package core
 
 import (
 	"bytes"
-	"github.com/modulecollective/lightpool/wire"
 	"testing"
+
+	"github.com/modulecollective/lightpool/wire"
 )
 
 func findOpen(t testing.TB, es []Effect) OpenStream {
@@ -52,6 +53,7 @@ func TestPassiveResponseBeforeMergeAndCap(t *testing.T) {
 		t.Fatal("merge did not follow response write")
 	}
 }
+
 func TestStreamStagesAndDeadlineMatrix(t *testing.T) {
 	for _, stage := range []string{"connect", "write", "receive"} {
 		for _, before := range []bool{true, false} {
@@ -98,6 +100,7 @@ func TestStreamStagesAndDeadlineMatrix(t *testing.T) {
 		}
 	}
 }
+
 func TestReplyBeforeLocalWriteCompletion(t *testing.T) {
 	c := testCore(t)
 	o := findOpen(t, step(t, c, 0, Join{Command: 1, Peer: identity("b", 2)}))
@@ -115,6 +118,7 @@ func TestReplyBeforeLocalWriteCompletion(t *testing.T) {
 		t.Fatal("duplicate completion acted")
 	}
 }
+
 func TestTCPDeadlineEqualTime(t *testing.T) {
 	for _, first := range []bool{true, false} {
 		c := testCore(t)
@@ -143,6 +147,7 @@ func TestTCPDeadlineEqualTime(t *testing.T) {
 		}
 	}
 }
+
 func TestLocalAndRemoteSendFailures(t *testing.T) {
 	for _, failure := range []Failure{LocalFailure, RemoteFailure} {
 		c := testCore(t)
@@ -158,6 +163,7 @@ func TestLocalAndRemoteSendFailures(t *testing.T) {
 		}
 	}
 }
+
 func TestLargestProbeControlMessagesFit(t *testing.T) {
 	c := testCore(t)
 	maxMeta := bytes.Repeat([]byte{1}, wire.MaxMeta)

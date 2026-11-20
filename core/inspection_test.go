@@ -60,6 +60,7 @@ func TestInspectionMembershipAndOwnership(t *testing.T) {
 		t.Fatal("journal retained previous step")
 	}
 }
+
 func TestInspectionDoesNotChangeEffects(t *testing.T) {
 	a, b := testCore(t), testCore(t)
 	b.EnableInspection()
@@ -72,6 +73,7 @@ func TestInspectionDoesNotChangeEffects(t *testing.T) {
 		}
 	}
 }
+
 func TestInspectionTimerCancellationAndStaleFire(t *testing.T) {
 	c := testCore(t)
 	c.EnableInspection()

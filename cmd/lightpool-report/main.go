@@ -17,6 +17,7 @@ func main() {
 		os.Exit(1)
 	}
 }
+
 func run(args []string, stdout, stderr io.Writer) error {
 	flags := flag.NewFlagSet("lightpool-report", flag.ContinueOnError)
 	flags.SetOutput(stderr)

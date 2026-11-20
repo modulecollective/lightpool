@@ -21,6 +21,7 @@ type Evidence struct {
 	Reference
 	Fact trace.Change `json:"fact"`
 }
+
 type Mechanism struct {
 	Pair
 	Incarnation   string     `json:"incarnation"`
@@ -32,15 +33,18 @@ type Mechanism struct {
 	DeadCause     string     `json:"deadCause,omitempty"`
 	Refutations   []Evidence `json:"targetRefutations"`
 }
+
 type Episode struct {
 	report.Declaration
 	Labels []string `json:"labels"`
 	Cause  string   `json:"cause"`
 }
+
 type Exposure struct {
 	Pair
 	PairNS int64 `json:"pairNS,string"`
 }
+
 type Population struct {
 	Label                       string     `json:"label"`
 	Exposure                    []Exposure `json:"exposure"`
@@ -51,12 +55,14 @@ type Population struct {
 	EventsPerMillionPairSeconds *string    `json:"eventsPerMillionPairSeconds"`
 	FractionEverExcluded        *string    `json:"fractionEverExcluded"`
 }
+
 type Suspicion struct {
 	Pair
 	First     *Reference `json:"first"`
 	LatencyNS *int64     `json:"latencyNS,string"`
 	Status    string     `json:"status"`
 }
+
 type Crash struct {
 	report.Crash
 	Suspicions         []Suspicion         `json:"suspicions"`
@@ -66,6 +72,7 @@ type Crash struct {
 	FullLatencyNS      *int64              `json:"fullLatencyNS,string"`
 	FullStatus         string              `json:"fullStatus"`
 }
+
 type Transport struct {
 	Messages      uint64 `json:"messages,string"`
 	SentBytes     uint64 `json:"sentBytes,string"`
@@ -73,6 +80,7 @@ type Transport struct {
 	DropRecords   uint64 `json:"dropRecords,string"`
 	DroppedBytes  uint64 `json:"droppedBytes,string"`
 }
+
 type Traffic struct {
 	Datagram               Transport     `json:"datagram"`
 	Stream                 Transport     `json:"stream"`
@@ -80,6 +88,7 @@ type Traffic struct {
 	SentBytesPerNodeSecond *string       `json:"sentBytesPerNodeSecond"`
 	Drops                  []report.Drop `json:"dropReasons"`
 }
+
 type Summary struct {
 	Format            string              `json:"format"`
 	Status            string              `json:"status"`
@@ -107,20 +116,25 @@ type memberState struct {
 	state, incarnation string
 	suspect            *Reference
 }
+
 type nodeState struct {
 	life                   string
 	running, stopped, left bool
 	members                map[string]memberState
 }
+
 type pairKey struct{ observer, subject string }
+
 type interruption struct {
 	node string
 	at   Reference
 }
+
 type streamWrite struct {
 	remaining uint64
 	counted   bool
 }
+
 type measurements struct {
 	spec          Spec
 	result        *Summary
@@ -318,6 +332,7 @@ func Measure(spec Spec, scenario sim.Scenario, base *report.Report, input io.Rea
 	out.Traffic.SentBytesPerNodeSecond = scaledRatio(int64(out.Traffic.Datagram.SentBytes+out.Traffic.Stream.SentBytes), 1e9, out.Traffic.ActiveNodeNS)
 	return out, nil
 }
+
 func HashJSON(v any) string {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
@@ -327,9 +342,11 @@ func HashJSON(v any) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
 }
+
 func ratio(n, d int64) *string {
 	return scaledRatio(n, 1, d)
 }
+
 func scaledRatio(n, scale, d int64) *string {
 	if d == 0 {
 		return nil
@@ -338,6 +355,7 @@ func scaledRatio(n, scale, d int64) *string {
 	s := new(big.Rat).SetFrac(numerator, big.NewInt(d)).FloatString(9)
 	return &s
 }
+
 func distribution(values []int64, eligible int) report.Distribution {
 	d := report.Distribution{Completed: len(values), Eligible: eligible}
 	if len(values) == 0 {
@@ -352,19 +370,24 @@ func distribution(values []int64, eligible int) report.Distribution {
 	d.P50NS, d.P95NS, d.MaxNS = &a, &b, &c
 	return d
 }
+
 func before(a, b Reference) bool { return a.TimeNS < b.TimeNS || a.TimeNS == b.TimeNS && a.Seq < b.Seq }
+
 func eventRef(e trace.Event) Reference {
 	t, _ := strconv.ParseInt(e.Time, 10, 64)
 	s, _ := strconv.ParseUint(e.Seq, 10, 64)
 	return Reference{TimeNS: t, Seq: s}
 }
+
 func (x *measurements) pair(o, t string) Pair {
 	return Pair{Observer: o, ObserverLifetime: x.state[o].life, Subject: t, TargetLifetime: x.state[t].life}
 }
+
 func (x *measurements) active(n string) bool {
 	p := x.state[n]
 	return p.running && !p.stopped && !p.left
 }
+
 func (x *measurements) checkWarmup() {
 	x.warm = true
 	for _, o := range x.nodes {
@@ -377,6 +400,7 @@ func (x *measurements) checkWarmup() {
 		}
 	}
 }
+
 func (x *measurements) advance(at int64) {
 	start := max(x.now, x.spec.WarmupNS)
 	end := min(at, x.spec.HorizonNS)
@@ -398,6 +422,7 @@ func (x *measurements) advance(at int64) {
 	}
 	x.now = at
 }
+
 func (x *measurements) pauseReference() bool {
 	switch x.spec.Case {
 	case "healthy", "threshold", "threshold-128", "interval", "ordinary-healthy", "ordinary-pause":
@@ -405,6 +430,7 @@ func (x *measurements) pauseReference() bool {
 	}
 	return false
 }
+
 func (x *measurements) labels(p Pair, running bool) []string {
 	labels := []string{}
 	if !running || p.Observer == p.Subject {
@@ -425,6 +451,7 @@ func (x *measurements) labels(p Pair, running bool) []string {
 	}
 	return labels
 }
+
 func (x *measurements) interrupt(n string, at Reference, reason string) {
 	x.interruptions = append(x.interruptions, interruption{n, at})
 	for k, i := range x.mechanisms {
@@ -435,6 +462,7 @@ func (x *measurements) interrupt(n string, at Reference, reason string) {
 		}
 	}
 }
+
 func (x *measurements) record(raw json.RawMessage) error {
 	var tag struct{ Type string }
 	if err := json.Unmarshal(raw, &tag); err != nil {
@@ -587,6 +615,7 @@ func (x *measurements) record(raw json.RawMessage) error {
 	}
 	return nil
 }
+
 func (x *measurements) crash(c report.Crash) Crash {
 	out := Crash{Crash: c, Suspicions: []Suspicion{}, FullStatus: "unresolved"}
 	var values []int64

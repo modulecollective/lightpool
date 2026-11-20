@@ -57,6 +57,7 @@ func TestIndependentFixture(t *testing.T) {
 type fragments struct{ r io.Reader }
 
 func (f fragments) Read(b []byte) (int, error) { return f.r.Read(b[:min(len(b), 1)]) }
+
 func TestFragmentedStream(t *testing.T) {
 	b, _ := hex.DecodeString(ackFixture)
 	r := bytes.NewReader(append(bytes.Clone(b), b...))
@@ -298,6 +299,7 @@ func TestProtectionAndKeys(t *testing.T) {
 		t.Fatal("nonce reused")
 	}
 }
+
 func TestDefaultPacketCosts(t *testing.T) {
 	for _, addr := range []string{"192.0.2.255:65535", "[2001:db8:ffff:ffff:ffff:ffff:ffff:ffff]:65535"} {
 		n := Member{Identity: Identity{Name: strings.Repeat("n", MaxName), Address: netip.MustParseAddrPort(addr), Meta: bytes.Repeat([]byte{255}, MaxMeta)}, Incarnation: ^uint64(0), State: Alive}
@@ -453,6 +455,7 @@ func BenchmarkCodec(b *testing.B) {
 		})
 	}
 }
+
 func bulkMembers(count int) []Member {
 	n := Member{Identity: Identity{Name: "node", Address: netip.MustParseAddrPort("127.0.0.1:7946")}, Incarnation: 1}
 	members := make([]Member, count)
@@ -461,6 +464,7 @@ func bulkMembers(count int) []Member {
 	}
 	return members
 }
+
 func mustKey(t testing.TB, fill byte) Key {
 	t.Helper()
 	k, err := NewKey(bytes.Repeat([]byte{fill}, KeySize))
@@ -469,6 +473,7 @@ func mustKey(t testing.TB, fill byte) Key {
 	}
 	return k
 }
+
 func TestKeysMustBe32Bytes(t *testing.T) {
 	for _, size := range []int{0, 16, 24, 31, 33} {
 		if _, err := NewKey(make([]byte, size)); err == nil {

@@ -26,6 +26,7 @@ type EligiblePair struct {
 	Observer string `json:"observer"`
 	Subject  string `json:"subject"`
 }
+
 type Spec struct {
 	Format         string         `json:"format"`
 	Case           string         `json:"case"`

@@ -4,9 +4,10 @@
 package core
 
 import (
-	"github.com/modulecollective/lightpool/wire"
 	"net/netip"
 	"time"
+
+	"github.com/modulecollective/lightpool/wire"
 )
 
 type probe struct {
@@ -62,6 +63,7 @@ func (c *Core) admit(m wire.Message, from netip.AddrPort, received Instant) {
 		c.nextDeferred()
 	}
 }
+
 func (c *Core) startProbe(peer wire.Identity, command uint64, explicit, periodic bool) {
 	id := c.token().ID
 	window := c.config.ProbeInterval * time.Duration(c.health+1)
@@ -85,6 +87,7 @@ func (c *Core) startProbe(peer wire.Identity, command uint64, explicit, periodic
 	}
 	c.datagram(peer.Address, messages, id)
 }
+
 func (c *Core) ack(a *wire.Ack, from netip.AddrPort, received Instant) {
 	p := c.probes[a.Sequence]
 	if p == nil {
@@ -109,6 +112,7 @@ func (c *Core) ack(a *wire.Ack, from netip.AddrPort, received Instant) {
 	// send completion arrives after the network receive timestamp.
 	c.finishProbe(p.id, Success, rtt)
 }
+
 func (c *Core) escalate(id uint64) {
 	p := c.probes[id]
 	if p == nil || p.indirect {
@@ -130,6 +134,7 @@ func (c *Core) escalate(id uint64) {
 		c.openPing(p)
 	}
 }
+
 func (c *Core) sendFailed(id uint64, f Failure) {
 	p := c.probes[id]
 	if p == nil {
@@ -147,6 +152,7 @@ func (c *Core) sendFailed(id uint64, f Failure) {
 		c.escalate(id)
 	}
 }
+
 func (c *Core) finishProbe(id uint64, f Failure, rtt time.Duration) {
 	p := c.probes[id]
 	if p == nil {
@@ -196,6 +202,7 @@ func (c *Core) finishProbe(id uint64, f Failure, rtt time.Duration) {
 		}
 	}
 }
+
 func (c *Core) probeRound() {
 	if c.left {
 		return
@@ -221,6 +228,7 @@ func (c *Core) probeRound() {
 		return
 	}
 }
+
 func (c *Core) startSchedules() {
 	if d := c.config.ProbeInterval; d > 0 {
 		c.arm("periodic-probe", "periodic-probe", c.now.Add(d+time.Duration(c.rng.Int64N(int64(d)))), 0, "")
@@ -232,6 +240,7 @@ func (c *Core) startSchedules() {
 		c.arm("periodic-push", "periodic-push", c.now.Add(pushPullScale(d, len(c.nodes))+time.Duration(c.rng.Int64N(int64(d)))), 0, "")
 	}
 }
+
 func (c *Core) periodicAgain(key string, d deadline, interval time.Duration) {
 	next := d.at.Add(interval)
 	if next <= c.now {
@@ -239,11 +248,13 @@ func (c *Core) periodicAgain(key string, d deadline, interval time.Duration) {
 	}
 	c.arm(key, d.kind, next, 0, "")
 }
+
 func (c *Core) schedulePush() {
 	if !c.stopped && c.config.PushPullInterval > 0 {
 		c.arm("periodic-push", "periodic-push", c.now.Add(pushPullScale(c.config.PushPullInterval, len(c.nodes))), 0, "")
 	}
 }
+
 func (c *Core) gossip() {
 	peers := c.randomNodes(c.config.GossipNodes, func(n *member) bool {
 		return n.Name == c.self || n.State == wire.Left || (n.State == wire.Dead && c.now-n.changed > Instant(c.config.GossipToDead))
@@ -252,6 +263,7 @@ func (c *Core) gossip() {
 		c.datagram(n.Address, nil, 0)
 	}
 }
+
 func (c *Core) fire(t Timer) {
 	if !c.valid(t.Token) {
 		return

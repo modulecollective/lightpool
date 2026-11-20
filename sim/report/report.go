@@ -21,12 +21,14 @@ type Reference struct {
 	TimeNS int64  `json:"timeNS,string"`
 	Seq    uint64 `json:"seq,string"`
 }
+
 type Pair struct {
 	Observer         string `json:"observer"`
 	ObserverLifetime string `json:"observerLifetime"`
 	Subject          string `json:"subject"`
 	TargetLifetime   string `json:"targetLifetime"`
 }
+
 type Fault struct {
 	From, To                 string
 	Start, End               string
@@ -35,11 +37,13 @@ type Fault struct {
 	Duplicate, StreamFailure bool
 	LossPPM                  string `json:",omitempty"`
 }
+
 type Join struct {
 	Reference
 	Node string `json:"node"`
 	Peer string `json:"peer"`
 }
+
 type Declaration struct {
 	Pair
 	Reference
@@ -52,6 +56,7 @@ type Declaration struct {
 	ObserverPaused  bool    `json:"observerPaused"`
 	Faults          []Fault `json:"incidentConfiguredFaults"`
 }
+
 type Recovery struct {
 	Pair
 	Declaration Reference `json:"declaration"`
@@ -60,12 +65,14 @@ type Recovery struct {
 	DurationNS  *int64    `json:"durationNS,string"`
 	Joins       []Join    `json:"joins"`
 }
+
 type Observation struct {
 	Pair
 	End       Reference `json:"end"`
 	Status    string    `json:"status"`
 	LatencyNS *int64    `json:"latencyNS,string"`
 }
+
 type Distribution struct {
 	Completed int    `json:"completed,string"`
 	Eligible  int    `json:"eligible,string"`
@@ -74,6 +81,7 @@ type Distribution struct {
 	MaxNS     *int64 `json:"maxNS,string"`
 	Reason    string `json:"reason,omitempty"`
 }
+
 type Crash struct {
 	Subject        string `json:"subject"`
 	TargetLifetime string `json:"targetLifetime"`
@@ -85,15 +93,18 @@ type Crash struct {
 	Observations  []Observation `json:"observations"`
 	Latencies     Distribution  `json:"latencies"`
 }
+
 type Bytes struct {
 	Sent     uint64 `json:"sent,string"`
 	Received uint64 `json:"received,string"`
 }
+
 type Drop struct {
 	Transport string `json:"transport"`
 	Reason    string `json:"reason"`
 	Count     uint64 `json:"count,string"`
 }
+
 type Traffic struct {
 	Datagram               Bytes         `json:"datagram"`
 	Stream                 Bytes         `json:"stream"`
@@ -106,6 +117,7 @@ type Traffic struct {
 	EndTotals              *trace.Totals `json:"endTotals"`
 	EndBytesMatch          *bool         `json:"endBytesMatch"`
 }
+
 type Report struct {
 	Format                 string          `json:"format"`
 	Version                int             `json:"version"`
@@ -137,8 +149,10 @@ type process struct {
 	paused                 int64
 	members                map[string]string
 }
+
 type key struct{ observer, subject string }
 type pending struct{ crash, observation int }
+
 type reducer struct {
 	report    Report
 	nodes     []trace.Node
@@ -258,6 +272,7 @@ func Read(input io.Reader) (*Report, error) {
 	}
 	return &r, nil
 }
+
 func add(total *uint64, n uint64) error {
 	if ^uint64(0)-*total < n {
 		return fmt.Errorf("traffic counter overflow")
@@ -265,12 +280,14 @@ func add(total *uint64, n uint64) error {
 	*total += n
 	return nil
 }
+
 func rate(bytes uint64, ns int64) *string {
 	n := new(big.Int).SetUint64(bytes)
 	n.Mul(n, big.NewInt(1e9))
 	value := new(big.Rat).SetFrac(n, big.NewInt(ns)).FloatString(6)
 	return &value
 }
+
 func distribution(values []int64, eligible int) Distribution {
 	d := Distribution{Completed: len(values), Eligible: eligible}
 	if len(values) == 0 {
@@ -285,12 +302,14 @@ func distribution(values []int64, eligible int) Distribution {
 	d.P50NS, d.P95NS, d.MaxNS = &p50, &p95, &maxValue
 	return d
 }
+
 func ref(e trace.Event) Reference {
 	// trace.Read has already checked canonical decimal strings and ranges.
 	t, _ := strconv.ParseInt(e.Time, 10, 64)
 	seq, _ := strconv.ParseUint(e.Seq, 10, 64)
 	return Reference{t, seq}
 }
+
 func (x *reducer) record(raw json.RawMessage) error {
 	var tag struct{ Type string }
 	if err := json.Unmarshal(raw, &tag); err != nil {

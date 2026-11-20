@@ -7,9 +7,10 @@ package core
 
 import (
 	"errors"
-	"github.com/modulecollective/lightpool/wire"
 	"net/netip"
 	"time"
+
+	"github.com/modulecollective/lightpool/wire"
 )
 
 type Instant int64
@@ -20,10 +21,12 @@ type Seed struct{ State, Stream, Lifetime uint64 }
 
 // Token identifies work in one node lifetime. Drivers must echo it unchanged.
 type Token struct{ Lifetime, ID uint64 }
+
 type Timer struct {
 	Token
 	Generation uint64
 }
+
 type Failure uint8
 
 const (
@@ -55,6 +58,7 @@ func DefaultConfig() Config {
 		GossipNodes: 3, QueueDepth: 1024, PacketBudget: 1400, MaxPushPull: 128,
 	}
 }
+
 func (c Config) Validate() error {
 	if c.ProbeInterval < 0 || c.ProbeTimeout <= 0 ||
 		(c.ProbeInterval > 0 && c.ProbeTimeout >= c.ProbeInterval) ||
@@ -172,6 +176,7 @@ type Closed struct {
 func (Closed) event() {}
 
 type Effect interface{ effect() }
+
 type SendDatagram struct {
 	ID       Token
 	To       netip.AddrPort
@@ -239,6 +244,7 @@ type Observation struct {
 func (Observation) effect() {}
 
 type Stats struct{ Steps, Datagrams, Messages, QueueDrops, Probes, FailedProbes, TCPOnly uint64 }
+
 type Snapshot struct {
 	Now                             Instant
 	Members                         []wire.Member
@@ -252,6 +258,7 @@ type Snapshot struct {
 type CancelCommand struct{ Command uint64 }
 
 func (CancelCommand) event() {}
+
 func (f Failure) String() string {
 	switch f {
 	case Success:

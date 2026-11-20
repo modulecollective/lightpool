@@ -6,17 +6,19 @@ package lightpool
 import (
 	"context"
 	"errors"
-	"github.com/modulecollective/lightpool/core"
-	"github.com/modulecollective/lightpool/wire"
 	"io"
 	"net"
 	"net/netip"
 	"time"
+
+	"github.com/modulecollective/lightpool/core"
+	"github.com/modulecollective/lightpool/wire"
 )
 
 func normalized(a netip.AddrPort) netip.AddrPort {
 	return netip.AddrPortFrom(a.Addr().Unmap(), a.Port())
 }
+
 func (n *Node) readUDP() {
 	defer n.workers.Done()
 	buf := make([]byte, 65535)
@@ -41,6 +43,7 @@ func (n *Node) readUDP() {
 		n.post(core.Datagram{From: normalized(from), Received: received, Messages: messages})
 	}
 }
+
 func (n *Node) writeUDP() {
 	defer n.workers.Done()
 	for {
@@ -70,6 +73,7 @@ func (n *Node) writeUDP() {
 		}
 	}
 }
+
 func networkFailure(err error) core.Failure {
 	var e net.Error
 	if errors.As(err, &e) && e.Timeout() {
@@ -77,6 +81,7 @@ func networkFailure(err error) core.Failure {
 	}
 	return core.RemoteFailure
 }
+
 func (n *Node) register(id core.Token, conn net.Conn) *ioStream {
 	n.streamMu.Lock()
 	defer n.streamMu.Unlock()
@@ -91,6 +96,7 @@ func (n *Node) register(id core.Token, conn net.Conn) *ioStream {
 	n.streams[id] = s
 	return s
 }
+
 func (n *Node) acceptTCP() {
 	defer n.workers.Done()
 	for {
@@ -113,6 +119,7 @@ func (n *Node) acceptTCP() {
 		})
 	}
 }
+
 func (n *Node) dial(e core.OpenStream) bool {
 	s := n.register(e.ID, nil)
 	if s == nil {
@@ -140,6 +147,7 @@ func (n *Node) dial(e core.OpenStream) bool {
 	})
 	return true
 }
+
 func (n *Node) readStream(id core.Token, s *ioStream, conn net.Conn) {
 	// Each exchange carries one request and one response. After a complete
 	// frame, the core owns closure; EOF cannot overtake a pending write result.
@@ -163,6 +171,7 @@ func (n *Node) readStream(id core.Token, s *ioStream, conn net.Conn) {
 	}
 	n.postRead(core.StreamMessage{ID: id, Received: received, Messages: messages}, frameRead)
 }
+
 func (n *Node) writeStream(e core.WriteStream) {
 	n.streamMu.Lock()
 	s := n.streams[e.ID]
@@ -198,6 +207,7 @@ func (n *Node) writeStream(e core.WriteStream) {
 		n.post(core.Written{ID: e.ID, Failure: f})
 	})
 }
+
 func (n *Node) closeStream(id core.Token) {
 	n.streamMu.Lock()
 	s := n.streams[id]
