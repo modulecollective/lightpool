@@ -35,6 +35,7 @@ func newFixture(t *testing.T, horizon string, faults []Fault) *fixture {
 	}
 	return f
 }
+
 func (f *fixture) write(v any) {
 	f.t.Helper()
 	b, err := json.Marshal(v)
@@ -44,6 +45,7 @@ func (f *fixture) write(v any) {
 	f.b.Write(b)
 	f.b.WriteByte('\n')
 }
+
 func (f *fixture) event(at int64, kind, actor, peer string, changes ...trace.Change) {
 	f.t.Helper()
 	f.seq++
@@ -53,6 +55,7 @@ func (f *fixture) event(at int64, kind, actor, peer string, changes ...trace.Cha
 	}
 	f.write(trace.Event{Type: "event", Seq: trace.Decimal(f.seq), Time: trace.Decimal(at), ID: trace.Decimal(f.seq), Kind: kind, Actor: actor, Peer: peer, Lifetime: "1", Changes: changes, Traffic: []trace.Traffic{}})
 }
+
 func (f *fixture) traffic(at int64, entries ...trace.Traffic) {
 	f.seq++
 	f.at = at
@@ -71,9 +74,11 @@ func (f *fixture) traffic(at int64, entries ...trace.Traffic) {
 	}
 	f.write(trace.Event{Type: "event", Seq: trace.Decimal(f.seq), Time: trace.Decimal(at), ID: trace.Decimal(f.seq), Kind: "core.datagram", Lifetime: "1", Changes: []trace.Change{}, Traffic: entries})
 }
+
 func (f *fixture) end(complete bool) {
 	f.write(trace.End{Type: "end", Seq: trace.Decimal(f.seq), Time: trace.Decimal(f.at), Reason: "horizon", Complete: complete, Nodes: []trace.Measurement{}, Totals: trace.Totals{SentBytes: trace.Decimal(f.sent), ReceivedBytes: trace.Decimal(f.received), DatagramDrops: "0", Detections: "0"}})
 }
+
 func (f *fixture) read() *Report {
 	f.t.Helper()
 	r, err := Read(bytes.NewReader(f.b.Bytes()))
@@ -82,15 +87,19 @@ func (f *fixture) read() *Report {
 	}
 	return r
 }
+
 func processChange(node, phase, life string, running bool, paused string) trace.Change {
 	return trace.Change{Kind: "process", Node: node, Phase: phase, Process: &trace.Process{Node: node, Lifetime: life, Running: running, PausedUntil: paused}}
 }
+
 func member(observer, state string) trace.Change {
 	return trace.Change{Kind: "member.upsert", Node: observer, Member: &trace.Member{Name: "b", Address: "b:7946", Incarnation: "1", State: state}}
 }
+
 func summary(node string, stopped, left bool) trace.Change {
 	return trace.Change{Kind: "summary", Node: node, Summary: &trace.Summary{Health: "0", Backlog: "0", PendingStreams: "0", Stopped: stopped, Left: left}}
 }
+
 func equalTime(t *testing.T, got *int64, want int64) {
 	t.Helper()
 	if got == nil || *got != want {
@@ -126,6 +135,7 @@ func TestCrashCohortAndCensoring(t *testing.T) {
 		t.Fatal("lost configured horizon")
 	}
 }
+
 func TestRecoveryRemovalPauseFaultsAndJoin(t *testing.T) {
 	fault := Fault{From: "c", To: "a", Start: "5", End: "20", Drop: true}
 	f := newFixture(t, "40", []Fault{fault})
@@ -155,6 +165,7 @@ func TestRecoveryRemovalPauseFaultsAndJoin(t *testing.T) {
 		t.Fatal(r.RecoveryDurations)
 	}
 }
+
 func TestSameTimeOrderAndRestartLifetimes(t *testing.T) {
 	for _, deadFirst := range []bool{false, true} {
 		t.Run(fmt.Sprint(deadFirst), func(t *testing.T) {
@@ -196,6 +207,7 @@ func TestSameTimeOrderAndRestartLifetimes(t *testing.T) {
 		})
 	}
 }
+
 func TestTargetRestartAndObserverRestartCensorCohorts(t *testing.T) {
 	for _, node := range []string{"a", "b"} {
 		t.Run(node, func(t *testing.T) {
@@ -215,6 +227,7 @@ func TestTargetRestartAndObserverRestartCensorCohorts(t *testing.T) {
 		})
 	}
 }
+
 func TestEmptyHealthyZeroDurationAndNearestRank(t *testing.T) {
 	f := newFixture(t, "0", nil)
 	f.end(true)
@@ -226,6 +239,7 @@ func TestEmptyHealthyZeroDurationAndNearestRank(t *testing.T) {
 	equalTime(t, d.P50NS, 3)
 	equalTime(t, d.P95NS, 10)
 }
+
 func TestExactTrafficStagesAndJSON(t *testing.T) {
 	f := newFixture(t, "1000000000", nil)
 	entry := trace.Traffic{ID: "9007199254740993", Transport: "datagram", From: "a", To: "b", Bytes: "9007199254740993", Messages: []string{"ping"}}
@@ -257,6 +271,7 @@ func TestExactTrafficStagesAndJSON(t *testing.T) {
 		t.Fatal(r.Traffic)
 	}
 }
+
 func TestIncompleteMalformedAndReadFailures(t *testing.T) {
 	f := newFixture(t, "100", nil)
 	f.event(10, "core.datagram", "a", "", member("a", "dead"))
@@ -288,6 +303,7 @@ func (errorReader) Read([]byte) (int, error) { return 0, errors.New("read failed
 type errorWriter struct{}
 
 func (errorWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
+
 func TestWriteFailuresAndOldJoinEvidence(t *testing.T) {
 	f := newFixture(t, "20", nil)
 	f.event(1, "core.datagram", "a", "", member("a", "dead"))
@@ -319,6 +335,7 @@ func TestGracefulObserversUnknownAndNoCompletion(t *testing.T) {
 		t.Fatal(c)
 	}
 }
+
 func TestRemovalReentryAndTargetRestart(t *testing.T) {
 	f := newFixture(t, "50", nil)
 	f.event(1, "core.timer-delivery", "a", "", member("a", "dead"))
@@ -338,6 +355,7 @@ func TestRemovalReentryAndTargetRestart(t *testing.T) {
 	equalTime(t, r.Recoveries[0].DurationNS, 3)
 	equalTime(t, r.Recoveries[1].DurationNS, 1)
 }
+
 func TestLargeTimeAndCounterOverflow(t *testing.T) {
 	const start = int64(9007199254740993)
 	f := newFixture(t, "9007199254741093", nil)
@@ -366,6 +384,7 @@ func TestLargeTimeAndCounterOverflow(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
 func TestHorizonAndManifestRefusal(t *testing.T) {
 	f := newFixture(t, "1", nil)
 	f.event(2, "core.datagram", "a", "")

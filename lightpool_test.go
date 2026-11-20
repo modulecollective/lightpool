@@ -8,14 +8,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/modulecollective/lightpool/core"
-	"github.com/modulecollective/lightpool/wire"
 	"net"
 	"net/netip"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/modulecollective/lightpool/core"
+	"github.com/modulecollective/lightpool/wire"
 )
 
 func testConfig(name string) Config {
@@ -28,6 +29,7 @@ func testConfig(name string) Config {
 	c.Protocol.PushPullInterval = 200 * time.Millisecond
 	return c
 }
+
 func newNode(t testing.TB, c Config) *Node {
 	t.Helper()
 	n, err := New(c)
@@ -41,6 +43,7 @@ func newNode(t testing.TB, c Config) *Node {
 	})
 	return n
 }
+
 func wait(t testing.TB, description string, predicate func() bool) {
 	t.Helper()
 	deadline := time.NewTimer(10 * time.Second)
@@ -58,6 +61,7 @@ func wait(t testing.TB, description string, predicate func() bool) {
 		}
 	}
 }
+
 func join(t testing.TB, n, peer *Node) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -67,6 +71,7 @@ func join(t testing.TB, n, peer *Node) {
 		t.Fatal(count, err)
 	}
 }
+
 func memberState(n *Node, name string) (wire.State, bool) {
 	for _, m := range n.Snapshot().Members {
 		if m.Name == name {
@@ -75,6 +80,7 @@ func memberState(n *Node, name string) (wire.State, bool) {
 	}
 	return 0, false
 }
+
 func TestOrdinaryClusterConcurrentOperations(t *testing.T) {
 	nodes := make([]*Node, 8)
 	for j := range nodes {
@@ -207,6 +213,7 @@ func TestNotifyDeliversMembershipInOrder(t *testing.T) {
 		}
 	}
 }
+
 func TestEncryptedLabeledLoopbackAndRotation(t *testing.T) {
 	old, newKey := bytes.Repeat([]byte{1}, 32), bytes.Repeat([]byte{2}, 32)
 	ka, err := NewKeyring(old)
@@ -290,6 +297,7 @@ func TestEncryptedLabeledLoopbackAndRotation(t *testing.T) {
 		t.Fatal("wrong label joined", count, err)
 	}
 }
+
 func TestBindRulesAndKeyOwnership(t *testing.T) {
 	c := testConfig("a")
 	c.Bind = netip.MustParseAddrPort("0.0.0.0:0")
@@ -378,6 +386,7 @@ func TestRealStreamReadDeadline(t *testing.T) {
 	}
 	wait(t, "timed-out stream cleaned up", func() bool { return node.Snapshot().PendingStreams == 0 })
 }
+
 func TestStreamAdmissionRecoversAfterOverflow(t *testing.T) {
 	cfg := testConfig("limited")
 	cfg.Protocol.MaxPushPull = 1

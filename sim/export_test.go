@@ -199,6 +199,7 @@ func (w *failWriter) Write(b []byte) (int, error) {
 	}
 	return n, nil
 }
+
 func TestExportFailuresAndBudget(t *testing.T) {
 	for _, limit := range []int{0, 10000, 70000} {
 		_, err := Export(fixture(), &failWriter{limit}, ExportOptions{})

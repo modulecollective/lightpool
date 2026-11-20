@@ -35,6 +35,7 @@ type Identity struct {
 }
 
 func ValidText(s string, max int) bool { return len(s) <= max && utf8.ValidString(s) }
+
 func (i Identity) Validate() error {
 	if i.Name == "" || !ValidText(i.Name, MaxName) ||
 		!i.Address.IsValid() || i.Address.Port() == 0 || i.Address.Addr().IsUnspecified() ||
@@ -49,24 +50,29 @@ type Member struct {
 	Incarnation uint64 `json:"incarnation"`
 	State       State  `json:"state"`
 }
+
 type Ping struct {
 	Sequence uint64   `json:"sequence"`
 	Target   string   `json:"target"`
 	Source   Identity `json:"source"`
 }
+
 type Indirect struct {
 	Sequence uint64   `json:"sequence"`
 	Target   Identity `json:"target"`
 	Source   Identity `json:"source"`
 }
+
 type Ack struct {
 	Sequence uint64 `json:"sequence"`
 }
+
 type Accusation struct {
 	Node        string `json:"node"`
 	Incarnation uint64 `json:"incarnation"`
 	From        string `json:"from"`
 }
+
 type Exchange struct {
 	Members []Member `json:"members"`
 }
@@ -137,6 +143,7 @@ func (m Message) Validate() error {
 // Clone makes ownership explicit at event/effect and snapshot boundaries.
 func (i Identity) Clone() Identity { i.Meta = append([]byte(nil), i.Meta...); return i }
 func (m Member) Clone() Member     { m.Identity = m.Identity.Clone(); return m }
+
 func (m Message) Clone() Message {
 	if m.Ping != nil {
 		p := *m.Ping

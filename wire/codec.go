@@ -69,6 +69,7 @@ func Size(messages []Message, label string, protect bool) (int, error) {
 	}
 	return n, nil
 }
+
 func Encode(messages []Message, o Options) ([]byte, error) {
 	if err := o.Validate(); err != nil {
 		return nil, err
@@ -98,6 +99,7 @@ func Encode(messages []Message, o Options) ([]byte, error) {
 	out = binary.BigEndian.AppendUint32(out, sum)
 	return out, nil
 }
+
 func header(h []byte) (int, int, error) {
 	if len(h) < HeaderSize || string(h[:4]) != "LPL!" || h[4] != Version || h[5]&^encrypted != 0 {
 		return 0, 0, errors.New("unsupported frame header")
@@ -128,6 +130,7 @@ func Read(r io.Reader, o Options) ([]Message, error) {
 	}
 	return Decode(b, o)
 }
+
 func Decode(frame []byte, o Options) ([]Message, error) {
 	if err := o.Validate(); err != nil {
 		return nil, err

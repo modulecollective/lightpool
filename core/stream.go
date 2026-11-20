@@ -4,8 +4,9 @@
 package core
 
 import (
-	"github.com/modulecollective/lightpool/wire"
 	"net/netip"
+
+	"github.com/modulecollective/lightpool/wire"
 )
 
 type stream struct {
@@ -28,6 +29,7 @@ func (c *Core) beginStream(peer wire.Identity, command uint64, purpose string) *
 	c.arm(key("stream:", s.id.ID), "stream", s.deadline, s.id.ID, "")
 	return s
 }
+
 func (c *Core) openExchange(peer wire.Identity, command uint64, periodic bool) {
 	if c.exchanges() >= c.config.MaxPushPull {
 		if command != 0 {
@@ -42,6 +44,7 @@ func (c *Core) openExchange(peer wire.Identity, command uint64, periodic bool) {
 	s.periodic = periodic
 	c.emit(OpenStream{ID: s.id, To: s.peer, Deadline: s.deadline})
 }
+
 func (c *Core) openPing(p *probe) {
 	s := c.beginStream(p.peer, 0, "ping")
 	s.probe = p.id
@@ -50,6 +53,7 @@ func (c *Core) openPing(p *probe) {
 	s.outgoing = wire.Message{Ping: &wire.Ping{Sequence: p.id, Target: p.peer.Name, Source: routing(c.nodes[c.self].Identity)}}
 	c.emit(OpenStream{ID: s.id, To: s.peer, Deadline: s.deadline})
 }
+
 func (c *Core) exchanges() int {
 	n := 0
 	for _, s := range c.streams {
@@ -59,6 +63,7 @@ func (c *Core) exchanges() int {
 	}
 	return n
 }
+
 func (c *Core) accept(e Accepted) {
 	if _, ok := c.streams[e.ID.ID]; ok {
 		return
@@ -71,6 +76,7 @@ func (c *Core) accept(e Accepted) {
 	c.streams[e.ID.ID] = s
 	c.arm(key("stream:", s.id.ID), "stream", s.deadline, s.id.ID, "")
 }
+
 func (c *Core) opened(e Opened) {
 	s := c.streams[e.ID.ID]
 	if s == nil || s.id != e.ID || s.phase != "connect" {
@@ -86,6 +92,7 @@ func (c *Core) opened(e Opened) {
 		c.write(s, s.outgoing, "request")
 	}
 }
+
 func (c *Core) writeExchange(s *stream) {
 	// Each side sends its membership before merging the peer's, as memberlist does.
 	m := wire.Message{Exchange: &wire.Exchange{Members: c.Snapshot().Members}}
@@ -95,6 +102,7 @@ func (c *Core) writeExchange(s *stream) {
 	}
 	c.write(s, m, stage)
 }
+
 func (c *Core) write(s *stream, m wire.Message, stage string) {
 	if m.Validate() != nil {
 		c.endStream(s.id.ID, LocalFailure)
@@ -108,6 +116,7 @@ func (c *Core) write(s *stream, m wire.Message, stage string) {
 	c.arm(key("stream:", s.id.ID), "stream", s.deadline, s.id.ID, "")
 	c.emit(WriteStream{ID: s.id, Messages: []wire.Message{m.Clone()}, Deadline: s.deadline})
 }
+
 func (c *Core) written(e Written) {
 	s := c.streams[e.ID.ID]
 	if s == nil || s.id != e.ID {
@@ -156,6 +165,7 @@ func (c *Core) closed(e Closed) {
 	}
 	c.endStream(e.ID.ID, e.Failure)
 }
+
 func (c *Core) streamMessage(e StreamMessage) {
 	s := c.streams[e.ID.ID]
 	if s == nil || s.id != e.ID {
@@ -216,6 +226,7 @@ func (c *Core) streamMessage(e StreamMessage) {
 		c.endStream(s.id.ID, RemoteFailure)
 	}
 }
+
 func (c *Core) merge(s *stream) {
 	if s.remote == nil {
 		c.endStream(s.id.ID, RemoteFailure)
@@ -239,6 +250,7 @@ func (c *Core) merge(s *stream) {
 	}
 	c.endStream(s.id.ID, Success)
 }
+
 func (c *Core) endStream(id uint64, f Failure) {
 	s := c.streams[id]
 	if s == nil {

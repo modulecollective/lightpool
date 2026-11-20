@@ -40,6 +40,7 @@ type Status struct {
 	Status string `json:"status"`
 	Reason string `json:"reason"`
 }
+
 type Resources struct {
 	ElapsedNS    int64  `json:"elapsedNS,string"`
 	PeakRSSBytes *int64 `json:"peakRSSBytes,string"`
@@ -103,6 +104,7 @@ func Run(spec Spec, scenario sim.Scenario, directory string, progress func(sim.P
 	}
 	return nil
 }
+
 func recordTrace(scenario sim.Scenario, file io.WriteCloser, cap int64, progress func(sim.Progress)) (sim.Result, error) {
 	result, err := sim.Export(scenario, &cappedWriter{w: file, left: cap}, sim.ExportOptions{Progress: progress})
 	return result, errors.Join(err, file.Close())
@@ -111,6 +113,7 @@ func recordTrace(scenario sim.Scenario, file io.WriteCloser, cap int64, progress
 // Reduce regenerates measurements only from saved inputs, without simulating.
 // If report.json exists it must match; this path never writes saved evidence.
 func Reduce(directory string) (*Summary, error) { return reduce(directory, false) }
+
 func reduce(directory string, recording bool) (*Summary, error) {
 	var spec Spec
 	var scenario sim.Scenario
@@ -180,6 +183,7 @@ func reduce(directory string, recording bool) (*Summary, error) {
 	}
 	return out, nil
 }
+
 func validateSpec(spec Spec, scenario sim.Scenario) error {
 	if spec.Format != Version || spec.Code == "" || spec.Replicate == 0 || spec.SeedDerivation != SeedVersion || spec.LossDraw != sim.LossDrawVersion || spec.WarmupNS < 0 || spec.HorizonNS <= spec.WarmupNS || int64(scenario.Horizon) != spec.HorizonNS || spec.Code != scenario.Code || spec.TraceCap <= 0 || spec.TraceCap > TraceCap {
 		return fmt.Errorf("invalid experiment specification")
@@ -212,6 +216,7 @@ func validateSpec(spec Spec, scenario sim.Scenario) error {
 	}
 	return nil
 }
+
 func writeJSON(path string, v any) (err error) {
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
@@ -224,6 +229,7 @@ func writeJSON(path string, v any) (err error) {
 
 // WriteSummary emits a new summary file for reducer-only CLI replay.
 func WriteSummary(path string, s *Summary) error { return writeJSON(path, s) }
+
 func readJSON(path string, v any) error {
 	f, err := os.Open(path)
 	if err != nil {
@@ -240,6 +246,7 @@ func readJSON(path string, v any) error {
 	}
 	return errors.Join(err, f.Close())
 }
+
 func hashFile(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {

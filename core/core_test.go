@@ -6,18 +6,20 @@ package core
 import (
 	"bytes"
 	"fmt"
-	"github.com/modulecollective/lightpool/wire"
 	"math/rand/v2"
 	"net/netip"
 	"reflect"
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/modulecollective/lightpool/wire"
 )
 
 func identity(name string, port uint16) wire.Identity {
 	return wire.Identity{Name: name, Address: netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), port)}
 }
+
 func testCore(t testing.TB) *Core {
 	t.Helper()
 	cfg := DefaultConfig()
@@ -33,6 +35,7 @@ func testCore(t testing.TB) *Core {
 	add(t, c, "b", 2)
 	return c
 }
+
 func step(t testing.TB, c *Core, now Instant, e Event) []Effect {
 	t.Helper()
 	out, err := c.Step(now, e)
@@ -41,6 +44,7 @@ func step(t testing.TB, c *Core, now Instant, e Event) []Effect {
 	}
 	return out
 }
+
 func add(t testing.TB, c *Core, name string, port uint16) {
 	t.Helper()
 	m := wire.Member{Identity: identity(name, port), Incarnation: 1}
@@ -51,6 +55,7 @@ func add(t testing.TB, c *Core, name string, port uint16) {
 		}
 	}
 }
+
 func timer(t testing.TB, effects []Effect, prefix string) Arm {
 	t.Helper()
 	for _, e := range effects {
@@ -63,6 +68,7 @@ func timer(t testing.TB, effects []Effect, prefix string) Arm {
 	t.Fatalf("timer %s missing: %#v", prefix, effects)
 	return Arm{}
 }
+
 func pingSend(t testing.TB, effects []Effect) SendDatagram {
 	t.Helper()
 	for _, e := range effects {
@@ -73,6 +79,7 @@ func pingSend(t testing.TB, effects []Effect) SendDatagram {
 	t.Fatal("missing ping")
 	return SendDatagram{}
 }
+
 func state(c *Core, name string) wire.State {
 	for _, m := range c.Snapshot().Members {
 		if m.Name == name {
@@ -81,6 +88,7 @@ func state(c *Core, name string) wire.State {
 	}
 	return wire.Left
 }
+
 func countResults(es []Effect, command uint64) int {
 	n := 0
 	for _, e := range es {
@@ -90,6 +98,7 @@ func countResults(es []Effect, command uint64) int {
 	}
 	return n
 }
+
 func TestDirectTimeoutACKMatrix(t *testing.T) {
 	for _, offset := range []time.Duration{-time.Nanosecond, 0, time.Nanosecond} {
 		for _, ackFirst := range []bool{true, false} {
@@ -126,6 +135,7 @@ func TestDirectTimeoutACKMatrix(t *testing.T) {
 		}
 	}
 }
+
 func TestProbeEscalationTCPAndAwareness(t *testing.T) {
 	c := testCore(t)
 	add(t, c, "c", 3)
@@ -167,6 +177,7 @@ func TestProbeEscalationTCPAndAwareness(t *testing.T) {
 		t.Fatal(c.Snapshot())
 	}
 }
+
 func TestOverallNackMatrix(t *testing.T) {
 	for _, first := range []bool{true, false} {
 		c := testCore(t)
@@ -193,6 +204,7 @@ func TestOverallNackMatrix(t *testing.T) {
 		}
 	}
 }
+
 func TestRTTReceiveBeforeSendCompletion(t *testing.T) {
 	c := testCore(t)
 	effects := step(t, c, 10, Ping{Command: 7, Peer: identity("b", 2)})
@@ -210,9 +222,11 @@ func TestRTTReceiveBeforeSendCompletion(t *testing.T) {
 		t.Fatal(out)
 	}
 }
+
 func suspicionEvent(c *Core, from string) {
 	c.suspect(wire.Accusation{Node: "b", From: from, Incarnation: 1})
 }
+
 func TestSuspicionRefutationAndExpiryOrders(t *testing.T) {
 	for _, first := range []bool{true, false} {
 		c := testCore(t)
@@ -237,6 +251,7 @@ func TestSuspicionRefutationAndExpiryOrders(t *testing.T) {
 		_ = out
 	}
 }
+
 func TestSuspicionConfirmationsAndOverdue(t *testing.T) {
 	c := testCore(t)
 	for j := 3; j <= 5; j++ {
@@ -271,6 +286,7 @@ func TestSuspicionConfirmationsAndOverdue(t *testing.T) {
 		t.Fatal("small-cluster timeout changed")
 	}
 }
+
 func TestMembershipRules(t *testing.T) {
 	c := testCore(t)
 	n := c.nodes["b"].Clone()
@@ -318,6 +334,7 @@ func TestMembershipRules(t *testing.T) {
 		t.Fatal("snapshot mutation invisible")
 	}
 }
+
 func TestQueuePriorityOverflowAndLIFO(t *testing.T) {
 	c := testCore(t)
 	c.config.QueueDepth = 2
@@ -347,6 +364,7 @@ func TestQueuePriorityOverflowAndLIFO(t *testing.T) {
 		t.Fatal("not LIFO")
 	}
 }
+
 func TestShutdownInvalidatesAllWorkAndLifetime(t *testing.T) {
 	c := testCore(t)
 	effects := step(t, c, 0, Probe{Peer: "b"})
@@ -381,6 +399,7 @@ func TestShutdownInvalidatesAllWorkAndLifetime(t *testing.T) {
 		t.Fatal("push-only shutdown failed")
 	}
 }
+
 func TestPeriodicCoalescing(t *testing.T) {
 	c := testCore(t)
 	a := c.timers["periodic-probe"]
@@ -403,6 +422,7 @@ func TestPeriodicCoalescing(t *testing.T) {
 		t.Fatal("pending tick not coalesced")
 	}
 }
+
 func TestBroadcastReferenceAndBudget(t *testing.T) {
 	c := testCore(t)
 	c.broadcasts = nil
@@ -465,6 +485,7 @@ func TestBroadcastReferenceAndBudget(t *testing.T) {
 		}
 	}
 }
+
 func TestBroadcastCompletionAndInvalidation(t *testing.T) {
 	c := testCore(t)
 	step(t, c, 0, Update{Command: 1, Meta: []byte("first")})
@@ -480,6 +501,7 @@ func TestBroadcastCompletionAndInvalidation(t *testing.T) {
 		t.Fatal(c.effects)
 	}
 }
+
 func BenchmarkBacklog(b *testing.B) {
 	for _, count := range []int{10, 1000, 10000} {
 		b.Run(fmt.Sprint(count), func(b *testing.B) {
@@ -526,6 +548,7 @@ func TestMonotonicTimeAndOwnership(t *testing.T) {
 		t.Fatal("snapshot aliases membership")
 	}
 }
+
 func TestHelperSelectionAndReaping(t *testing.T) {
 	c := testCore(t)
 	for j := 3; j <= 20; j++ {
@@ -603,6 +626,7 @@ func TestOverallACKAndNackOrdering(t *testing.T) {
 		}
 	}
 }
+
 func TestConfirmationExpiryOrder(t *testing.T) {
 	for _, first := range []bool{true, false} {
 		c := testCore(t)
@@ -630,6 +654,7 @@ func TestConfirmationExpiryOrder(t *testing.T) {
 		}
 	}
 }
+
 func TestCancelCommandClosesOnlyItsOperation(t *testing.T) {
 	c := testCore(t)
 	o := findOpen(t, step(t, c, 0, Join{Command: 1, Peer: identity("b", 2)}))

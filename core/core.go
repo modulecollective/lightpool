@@ -5,16 +5,18 @@ package core
 
 import (
 	"errors"
-	"github.com/modulecollective/lightpool/wire"
 	"math/rand/v2"
 	"slices"
 	"strconv"
+
+	"github.com/modulecollective/lightpool/wire"
 )
 
 type member struct {
 	wire.Member
 	changed Instant
 }
+
 type deadline struct {
 	timer Timer
 	at    Instant
@@ -22,7 +24,9 @@ type deadline struct {
 	op    uint64
 	node  string
 }
+
 type handoff struct{ msg wire.Message }
+
 type Core struct {
 	config                 Config
 	self                   string
@@ -79,9 +83,11 @@ func New(config Config, identity wire.Identity, seed Seed) (*Core, error) {
 	}
 	return c, nil
 }
+
 func (c *Core) token() Token       { c.next++; return Token{c.life, c.next} }
 func (c *Core) valid(t Token) bool { return t.Lifetime == c.life }
 func (c *Core) emit(e Effect)      { c.effects = append(c.effects, e) }
+
 func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
 	if now < c.now {
 		return nil, errors.New("protocol time moved backwards")
@@ -195,7 +201,9 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
 	}
 	return c.effects, nil
 }
+
 func ptrMember(n wire.Member) *wire.Member { n = n.Clone(); return &n }
+
 func (c *Core) Snapshot() Snapshot {
 	s := c.Summary()
 	for _, name := range c.names() {
@@ -203,6 +211,7 @@ func (c *Core) Snapshot() Snapshot {
 	}
 	return s
 }
+
 func (c *Core) names() []string {
 	names := make([]string, 0, len(c.nodes))
 	for name := range c.nodes {
@@ -211,6 +220,7 @@ func (c *Core) names() []string {
 	slices.Sort(names)
 	return names
 }
+
 func (c *Core) arm(key, kind string, at Instant, op uint64, node string) {
 	c.cancel(key)
 	id := c.token()
@@ -221,6 +231,7 @@ func (c *Core) arm(key, kind string, at Instant, op uint64, node string) {
 	c.emit(Arm{t, d.at})
 	c.record(Inspection{Kind: "timer", ID: t.ID, Generation: t.Generation, Operation: op, Phase: "arm", At: d.at, Purpose: kind, Subject: node})
 }
+
 func (c *Core) cancel(key string) {
 	if d, ok := c.timers[key]; ok {
 		delete(c.timers, key)
@@ -229,13 +240,16 @@ func (c *Core) cancel(key string) {
 		c.record(Inspection{Kind: "timer", ID: d.timer.ID, Generation: d.timer.Generation, Operation: d.op, Phase: "cancel", At: d.at, Purpose: d.kind, Subject: d.node})
 	}
 }
+
 func (c *Core) adjustHealth(delta int) {
 	c.health = min(c.config.AwarenessMax-1, max(0, c.health+delta))
 	c.emit(Observation{Kind: "health", Value: int64(c.health)})
 }
+
 func (c *Core) notify(kind string, n wire.Member) {
 	c.emit(Notification{Kind: kind, Member: n.Clone()})
 }
+
 func (c *Core) shutdown(command uint64) {
 	c.stopped = true
 	c.pendingProbe = false
@@ -264,6 +278,7 @@ func (c *Core) shutdown(command uint64) {
 	c.work = Token{}
 	c.emit(Result{Command: command})
 }
+
 func sortedIDs[V any](m map[uint64]V) []uint64 {
 	ids := make([]uint64, 0, len(m))
 	for id := range m {
@@ -272,13 +287,16 @@ func sortedIDs[V any](m map[uint64]V) []uint64 {
 	slices.Sort(ids)
 	return ids
 }
+
 func key(prefix string, id uint64) string { return prefix + strconv.FormatUint(id, 10) }
+
 func (c *Core) nextDeferred() {
 	if c.work == (Token{}) && len(c.high)+len(c.low) > 0 {
 		c.work = c.token()
 		c.emit(Defer{c.work})
 	}
 }
+
 func (c *Core) workOne() {
 	q := &c.high
 	if len(*q) == 0 {
@@ -299,6 +317,7 @@ func (c *Core) workOne() {
 	}
 	c.nextDeferred()
 }
+
 func (c *Core) cancelCommand(command uint64) {
 	if command == 0 {
 		return

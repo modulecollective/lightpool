@@ -24,6 +24,7 @@ type Keyring struct {
 	// each frame reads it without locking or rebuilding ciphers.
 	built atomic.Pointer[[]wire.Key]
 }
+
 type keyEntry struct {
 	secret []byte
 	key    wire.Key
@@ -41,6 +42,7 @@ func NewKeyring(primary []byte, secondary ...[]byte) (*Keyring, error) {
 	}
 	return k, nil
 }
+
 func (k *Keyring) Add(key []byte) error {
 	built, err := wire.NewKey(key)
 	if err != nil {
@@ -57,6 +59,7 @@ func (k *Keyring) Add(key []byte) error {
 	k.publish()
 	return nil
 }
+
 func (k *Keyring) Use(key []byte) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
@@ -70,6 +73,7 @@ func (k *Keyring) Use(key []byte) error {
 	}
 	return errors.New("key is not installed")
 }
+
 func (k *Keyring) Remove(key []byte) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
@@ -85,6 +89,7 @@ func (k *Keyring) Remove(key []byte) error {
 	}
 	return nil
 }
+
 func (k *Keyring) Keys() [][]byte {
 	k.mu.RLock()
 	defer k.mu.RUnlock()
@@ -103,6 +108,7 @@ func (k *Keyring) publish() {
 	}
 	k.built.Store(&built)
 }
+
 func (k *Keyring) frameKeys() []wire.Key {
 	if built := k.built.Load(); built != nil {
 		return *built

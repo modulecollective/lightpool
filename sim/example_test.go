@@ -5,11 +5,12 @@ package sim_test
 
 import (
 	"fmt"
+	"net/netip"
+	"time"
+
 	"github.com/modulecollective/lightpool/core"
 	"github.com/modulecollective/lightpool/sim"
 	"github.com/modulecollective/lightpool/wire"
-	"net/netip"
-	"time"
 )
 
 func ExampleRun() {

@@ -13,9 +13,11 @@ import (
 func admissionTimer(phase, id, deadline string) trace.Change {
 	return trace.Change{Kind: "timer", Node: "n002", Subject: "n003", ID: id, Generation: id, Operation: "0", Phase: phase, Purpose: "suspicion", Deadline: deadline}
 }
+
 func admissionSuspicion(node, outcome string) trace.Change {
 	return trace.Change{Kind: "suspicion", Node: node, Subject: "n003", Outcome: outcome}
 }
+
 func admissionPositive(t *testing.T) *evidenceBuilder {
 	t.Helper()
 	b := newEvidence(t)
@@ -42,6 +44,7 @@ func admissionPositive(t *testing.T) *evidenceBuilder {
 	b.add(70, accept)
 	return b
 }
+
 func classifyEvidence(t *testing.T, b *evidenceBuilder, complete bool) *Admission {
 	t.Helper()
 	summary := b.measure(t, complete)
@@ -51,6 +54,7 @@ func classifyEvidence(t *testing.T, b *evidenceBuilder, complete bool) *Admissio
 	}
 	return out
 }
+
 func observerEpisode(t *testing.T, out *Admission) *AdmissionEpisode {
 	t.Helper()
 	for _, ep := range out.Episodes {
@@ -61,6 +65,7 @@ func observerEpisode(t *testing.T, out *Admission) *AdmissionEpisode {
 	t.Fatal("missing O episode")
 	return nil
 }
+
 func mutateChanges(b *evidenceBuilder, mutate func(*trace.Change)) {
 	for i := range b.events {
 		for j := range b.events[i].Changes {
@@ -68,6 +73,7 @@ func mutateChanges(b *evidenceBuilder, mutate func(*trace.Change)) {
 		}
 	}
 }
+
 func TestAdmissionPositiveAccelerationAndPostDeathRefutation(t *testing.T) {
 	out := classifyEvidence(t, admissionPositive(t), true)
 	ep := observerEpisode(t, out)
@@ -81,6 +87,7 @@ func TestAdmissionPositiveAccelerationAndPostDeathRefutation(t *testing.T) {
 		t.Fatal("lost evidence", ep)
 	}
 }
+
 func TestAdmissionRejectsUnprovenAcceleration(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -178,12 +185,14 @@ func TestAdmissionRejectsUnprovenAcceleration(t *testing.T) {
 		})
 	}
 }
+
 func resequence(b *evidenceBuilder) {
 	for i := range b.events {
 		b.events[i].Seq = trace.Decimal(i + 1)
 		b.events[i].ID = trace.Decimal(i + 1)
 	}
 }
+
 func moveRefutation(b *evidenceBuilder, at string) {
 	index := slices.IndexFunc(b.events, func(e trace.Event) bool { return e.Time == "60" })
 	event := b.events[index]
@@ -193,6 +202,7 @@ func moveRefutation(b *evidenceBuilder, at string) {
 	b.events = slices.Insert(b.events, index, event)
 	resequence(b)
 }
+
 func TestAdmissionSeparatesHarmFromAcceleration(t *testing.T) {
 	for _, kind := range []string{"received-rumor", "cancelled-fire", "stale-generation", "recovery", "same-time-refutation-after"} {
 		t.Run(kind, func(t *testing.T) {
@@ -231,6 +241,7 @@ func TestAdmissionSeparatesHarmFromAcceleration(t *testing.T) {
 		})
 	}
 }
+
 func TestAdmissionNullAndIncomplete(t *testing.T) {
 	b := admissionPositive(t)
 	b.events = b.events[:4]

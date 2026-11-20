@@ -33,16 +33,20 @@ const minMember = 1 + 7 + 1 + 1 + 1
 
 func uvarintSize(v uint64) int { return (bits.Len64(v|1) + 6) / 7 }
 func textSize(n int) int       { return uvarintSize(uint64(n)) + n }
+
 func addressSize(a netip.AddrPort) int {
 	if a.Addr().Is4() {
 		return 1 + 4 + 2
 	}
 	return 1 + 16 + 2
 }
+
 func identitySize(i Identity) int {
 	return textSize(len(i.Name)) + addressSize(i.Address) + textSize(len(i.Meta))
 }
+
 func memberSize(m Member) int { return identitySize(m.Identity) + uvarintSize(m.Incarnation) + 1 }
+
 func accusationSize(a Accusation) int {
 	return textSize(len(a.Node)) + uvarintSize(a.Incarnation) + textSize(len(a.From))
 }
@@ -71,6 +75,7 @@ func MessageSize(m Message) int {
 	}
 	return n
 }
+
 func bodySize(messages []Message) (int, error) {
 	if len(messages) == 0 || len(messages) > MaxBatch {
 		return 0, errors.New("invalid batch count")
@@ -91,9 +96,11 @@ func bodySize(messages []Message) (int, error) {
 func appendText(b []byte, s string) []byte {
 	return append(binary.AppendUvarint(b, uint64(len(s))), s...)
 }
+
 func appendBytes(b, v []byte) []byte {
 	return append(binary.AppendUvarint(b, uint64(len(v))), v...)
 }
+
 func appendAddress(b []byte, a netip.AddrPort) []byte {
 	ip := a.Addr()
 	if ip.Is4() {
@@ -105,15 +112,19 @@ func appendAddress(b []byte, a netip.AddrPort) []byte {
 	}
 	return binary.BigEndian.AppendUint16(b, a.Port())
 }
+
 func appendIdentity(b []byte, i Identity) []byte {
 	return appendBytes(appendAddress(appendText(b, i.Name), i.Address), i.Meta)
 }
+
 func appendMember(b []byte, m Member) []byte {
 	return append(binary.AppendUvarint(appendIdentity(b, m.Identity), m.Incarnation), byte(m.State))
 }
+
 func appendAccusation(b []byte, a Accusation) []byte {
 	return appendText(binary.AppendUvarint(appendText(b, a.Node), a.Incarnation), a.From)
 }
+
 func appendMessage(b []byte, m Message) []byte {
 	switch {
 	case m.Ping != nil:
@@ -164,6 +175,7 @@ type reader struct {
 }
 
 func (r *reader) fail() { r.err = errBody; r.b = nil }
+
 func (r *reader) byte() byte {
 	if r.err != nil || len(r.b) < 1 {
 		r.fail()
@@ -173,6 +185,7 @@ func (r *reader) byte() byte {
 	r.b = r.b[1:]
 	return v
 }
+
 func (r *reader) fixed(n int) []byte {
 	if r.err != nil || len(r.b) < n {
 		r.fail()
@@ -182,6 +195,7 @@ func (r *reader) fixed(n int) []byte {
 	r.b = r.b[n:]
 	return v
 }
+
 func (r *reader) uvarint() uint64 {
 	if r.err != nil {
 		return 0
@@ -195,6 +209,7 @@ func (r *reader) uvarint() uint64 {
 	r.b = r.b[n:]
 	return v
 }
+
 func (r *reader) length(max int) int {
 	n := r.uvarint()
 	if r.err == nil && (n > uint64(max) || n > uint64(len(r.b))) {
@@ -203,7 +218,9 @@ func (r *reader) length(max int) int {
 	}
 	return int(n)
 }
+
 func (r *reader) text() string { return string(r.fixed(r.length(MaxName))) }
+
 func (r *reader) bytes(max int) []byte {
 	n := r.length(max)
 	if n == 0 {
@@ -211,6 +228,7 @@ func (r *reader) bytes(max int) []byte {
 	}
 	return append([]byte(nil), r.fixed(n)...)
 }
+
 func (r *reader) address() netip.AddrPort {
 	n := int(r.byte())
 	if n != 4 && n != 16 {
@@ -223,6 +241,7 @@ func (r *reader) address() netip.AddrPort {
 	ip, _ := netip.AddrFromSlice(v[:n])
 	return netip.AddrPortFrom(ip, binary.BigEndian.Uint16(v[n:]))
 }
+
 func (r *reader) sequence() uint64 {
 	v := r.fixed(8)
 	if r.err != nil {
@@ -230,9 +249,11 @@ func (r *reader) sequence() uint64 {
 	}
 	return binary.BigEndian.Uint64(v)
 }
+
 func (r *reader) identity() Identity {
 	return Identity{Name: r.text(), Address: r.address(), Meta: r.bytes(MaxMeta)}
 }
+
 func (r *reader) member() Member {
 	m := Member{Identity: r.identity(), Incarnation: r.uvarint()}
 	if s := r.byte(); s <= byte(Left) {
@@ -242,9 +263,11 @@ func (r *reader) member() Member {
 	}
 	return m
 }
+
 func (r *reader) accusation() *Accusation {
 	return &Accusation{Node: r.text(), Incarnation: r.uvarint(), From: r.text()}
 }
+
 func (r *reader) message() Message {
 	var m Message
 	switch r.byte() {

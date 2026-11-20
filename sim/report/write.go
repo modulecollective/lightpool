@@ -24,22 +24,27 @@ func Write(w io.Writer, r *Report, format string) error {
 		return fmt.Errorf("unsupported format %q (use text or json)", format)
 	}
 }
+
 func duration(n *int64) string {
 	if n == nil {
 		return "n/a"
 	}
 	return time.Duration(*n).String()
 }
+
 func value(s *string) string {
 	if s == nil {
 		return "n/a"
 	}
 	return *s
 }
+
 func position(r Reference) string { return fmt.Sprintf("%s/#%d", time.Duration(r.TimeNS), r.Seq) }
+
 func population(d Distribution) string {
 	return fmt.Sprintf("%d/%d completed; p50=%s p95=%s max=%s %s", d.Completed, d.Eligible, duration(d.P50NS), duration(d.P95NS), duration(d.MaxNS), d.Reason)
 }
+
 func writeText(w io.Writer, r *Report) error {
 	// Assemble only the report, after aggregation; never buffer the trace itself.
 	var b strings.Builder

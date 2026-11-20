@@ -27,10 +27,12 @@ type OrderedEvidence struct {
 	ChangeIndex int          `json:"changeIndex,string"`
 	Fact        trace.Change `json:"fact"`
 }
+
 type ProbeStep struct {
 	OrderedEvidence
 	Traffic []trace.Traffic `json:"stepTraffic"`
 }
+
 type AdmissionProbe struct {
 	Pair
 	ID             string           `json:"id"`
@@ -39,12 +41,14 @@ type AdmissionProbe struct {
 	Outcome        string           `json:"outcome"`
 	LocalSuspicion *OrderedEvidence `json:"localSuspicion"`
 }
+
 type SenderEvidence struct {
 	Sender   string          `json:"sender"`
 	Lifetime string          `json:"lifetime"`
 	Fact     OrderedEvidence `json:"fact"`
 	Probe    *AdmissionProbe `json:"probe"`
 }
+
 type Shortening struct {
 	Confirmation SenderEvidence  `json:"confirmation"`
 	Previous     OrderedEvidence `json:"previousArm"`
@@ -52,6 +56,7 @@ type Shortening struct {
 	Qualifies    bool            `json:"qualifies"`
 	Reasons      []string        `json:"missingEvidence"`
 }
+
 type AdmissionEpisode struct {
 	Pair
 	Incarnation      string            `json:"incarnation"`
@@ -75,6 +80,7 @@ type AdmissionEpisode struct {
 	seen             map[string]bool
 	pending          *SenderEvidence
 }
+
 type Admission struct {
 	Format              string              `json:"format"`
 	Status              string              `json:"status"`
@@ -102,21 +108,25 @@ type Admission struct {
 	MaxLatenessNS       int64               `json:"maxTimerLatenessNS,string"`
 	Limits              []string            `json:"limits"`
 }
+
 type admissionRefutation struct {
 	life, incarnation string
 	evidence          OrderedEvidence
 }
+
 type admissionAcceptance struct {
 	Pair
 	incarnation string
 	evidence    OrderedEvidence
 }
+
 type admissionNode struct {
 	life              string
 	running, inactive bool
 	pausedUntil       int64
 	member            trace.Member
 }
+
 type admissionScan struct {
 	spec        Spec
 	out         *Admission
@@ -173,6 +183,7 @@ func Admit(directory string) (*Admission, error) {
 	}
 	return out, nil
 }
+
 func WriteAdmission(path string, a *Admission) error { return writeJSON(path, a) }
 
 func measureAdmission(summary *Summary, input io.Reader) (*Admission, error) {
@@ -208,27 +219,33 @@ func measureAdmission(summary *Summary, input io.Reader) (*Admission, error) {
 	}
 	return out, nil
 }
+
 func (x *admissionScan) node(name string) *admissionNode {
 	if x.nodes[name] == nil {
 		x.nodes[name] = &admissionNode{}
 	}
 	return x.nodes[name]
 }
+
 func (x *admissionScan) pair(observer string) Pair {
 	return Pair{Observer: observer, ObserverLifetime: x.node(observer).life, Subject: x.spec.Target, TargetLifetime: x.node(x.spec.Target).life}
 }
+
 func orderedBefore(a, b OrderedEvidence) bool {
 	return before(a.Reference, b.Reference) || a.Reference == b.Reference && a.ChangeIndex < b.ChangeIndex
 }
+
 func incarnationAfter(a, b string) bool {
 	av, _ := strconv.ParseUint(a, 10, 64)
 	bv, _ := strconv.ParseUint(b, 10, 64)
 	return av > bv
 }
+
 func (x *admissionScan) activeAt(name string, at int64) bool {
 	n := x.node(name)
 	return n.running && !n.inactive && n.pausedUntil <= at
 }
+
 func (x *admissionScan) sender(c OrderedEvidence) SenderEvidence {
 	_, sender, _ := strings.Cut(c.Fact.Outcome, ":")
 	out := SenderEvidence{Sender: sender, Lifetime: x.node(sender).life, Fact: c}
@@ -245,6 +262,7 @@ func (x *admissionScan) sender(c OrderedEvidence) SenderEvidence {
 	}
 	return out
 }
+
 func (x *admissionScan) record(raw json.RawMessage) error {
 	var tag struct{ Type string }
 	if err := json.Unmarshal(raw, &tag); err != nil {
@@ -401,9 +419,11 @@ func (x *admissionScan) record(raw json.RawMessage) error {
 	}
 	return nil
 }
+
 func sameTimer(arm *OrderedEvidence, e OrderedEvidence) bool {
 	return arm != nil && arm.Fact.ID == e.Fact.ID && arm.Fact.Generation == e.Fact.Generation && arm.Fact.Deadline == e.Fact.Deadline
 }
+
 func (x *admissionScan) classify(ep *AdmissionEpisode) {
 	if x.out.Status != "complete" {
 		ep.Reasons = append(ep.Reasons, "recording or warm-up is not complete and valid")

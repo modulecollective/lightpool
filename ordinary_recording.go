@@ -22,7 +22,9 @@ type recordingConfig struct {
 	Path, Source, Binary string
 	Limits               ordinary.Limits
 }
+
 type recordingFailure struct{ err error }
+
 type ordinaryRecorder struct {
 	cfg         recordingConfig
 	output      io.WriteCloser
@@ -49,18 +51,22 @@ func newOrdinaryRecorder(cfg recordingConfig, identity wire.Identity, seed core.
 	r.submit(ordinary.Record{Header: &ordinary.Header{Format: ordinary.Version, Identity: identity, Seed: seed, Protocol: protocol, Source: cfg.Source, Binary: cfg.Binary, Toolchain: runtime.Version(), EpochUnixNS: epoch.UnixNano(), Baseline: baseline, Limits: cfg.Limits}})
 	return r, nil
 }
+
 func startOrdinaryWriter(cfg recordingConfig, output io.WriteCloser) *ordinaryRecorder {
 	r := &ordinaryRecorder{cfg: cfg, output: output, queue: make(chan []byte, cfg.Limits.QueueRecords), done: make(chan struct{}), due: make(map[core.Timer]int64)}
 	go r.write()
 	return r
 }
+
 func (r *ordinaryRecorder) fail(err error) { r.failure.CompareAndSwap(nil, &recordingFailure{err}) }
+
 func (r *ordinaryRecorder) err() error {
 	if f := r.failure.Load(); f != nil {
 		return f.err
 	}
 	return nil
 }
+
 func (r *ordinaryRecorder) submit(record ordinary.Record) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -87,6 +93,7 @@ func (r *ordinaryRecorder) submit(record ordinary.Record) {
 		r.fail(errors.New("ordinary recording record queue overflow"))
 	}
 }
+
 func (r *ordinaryRecorder) write() {
 	defer close(r.done)
 	var records uint64
@@ -144,11 +151,13 @@ func (r *ordinaryRecorder) finish() error {
 	<-r.done
 	return r.err()
 }
+
 func (n *Node) diagnostic(boundary string, err error) {
 	if n.recorder != nil {
 		n.recorder.submit(ordinary.Record{Diagnostic: &ordinary.Diagnostic{Boundary: boundary, AtNS: int64(n.now()), Error: err.Error()}})
 	}
 }
+
 func (n *Node) recordStepEnd(sequence uint64, recorderNS int64) {
 	n.recorder.submit(ordinary.Record{End: &ordinary.End{Sequence: sequence, EndNS: int64(n.now()), RecorderNS: recorderNS}})
 }

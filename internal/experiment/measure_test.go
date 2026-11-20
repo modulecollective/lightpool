@@ -41,15 +41,19 @@ func newEvidence(t *testing.T) *evidenceBuilder {
 	}
 	return b
 }
+
 func member(o, s, state string) trace.Change {
 	return trace.Change{Kind: "member.upsert", Node: o, Member: &trace.Member{Name: s, State: state, Incarnation: "1", Address: "192.0.2.1:7946"}}
 }
+
 func processChange(n, phase string, running bool, life string) trace.Change {
 	return trace.Change{Kind: "process", Node: n, Phase: phase, Process: &trace.Process{Node: n, Lifetime: life, Running: running, PausedUntil: "0"}}
 }
+
 func timerChange(phase, generation, deadline string) trace.Change {
 	return trace.Change{Kind: "timer", Node: "n001", Subject: "n003", ID: "1", Generation: generation, Operation: "0", Phase: phase, Purpose: "suspicion", Deadline: deadline}
 }
+
 func (b *evidenceBuilder) add(at int64, changes ...trace.Change) Reference {
 	if changes == nil {
 		changes = []trace.Change{}
@@ -58,10 +62,12 @@ func (b *evidenceBuilder) add(at int64, changes ...trace.Change) Reference {
 	b.events = append(b.events, trace.Event{Type: "event", Seq: trace.Decimal(seq), ID: trace.Decimal(seq), Time: trace.Decimal(at), Lifetime: "1", Kind: "core.datagram", Changes: changes, Traffic: []trace.Traffic{}})
 	return Reference{TimeNS: at, Seq: seq}
 }
+
 func (b *evidenceBuilder) traffic(at int64, transport, stage, id string, n int) {
 	b.add(at)
 	b.events[len(b.events)-1].Traffic = []trace.Traffic{{ID: id, Transport: transport, Stage: stage, From: "n000", To: "n001", Bytes: trace.Decimal(n), Messages: []string{"ping", "alive"}}}
 }
+
 func (b *evidenceBuilder) raw(t *testing.T, complete bool) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -105,6 +111,7 @@ func (b *evidenceBuilder) raw(t *testing.T, complete bool) []byte {
 	}
 	return buf.Bytes()
 }
+
 func (b *evidenceBuilder) measure(t *testing.T, complete bool) *Summary {
 	t.Helper()
 	raw := b.raw(t, complete)
@@ -118,6 +125,7 @@ func (b *evidenceBuilder) measure(t *testing.T, complete bool) *Summary {
 	}
 	return out
 }
+
 func population(t *testing.T, s *Summary, label string) Population {
 	t.Helper()
 	for _, p := range s.Populations {

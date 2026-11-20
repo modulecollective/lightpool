@@ -69,15 +69,18 @@ func (x *reducer) event(e trace.Event) {
 		}
 	}
 }
+
 func (x *reducer) unsupported(message string) {
 	if slices.Contains(x.report.Unsupported, message) {
 		return
 	}
 	x.report.Unsupported = append(x.report.Unsupported, message)
 }
+
 func (x *reducer) pair(observer, subject string) Pair {
 	return Pair{observer, x.state[observer].life, subject, x.state[subject].life}
 }
+
 func (x *reducer) declare(observer, subject string, at Reference) {
 	p, target := x.state[observer], x.state[subject]
 	d := Declaration{Pair: x.pair(observer, subject), Reference: at, TargetRunning: target.running, TargetStopped: target.stopped, TargetLeft: target.left, ObserverStopped: p.stopped, ObserverLeft: p.left, TargetPaused: target.running && target.paused > at.TimeNS, ObserverPaused: p.running && p.paused > at.TimeNS, Faults: []Fault{}}
@@ -116,6 +119,7 @@ func (x *reducer) declare(observer, subject string, at Reference) {
 		}
 	}
 }
+
 func (x *reducer) crash(subject string, at Reference) {
 	c := Crash{Subject: subject, TargetLifetime: x.state[subject].life, Reference: at, Observations: []Observation{}}
 	// A repeated crash of an already stopped process is still visible, but cannot
@@ -146,6 +150,7 @@ func (x *reducer) crash(subject string, at Reference) {
 	}
 	x.report.Crashes = append(x.report.Crashes, c)
 }
+
 func (x *reducer) interrupt(node string, at Reference, reason string) {
 	for k, ids := range x.recovery {
 		if k.observer != node && k.subject != node {
