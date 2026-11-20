@@ -3,12 +3,15 @@ package lightpool
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -71,9 +74,30 @@ func TestOrdinaryRecordingReplay(t *testing.T) {
 	if bytes.Equal(corrupt, data) {
 		t.Fatal("missing baseline mutation")
 	}
-	for _, bad := range [][]byte{bytes.Join(lines[:len(lines)-2], nil), append(bytes.Clone(lines[0]), data...), data[:len(data)-1], corrupt} {
+	reordered := bytes.Join(slices.Concat(lines[:2], lines[3:4], lines[2:3], lines[4:]), nil)
+	for _, bad := range [][]byte{bytes.Join(lines[:len(lines)-2], nil), append(bytes.Clone(lines[0]), data...), data[:len(data)-1], corrupt, reordered} {
 		if _, err := experiment.ReplayOrdinary(bytes.NewReader(bad)); err == nil {
 			t.Fatal("invalid journal replayed")
+		}
+		if _, err := experiment.LoadOrdinaryJournal(bad); err == nil {
+			t.Fatal("invalid journal loaded for classification")
+		}
+	}
+	loaded, err := experiment.LoadOrdinaryJournal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := 0
+	for _, n := range counts {
+		steps += n
+	}
+	sum := sha256.Sum256(data)
+	if loaded.Name != "observer" || loaded.Address != node.Identity().Address || loaded.FileSHA256 != hex.EncodeToString(sum[:]) || len(loaded.Steps) != steps {
+		t.Fatalf("loaded %s %v %d steps", loaded.Name, loaded.Address, len(loaded.Steps))
+	}
+	for i, s := range loaded.Steps {
+		if s.Sequence != uint64(i+1) || s.EndNS < s.CoreAtNS || s.CoreAtNS < s.StartNS {
+			t.Fatalf("step %d not bounded by its End record: %+v", i+1, s)
 		}
 	}
 }

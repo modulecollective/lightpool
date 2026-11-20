@@ -3,6 +3,8 @@ package experiment
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -152,4 +154,34 @@ func ReplayOrdinary(input io.Reader) (map[string]int, error) {
 		return nil, errors.New("missing ordinary footer")
 	}
 	return counts, nil
+}
+
+// LoadOrdinaryJournal replays one complete journal against its seeded core and
+// returns the node's recorded lifetime for classification. Role, process and
+// clock exchanges come from the harness manifest, not the journal.
+func LoadOrdinaryJournal(data []byte) (*OrdinaryNode, error) {
+	if _, err := ReplayOrdinary(bytes.NewReader(data)); err != nil {
+		return nil, err
+	}
+	sum := sha256.Sum256(data)
+	n := &OrdinaryNode{FileSHA256: hex.EncodeToString(sum[:])}
+	for _, line := range bytes.SplitAfter(data, []byte{'\n'}) {
+		if len(line) == 0 {
+			continue
+		}
+		var r ordinary.Record
+		if err := ordinary.Decode(line, &r); err != nil {
+			return nil, err
+		}
+		switch {
+		case r.Header != nil:
+			n.Name, n.Address, n.Lifetime = r.Header.Identity.Name, r.Header.Identity.Address, r.Header.Seed.Lifetime
+		case r.Step != nil:
+			n.Steps = append(n.Steps, OrdinaryStep{Sequence: r.Step.Sequence, StartNS: r.Step.StartNS, CoreAtNS: r.Step.CoreAtNS, Journal: r.Step.Journal})
+		case r.End != nil:
+			// Replay has proven every step is closed by its own End record.
+			n.Steps[len(n.Steps)-1].EndNS = r.End.EndNS
+		}
+	}
+	return n, nil
 }
