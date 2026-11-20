@@ -327,31 +327,56 @@ func TestOrdinaryClassifierMalformedInput(t *testing.T) {
 
 func TestOrdinaryClockBound(t *testing.T) {
 	ex := []ordinary.Exchange{{PID: 7, SendNS: 100, ChildNS: 10, ReceiveNS: 130}, {PID: 7, SendNS: 200, ChildNS: 105, ReceiveNS: 205}}
-	o, err := ordinary.Bound(7, ex, 10, 105)
-	// [90,120] ∩ [95,100] = [95,100]
-	if err != nil || o != (ordinary.Offset{LoNS: 95, HiNS: 100}) {
+	o, err := ordinary.Bound(7, ex)
+	// [90,120] ∩ [95,100] = [95,100], sampled over child time 10..105.
+	if err != nil || o != (ordinary.Offset{LoNS: 95, HiNS: 100, FromNS: 10, ThroughNS: 105}) {
 		t.Fatal(o, err)
 	}
 	if got := o.Map(20, 30); got != (ordinary.Interval{LoNS: 115, HiNS: 130}) {
 		t.Fatal(got)
 	}
+	// Outside the sampled span nothing is extrapolated: the step never orders.
+	for _, span := range [][2]int64{{9, 30}, {20, 106}} {
+		if got := o.Map(span[0], span[1]); got != ordinary.Unanchored || got.Before(ordinary.Interval{LoNS: 1 << 62, HiNS: 1 << 62}) {
+			t.Fatal(span, got)
+		}
+	}
 	if a, b := (ordinary.Interval{LoNS: 0, HiNS: 5}), (ordinary.Interval{LoNS: 5, HiNS: 9}); a.Before(b) || b.Before(a) {
 		t.Fatal("equal endpoints ordered")
 	}
 	for name, c := range map[string]struct {
-		ex          []ordinary.Exchange
-		first, last int64
-		want        string
+		ex   []ordinary.Exchange
+		want string
 	}{
-		"none":     {nil, 0, 0, "no clock exchanges"},
-		"reversed": {[]ordinary.Exchange{{PID: 7, SendNS: 10, ChildNS: 0, ReceiveNS: 9}}, 0, 0, "reversed"},
-		"empty":    {[]ordinary.Exchange{{PID: 7, SendNS: 0, ChildNS: 0, ReceiveNS: 10}, {PID: 7, SendNS: 100, ChildNS: 50, ReceiveNS: 110}}, 0, 50, "empty clock offset"},
-		"foreign":  {[]ordinary.Exchange{{PID: 8, SendNS: 0, ChildNS: 0, ReceiveNS: 1}}, 0, 0, "from process 8"},
-		"order":    {[]ordinary.Exchange{{PID: 7, SendNS: 0, ChildNS: 5, ReceiveNS: 10}, {PID: 7, SendNS: 20, ChildNS: 4, ReceiveNS: 30}}, 4, 5, "out of order"},
-		"bracket":  {ex, 9, 105, "do not bracket"},
+		"none":     {nil, "fewer than two"},
+		"one":      {ex[:1], "fewer than two"},
+		"reversed": {[]ordinary.Exchange{{PID: 7, SendNS: 10, ChildNS: 0, ReceiveNS: 9}, ex[1]}, "reversed"},
+		"empty":    {[]ordinary.Exchange{{PID: 7, SendNS: 0, ChildNS: 0, ReceiveNS: 10}, {PID: 7, SendNS: 100, ChildNS: 50, ReceiveNS: 110}}, "empty clock offset"},
+		"foreign":  {[]ordinary.Exchange{ex[0], {PID: 8, SendNS: 200, ChildNS: 105, ReceiveNS: 205}}, "from process 8"},
+		"order":    {[]ordinary.Exchange{{PID: 7, SendNS: 0, ChildNS: 5, ReceiveNS: 10}, {PID: 7, SendNS: 20, ChildNS: 4, ReceiveNS: 30}}, "out of order"},
 	} {
-		if _, err := ordinary.Bound(7, c.ex, c.first, c.last); err == nil || !strings.Contains(err.Error(), c.want) {
+		if _, err := ordinary.Bound(7, c.ex); err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: %v", name, err)
 		}
+	}
+}
+
+// A refutation recorded before T's first clock sample is unanchored, so its
+// order against O's shortening is unknown rather than extrapolated.
+func TestOrdinaryClassifierUnanchoredStep(t *testing.T) {
+	in := ordPositive().input()
+	for i := range in.Nodes {
+		if in.Nodes[i].Name == "t" {
+			at := 24*sec + 50
+			in.Nodes[i].Clock[0] = ordinary.Exchange{PID: in.Nodes[i].PID, SendNS: at, ChildNS: at, ReceiveNS: at + rtt}
+		}
+	}
+	out, err := ClassifyOrdinary(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ep := out.Episodes[0]
+	if ep.Status != "inconclusive" || ep.Refutation == nil || ep.Refutation.Coordinator != ordinary.Unanchored || !slices.Contains(ep.Shortenings[0].Ambiguities, "shortening overlaps refutation generation") {
+		t.Fatalf("%s %+v", ep.Status, ep.Shortenings[0])
 	}
 }

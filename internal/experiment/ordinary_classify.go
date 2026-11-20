@@ -167,7 +167,7 @@ func ClassifyOrdinary(in OrdinaryInput) (*OrdinaryClassification, error) {
 				return nil, fmt.Errorf("node %s step %d is out of order or unbounded", n.Name, j+1)
 			}
 		}
-		offset, err := ordinary.Bound(n.PID, n.Clock, n.Steps[0].StartNS, n.Steps[len(n.Steps)-1].EndNS)
+		offset, err := ordinary.Bound(n.PID, n.Clock)
 		if err != nil {
 			return nil, fmt.Errorf("node %s clock: %w", n.Name, err)
 		}
