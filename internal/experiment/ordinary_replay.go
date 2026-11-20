@@ -175,12 +175,22 @@ func LoadOrdinaryJournal(data []byte) (*OrdinaryNode, error) {
 		}
 		switch {
 		case r.Header != nil:
-			n.Name, n.Address, n.Lifetime = r.Header.Identity.Name, r.Header.Identity.Address, r.Header.Seed.Lifetime
+			n.Name, n.Address, n.Lifetime, n.Baseline = r.Header.Identity.Name, r.Header.Identity.Address, r.Header.Seed.Lifetime, r.Header.Baseline
 		case r.Step != nil:
-			n.Steps = append(n.Steps, OrdinaryStep{Sequence: r.Step.Sequence, StartNS: r.Step.StartNS, CoreAtNS: r.Step.CoreAtNS, Journal: r.Step.Journal})
+			s := r.Step
+			step := OrdinaryStep{Sequence: s.Sequence, StartNS: s.StartNS, CoreAtNS: s.CoreAtNS, Journal: s.Journal, Input: s.Input.Kind, QueueDepth: s.QueueDepth, CoreEndNS: s.CoreEndNS, TimerDueNS: s.TimerDueNS, ReadNS: s.FrameReadNS}
+			if s.Input.Kind == "Datagram" {
+				event, err := s.Input.Event()
+				if err != nil {
+					return nil, err
+				}
+				at := int64(event.(core.Datagram).Received)
+				step.ReadNS = &at
+			}
+			n.Steps = append(n.Steps, step)
 		case r.End != nil:
 			// Replay has proven every step is closed by its own End record.
-			n.Steps[len(n.Steps)-1].EndNS = r.End.EndNS
+			n.Steps[len(n.Steps)-1].EndNS, n.Steps[len(n.Steps)-1].RecorderNS = r.End.EndNS, r.End.RecorderNS
 		}
 	}
 	return n, nil

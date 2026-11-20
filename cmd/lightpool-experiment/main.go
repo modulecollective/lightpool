@@ -31,11 +31,30 @@ func run(args []string, stderr io.Writer) error {
 	reduce := flags.String("reduce", "", "saved run directory to remeasure offline")
 	admission := flags.String("admission", "", "saved fixed correlated run to classify offline")
 	protocol := flags.String("protocol", "", "JSON object overlaid onto the case's core.Config when recording")
+	witness := flags.String("witness", "", "saved ordinary witness attempt to reduce offline; prints one table row")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if *out == "" || flags.NArg() != 0 {
 		return errors.New("-out is required; no positional arguments")
+	}
+	if *witness != "" {
+		if *admission != "" || *reduce != "" || *name != "" || *replicate != 0 || *revision != "" || *protocol != "" {
+			return errors.New("-witness cannot be combined with other modes")
+		}
+		report, err := experiment.ReduceWitness(*witness)
+		if report == nil {
+			return err
+		}
+		file, createErr := os.OpenFile(*out, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if createErr != nil {
+			return errors.Join(err, createErr)
+		}
+		if writeErr := errors.Join(experiment.WriteWitnessReport(file, report), file.Close()); writeErr != nil {
+			return errors.Join(err, writeErr)
+		}
+		fmt.Println(report.Row())
+		return err
 	}
 	if *admission != "" {
 		if *reduce != "" || *name != "" || *replicate != 0 || *revision != "" || *protocol != "" {
