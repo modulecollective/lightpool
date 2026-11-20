@@ -262,3 +262,45 @@ func BenchmarkHealthyRecordedPing(b *testing.B) {
 		})
 	}
 }
+
+// An altered timing annotation must fail even when the input, effects,
+// inspection and byte count still match the original journal.
+func TestReplayChecksTimerDeadline(t *testing.T) {
+	cfg := testConfig("observer")
+	cfg.Protocol.GossipInterval = time.Millisecond
+	c := smokeRecording(t)
+	node, err := newOrdinaryNode(cfg, &c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := node.Shutdown(); err != nil {
+			t.Error(err)
+		}
+	})
+	wait(t, "timer dispatch", func() bool { return node.Snapshot().Stats.Steps >= 3 })
+	if err := node.Shutdown(); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(c.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := experiment.ReplayOrdinary(bytes.NewReader(raw)); err != nil {
+		t.Fatal(err)
+	}
+	marker := []byte(`"timerDueNS":`)
+	i := bytes.Index(raw, marker)
+	if i < 0 {
+		t.Fatal("missing due time")
+	}
+	pos := i + len(marker)
+	if raw[pos] == '1' {
+		raw[pos] = '2'
+	} else {
+		raw[pos] = '1'
+	}
+	if _, err := experiment.ReplayOrdinary(bytes.NewReader(raw)); err == nil || !strings.Contains(err.Error(), "timer deadline mismatch") {
+		t.Fatalf("altered timer due: %v", err)
+	}
+}

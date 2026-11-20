@@ -29,6 +29,7 @@ func ReplayOrdinary(input io.Reader) (map[string]int, error) {
 		return 0, nil, nil
 	})
 	counts := make(map[string]int)
+	deadlines := make(map[core.Timer]int64)
 	var engine *core.Core
 	var last *ordinary.Step
 	var limits ordinary.Limits
@@ -76,6 +77,16 @@ func ReplayOrdinary(input io.Reader) (map[string]int, error) {
 			if err != nil {
 				return nil, err
 			}
+			var due *int64
+			if fired, ok := event.(core.Fired); ok {
+				if at, live := deadlines[fired.Timer]; live {
+					due = &at
+				}
+				delete(deadlines, fired.Timer)
+			}
+			if !reflect.DeepEqual(s.TimerDueNS, due) {
+				return nil, fmt.Errorf("timer deadline mismatch at step %d", sequence)
+			}
 			if s.Error == "" {
 				switch v := event.(type) {
 				case core.StreamMessage:
@@ -97,6 +108,12 @@ func ReplayOrdinary(input io.Reader) (map[string]int, error) {
 				return nil, fmt.Errorf("step %d replay mismatch", sequence)
 			}
 			for i, e := range effects {
+				switch t := e.(type) {
+				case core.Arm:
+					deadlines[t.Timer] = int64(t.At)
+				case core.Cancel:
+					delete(deadlines, t.Timer)
+				}
 				value, err := ordinary.Encode(e)
 				if err != nil || value.Kind != s.Effects[i].Kind || !bytes.Equal(value.Body, s.Effects[i].Body) {
 					return nil, fmt.Errorf("step %d effect %d mismatch", sequence, i)
