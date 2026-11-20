@@ -200,6 +200,8 @@ decimal strings for counters/times and retains input/trace digests, status,
 populations, traffic, backlog and timer-lateness diagnostics, target probes
 and every target suspicion episode after warm-up. Evidence addresses use
 (timeNS, seq, zero-based changeIndex), with lifetime and incarnation joins.
+Backlog and timer diagnostics cover the full trace, including warm-up;
+population exposure and traffic retain the measured interval above.
 An invalid or incomplete input writes a diagnostic JSON result and exits
 nonzero. A complete null result succeeds. Unreadable evidence may only
 supply a diagnostic reason; it cannot supply validated measurements.
