@@ -433,3 +433,44 @@ and submitting the input and transition data, through capture of the end
 timestamp. Encoding and submitting the end record falls outside that sample.
 Only enabled processes supply internal timing. Local replay reproduces the
 core inputs, effects and inspection for one node in sequence.
+
+### Ordinary witness on the current baseline
+
+`experiments/2026-11-20-ordinary-witness-current` freezes this study before any
+causal result is opened. `base` names the commit whose harness, reducer and
+classifier produced and read every attempt. `run.sh NEW_DIRECTORY` runs, in
+order:
+
+1. Socket controls. These send real UDP and TCP through the campaign's own
+   router, veth, netem and nft code, on separate endpoints.
+2. Four off/on pairs of the eight-node healthy timing workload, with one
+   recorded observer.
+3. The 36 ordinary cells of `WitnessCells`, each in a fresh namespace tree.
+4. The 18 current-baseline virtual cells.
+
+A failed control refuses launch. Every attempt is packed, restored and compared
+before its raw files are released. The packed record may not exceed 512 MiB.
+Ordinary attempts need unprivileged user namespaces.
+
+Each ordinary attempt runs 32 nodes, with the cohorts of `correlated-dense`
+at its index: 24 A, one T and seven O. Joins to `n000` are requested every
+10 ms. The warm-up boundary is at 15 s. The A-to-T UDP/TCP drop covers
+`[15 s, 31.384 s)`, and the horizon is 120 s. Both modes share 100 ms cached
+membership samples and 1 Hz pipe clock exchanges. Each node's journal limits
+are 1/32 of 5,000,000 records and 2 GiB, and every other file of one attempt
+together is capped at 64 MiB. An impaired cell injects its fault only after a
+full alive sample from every node at the boundary.
+
+`lightpool-experiment -witness DIR -out FILE` reduces one attempt and prints
+one table row. It refuses incomplete, unclean or unfrozen attempts, and those
+must fail. For recorded attempts it also requires full alive membership from
+every journal through its last step provably before the warm-up boundary.
+The classifier orders cross-process facts only by disjoint whole-step
+coordinator intervals. Overlap stays inconclusive and is never retuned. Off
+attempts report sampled outcomes only.
+
+`verify.sh NEW_DIRECTORY` restores every attempt, reduces each ordinary and
+virtual attempt twice, compares the outputs byte for byte, and checks the
+committed `controls`, `timing`, `ordinary-cells`, `ordinary-timing` and
+`virtual-cells` tables. A valid null ends this search. A tooling repair must
+rerun the same inputs into a new directory, and both attempts are kept.
