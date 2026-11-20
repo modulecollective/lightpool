@@ -215,6 +215,9 @@ func runOrdinary(t *testing.T, root, name string, replicate uint64) {
 		"Linux loopback and process SIGSTOP differ from directional path faults, CPU stress and Lifeguard I/O blocking. No directional-path fidelity claim is admitted.",
 	}}
 	defer func() {
+		if evidence.Status == "incomplete" && evidence.Reason == "" {
+			evidence.Reason = "probe aborted before the fixed horizon; see test output and child stderr"
+		}
 		if err := writeJSON(filepath.Join(directory, "summary.json"), evidence); err != nil {
 			t.Error(err)
 		}
@@ -263,22 +266,30 @@ func runOrdinary(t *testing.T, root, name string, replicate uint64) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		output, err := cmd.StdoutPipe()
+		output, outputWriter, err := childOutput(cmd)
 		if err != nil {
+			_ = input.Close()
 			t.Fatal(err)
 		}
 		logfile, err := os.OpenFile(filepath.Join(directory, node+".stderr"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
+			_ = input.Close()
+			_ = output.Close()
+			_ = outputWriter.Close()
 			t.Fatal(err)
 		}
 		cmd.Stderr = logfile
 		if err = cmd.Start(); err != nil {
 			_ = logfile.Close()
+			_ = output.Close()
+			_ = outputWriter.Close()
+			_ = input.Close()
 			t.Fatal(err)
 		}
 		c := &child{cmd: cmd, input: input, done: make(chan error, 1), log: logfile}
 		children = append(children, c)
 		go func() {
+			defer func() { _ = output.Close() }()
 			d := json.NewDecoder(bufio.NewReader(output))
 			for {
 				var m pilotMessage
@@ -292,12 +303,16 @@ func runOrdinary(t *testing.T, root, name string, replicate uint64) {
 			}
 		}()
 		go func() { c.done <- cmd.Wait() }()
+		if err = outputWriter.Close(); err != nil {
+			t.Fatal(err)
+		}
 	}
 	ready := 0
 	for ready < 8 {
 		select {
 		case r := <-messages:
 			if r.err != nil {
+				evidence.Reason = r.err.Error()
 				t.Fatal(r.err)
 			}
 			if r.message.Kind != "ready" {
@@ -373,6 +388,7 @@ func runOrdinary(t *testing.T, root, name string, replicate uint64) {
 			}
 		case r := <-messages:
 			if r.err != nil {
+				evidence.Reason = r.err.Error()
 				t.Fatal(r.err)
 			}
 			m := r.message
@@ -507,5 +523,63 @@ func awaitProcessState(pid int, stopped bool) (string, error) {
 			return state, fmt.Errorf("process state did not become stopped=%t: %s", stopped, state)
 		}
 		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// Cmd.Wait closes StdoutPipe readers. A crash can race that close with Decode;
+// own the reader instead, and close the parent's writer after Start so child
+// exit yields EOF only after every buffered sample has been drained.
+func childOutput(cmd *exec.Cmd) (*os.File, *os.File, error) {
+	reader, writer, err := os.Pipe()
+	if err == nil {
+		cmd.Stdout = writer
+	}
+	return reader, writer, err
+}
+
+func TestPilotOutputChild(t *testing.T) {
+	if os.Getenv("LIGHTPOOL_PILOT_OUTPUT_CHILD") == "" {
+		t.Skip("owned output helper")
+	}
+	if err := json.NewEncoder(os.Stdout).Encode(pilotMessage{Kind: "sample", Node: "drained-after-wait"}); err != nil {
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+func TestChildExitDoesNotCloseUndrainedSamples(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, executable, "-test.run=^TestPilotOutputChild$")
+	cmd.Env = append(os.Environ(), "LIGHTPOOL_PILOT_OUTPUT_CHILD=1")
+	output, writer, err := childOutput(cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = output.Close(); _ = writer.Close() }()
+	if err = cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err = writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// Force the problematic ordering deterministically, after the child wrote
+	// its small sample but before the parent has read a single byte.
+	if err = cmd.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	var sample pilotMessage
+	decoder := json.NewDecoder(output)
+	if err = decoder.Decode(&sample); err != nil {
+		t.Fatal("Wait closed pending evidence:", err)
+	}
+	if sample.Node != "drained-after-wait" {
+		t.Fatal(sample)
+	}
+	if err = decoder.Decode(&sample); !errors.Is(err, io.EOF) {
+		t.Fatal("expected clean EOF after final sample", err)
 	}
 }
