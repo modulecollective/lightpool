@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -211,6 +212,66 @@ func TestFixtureShapesAndSeedNamespaces(t *testing.T) {
 	for namespace, want := range map[string]uint64{"protocol": 16508659275336165770, "fault": 11231724242123092822, "schedule": 255906654927968816} {
 		if got := DeriveSeed(1, namespace); got != want {
 			t.Fatalf("seed derivation vector %s: %d != %d", namespace, got, want)
+		}
+	}
+}
+
+func TestDenseFixturePairingAndOneFactorSensitivity(t *testing.T) {
+	for replicate := uint64(1); replicate <= 3; replicate++ {
+		original, originalScenario, err := Fixture("correlated", replicate, "source")
+		if err != nil {
+			t.Fatal(err)
+		}
+		dense, nominal, err := Fixture("correlated-dense", replicate, "source")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(dense.Anomaly) != 24 || len(dense.HealthyPairs) != 7 || dense.Target != original.Target || nominal.Seeds != originalScenario.Seeds {
+			t.Fatal("dense pairing", dense)
+		}
+		if len(original.HealthyPairs)*105 != 2835 || len(dense.HealthyPairs)*105 != 735 {
+			t.Fatal("exposure populations")
+		}
+		for _, n := range original.Anomaly {
+			if !slices.Contains(dense.Anomaly, n) {
+				t.Fatal("lost original A", n)
+			}
+		}
+		for _, name := range []string{"correlated-dense-healthy", "correlated-dense-latency-100us", "correlated-dense-latency-10ms", "correlated-dense-service-100us", "correlated-dense-service-1ms", "correlated-dense-buffer-64k", "correlated-dense-buffer-16m"} {
+			spec, scenario, err := Fixture(name, replicate, "source")
+			if err != nil {
+				t.Fatal(err)
+			}
+			expected := nominal
+			// Nodes need a separate slice before changing service duration.
+			expected.Nodes = slices.Clone(nominal.Nodes)
+			switch name {
+			case "correlated-dense-healthy":
+				expected.Faults = nil
+			case "correlated-dense-latency-100us":
+				expected.Latency = 100 * time.Microsecond
+			case "correlated-dense-latency-10ms":
+				expected.Latency = 10 * time.Millisecond
+			case "correlated-dense-service-100us", "correlated-dense-service-1ms":
+				service := 100 * time.Microsecond
+				if name == "correlated-dense-service-1ms" {
+					service = time.Millisecond
+				}
+				for i := range expected.Nodes {
+					expected.Nodes[i].Service = service
+				}
+			case "correlated-dense-buffer-64k":
+				expected.DatagramCapacity, expected.StreamCapacity = 64<<10, 64<<10
+			case "correlated-dense-buffer-16m":
+				expected.DatagramCapacity, expected.StreamCapacity = 16<<20, 16<<20
+			}
+			if HashJSON(expected) != HashJSON(scenario) {
+				t.Fatal("changed extra scenario dimension", name)
+			}
+			spec.Case = dense.Case
+			if HashJSON(spec) != HashJSON(dense) {
+				t.Fatal("changed seed/cohort specification", name)
+			}
 		}
 	}
 }

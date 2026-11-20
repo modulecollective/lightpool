@@ -164,3 +164,63 @@ Cleanup resumes, kills and reaps every child on success and failure.
 The ordinary seeds are ambient. Comparisons with virtual companions concern
 cohort, recovery/non-completion and event ordering, not latency calibration or
 directional-path fidelity.
+
+## Fixed correlated mechanism screen
+
+`correlated-dense` preserves the original replicate's target at fault-rank
+index four. A contains the first 24 other ranked identities, including the
+original four; the other seven identities are O. The fault window and
+protocol defaults match `correlated`. `correlated-dense-healthy` uses the
+same groups, seeds and seven O→T eligible pairs without any faults. Group A
+is a comparison grouping in that control. The original case has 27 eligible
+pairs. At full running exposure over 105 seconds these give 735 and 2,835
+pair-seconds respectively; dead beliefs do not remove exposure.
+
+Six additional fixed cases change one dimension from dense:
+
+| Case suffix after `correlated-dense-` | Change |
+| --- | --- |
+| `latency-100us`, `latency-10ms` | One-way base latency 100 µs or 10 ms. |
+| `service-100us`, `service-1ms` | Service duration on every node 100 µs or 1 ms. |
+| `buffer-64k`, `buffer-16m` | Both transport capacities 64 KiB or 16 MiB. |
+
+All retain the same bounds, populations, target and seed namespaces. These
+are uncalibrated virtual workloads, not ordinary UDP/TCP reproductions.
+
+```sh
+./lightpool-experiment -admission results-correlated-dense-1 -out admission.json
+```
+
+`-admission` is mutually exclusive with recording flags and `-reduce`. It
+validates the saved specification, scenario, manifest and report using the
+existing reducer, requires an unchanged fixed correlated fixture, then makes
+an additional streaming pass over the trace. It never executes protocol
+code or overwrites evidence. `lightpool-correlated-admission/v1` output uses
+decimal strings for counters/times and retains input/trace digests, status,
+populations, traffic, backlog and timer-lateness diagnostics, target probes
+and every target suspicion episode after warm-up. Evidence addresses use
+(timeNS, seq, zero-based changeIndex), with lifetime and incarnation joins.
+An invalid or incomplete input writes a diagnostic JSON result and exits
+nonzero. A complete null result succeeds. Unreadable evidence may only
+supply a diagnostic reason; it cannot supply validated measurements.
+
+An acceleration witness requires an eligible O→T episode beginning in the
+fault window, an initiating A sender and a distinct accepted A confirming
+sender. Each needs an earlier local failed natural probe and locally
+emitted suspicion at the same target incarnation and lifetimes. An accepted
+confirmation must be followed in the same step by a live rearm with a
+strictly earlier effective deadline. Shortening must precede the first
+matching higher-incarnation target refutation and its observed acceptance
+at O. Missing generation or matching acceptance censors the chain. Sender
+names in rumors alone supply no local-probe provenance. An earlier target
+refutation with later acceptance remains an in-flight diagnostic, counted
+per shortening, rather than a qualifying witness.
+
+Harm is separate: a live shortened timer must fire before a dead change in
+the same step, before acceptance, and before the initial unshortened
+deadline. Canceled/stale fires and received dead rumors cannot establish
+local expiry. Refutation lookup continues past dead outcomes. Timely
+recovery can leave acceleration observed with no harm. These are observed
+orderings; they supply no counterfactual candidate-benefit claim. Helper
+identities and enclosing-step traffic are retained, but the route of a
+successful ACK remains unknown.

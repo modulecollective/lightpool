@@ -56,6 +56,8 @@ func Fixture(name string, replicate uint64, code string) (Spec, sim.Scenario, er
 	n, count, shape := 32, 4, name
 	switch name {
 	case "healthy", "crash", "threshold", "interval", "loss", "correlated":
+	case "correlated-dense", "correlated-dense-healthy", "correlated-dense-latency-100us", "correlated-dense-latency-10ms", "correlated-dense-service-100us", "correlated-dense-service-1ms", "correlated-dense-buffer-64k", "correlated-dense-buffer-16m":
+		count, shape = 24, "correlated"
 	case "threshold-128":
 		n, count, shape = 128, 16, "threshold"
 	case "ordinary-healthy":
@@ -98,6 +100,24 @@ func Fixture(name string, replicate uint64, code string) (Spec, sim.Scenario, er
 		}
 		return 0
 	})
+	switch name {
+	case "correlated-dense-latency-100us":
+		s.Latency = 100 * time.Microsecond
+	case "correlated-dense-latency-10ms":
+		s.Latency = 10 * time.Millisecond
+	case "correlated-dense-service-100us", "correlated-dense-service-1ms":
+		service := 100 * time.Microsecond
+		if name == "correlated-dense-service-1ms" {
+			service = time.Millisecond
+		}
+		for i := range s.Nodes {
+			s.Nodes[i].Service = service
+		}
+	case "correlated-dense-buffer-64k":
+		s.DatagramCapacity, s.StreamCapacity = 64<<10, 64<<10
+	case "correlated-dense-buffer-16m":
+		s.DatagramCapacity, s.StreamCapacity = 16<<20, 16<<20
+	}
 	start, end := core.Instant(spec.WarmupNS), s.Horizon
 	switch shape {
 	case "crash":
@@ -109,13 +129,21 @@ func Fixture(name string, replicate uint64, code string) (Spec, sim.Scenario, er
 		}
 		s.Actions = append(s.Actions, sim.Action{At: start, Kind: "crash", Node: spec.Target})
 	case "threshold", "interval", "correlated":
-		for _, node := range ranked[:count] {
+		selected := ranked[:count]
+		if shape == "correlated" && count == 24 {
+			// Keep T at its original fault rank; grow A around it.
+			selected = append(slices.Clone(ranked[:4]), ranked[5:25]...)
+		}
+		for _, node := range selected {
 			spec.Anomaly = append(spec.Anomaly, node.Identity.Name)
 		}
 		slices.Sort(spec.Anomaly)
 		if shape == "correlated" {
-			spec.Target = ranked[count].Identity.Name
+			spec.Target = ranked[4].Identity.Name
 			for _, a := range spec.Anomaly {
+				if name == "correlated-dense-healthy" {
+					continue
+				}
 				s.Faults = append(s.Faults, sim.Fault{From: a, To: spec.Target, Start: start, End: start.Add(16384 * time.Millisecond), Drop: true, StreamFailure: true})
 			}
 			for _, o := range s.Nodes {

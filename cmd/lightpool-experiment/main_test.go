@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"io"
+	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -38,5 +41,30 @@ func TestCLIArgumentsAndReducer(t *testing.T) {
 	}
 	if err = run([]string{"-reduce", directory, "-out", out}, io.Discard); err == nil {
 		t.Fatal("summary overwrite accepted")
+	}
+}
+
+func TestAdmissionCLIExclusiveAndDiagnosticOutput(t *testing.T) {
+	for _, extra := range [][]string{{"-reduce", "missing"}, {"-case", "correlated"}, {"-replicate", "1"}, {"-revision", "explicit"}} {
+		args := append([]string{"-admission", "missing", "-out", filepath.Join(t.TempDir(), "diagnostic.json")}, extra...)
+		if err := run(args, io.Discard); err == nil {
+			t.Fatal("accepted mixed modes", extra)
+		}
+	}
+	out := filepath.Join(t.TempDir(), "diagnostic.json")
+	if err := run([]string{"-admission", "missing", "-out", out}, io.Discard); err == nil {
+		t.Fatal("missing evidence became success")
+	}
+	raw, err := os.ReadFile(out)
+	if err != nil || !bytes.Contains(raw, []byte(`"status": "invalid"`)) || !bytes.Contains(raw, []byte(experiment.AdmissionVersion)) {
+		t.Fatal("diagnostic output missing", string(raw), err)
+	}
+	before := slices.Clone(raw)
+	if err = run([]string{"-admission", "missing", "-out", out}, io.Discard); err == nil {
+		t.Fatal("diagnostic overwrite accepted")
+	}
+	raw, err = os.ReadFile(out)
+	if err != nil || !bytes.Equal(before, raw) {
+		t.Fatal("diagnostic overwrite modified output", err)
 	}
 }

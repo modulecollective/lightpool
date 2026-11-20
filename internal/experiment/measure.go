@@ -230,7 +230,7 @@ func Measure(spec Spec, scenario sim.Scenario, base *report.Report, input io.Rea
 	if x.pauseReference() {
 		labels = append(labels, "FP-analogue", "FP-minus-analogue")
 	}
-	if spec.Case == "correlated" {
+	if len(spec.HealthyPairs) > 0 {
 		labels = append(labels, "healthy-pair-exclusions")
 	}
 	pairs := make([]Pair, 0, len(x.exposures))

@@ -23,16 +23,24 @@ func main() {
 func run(args []string, stderr io.Writer) error {
 	flags := flag.NewFlagSet("lightpool-experiment", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	name := flags.String("case", "", "fixed pilot case")
+	name := flags.String("case", "", "fixed case: healthy, crash, threshold, interval, loss, correlated, correlated-dense, correlated-dense-healthy, correlated-dense-{latency-100us,latency-10ms,service-100us,service-1ms,buffer-64k,buffer-16m}, threshold-128, ordinary-{healthy,pause,crash}")
 	replicate := flags.Uint64("replicate", 0, "positive paired replicate index")
-	out := flags.String("out", "", "new run directory, or new summary file with -reduce")
+	out := flags.String("out", "", "new run directory, or new JSON file with -reduce/-admission")
 	revision := flags.String("revision", "", "explicit source identity for unstamped/modified builds")
 	reduce := flags.String("reduce", "", "saved run directory to remeasure offline")
+	admission := flags.String("admission", "", "saved fixed correlated run to classify offline")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if *out == "" || flags.NArg() != 0 {
 		return errors.New("-out is required; no positional arguments")
+	}
+	if *admission != "" {
+		if *reduce != "" || *name != "" || *replicate != 0 || *revision != "" {
+			return errors.New("-admission cannot be combined with recording flags or -reduce")
+		}
+		result, err := experiment.Admit(*admission)
+		return errors.Join(err, experiment.WriteAdmission(*out, result))
 	}
 	if *reduce != "" {
 		if *name != "" || *replicate != 0 || *revision != "" {

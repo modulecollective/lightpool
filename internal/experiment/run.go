@@ -185,7 +185,7 @@ func validateSpec(spec Spec, scenario sim.Scenario) error {
 		return fmt.Errorf("invalid experiment specification")
 	}
 	switch spec.Case {
-	case "healthy", "crash", "threshold", "interval", "loss", "correlated", "threshold-128", "ordinary-healthy", "ordinary-pause", "ordinary-crash":
+	case "healthy", "crash", "threshold", "interval", "loss", "correlated", "threshold-128", "ordinary-healthy", "ordinary-pause", "ordinary-crash", "correlated-dense", "correlated-dense-healthy", "correlated-dense-latency-100us", "correlated-dense-latency-10ms", "correlated-dense-service-100us", "correlated-dense-service-1ms", "correlated-dense-buffer-64k", "correlated-dense-buffer-16m":
 	default:
 		return fmt.Errorf("unknown experiment case %q", spec.Case)
 	}
