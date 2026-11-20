@@ -33,6 +33,7 @@ type Fault struct {
 	Drop                     bool
 	Delay, Jitter            string
 	Duplicate, StreamFailure bool
+	LossPPM                  string `json:",omitempty"`
 }
 type Join struct {
 	Reference
@@ -154,7 +155,7 @@ type reducer struct {
 func Read(input io.Reader) (*Report, error) {
 	x := &reducer{state: map[string]*process{}, recovery: map[key][]int{}, detection: map[key][]pending{}, drops: map[[2]string]uint64{}}
 	x.report = Report{Format: "lightpool-report", Version: 1, Calculator: "lightpool-report/v1", Declarations: []Declaration{}, Crashes: []Crash{}, Recoveries: []Recovery{}, Unsupported: []string{}, ModelLimits: []string{
-		"Directional faults are prescribed windows; jitter is sampled once per window, not independently per message. No loss probabilities are modeled.",
+		"Directional faults are prescribed send-time windows; jitter is sampled once per window. LossPPM independently admits each encoded datagram by directed-link send ordinal; duplicates copy the admitted datagram. Streams have no packet-loss probability.",
 		"Node service durations are configured, not calibrated CPU or scheduler behavior. Shared bandwidth bottlenecks and path topology are not modeled.",
 		"Streams model messages, ordering, credits and deadlines, not TCP packets. Bytes exclude IP/TCP overhead. This is a distinct Lightpool baseline.",
 		"Running-target declarations carry truth and fault context, not inferred causes or a universal false-crash percentage. Example scenarios use accelerated settings, including disabled TCP probing.",
@@ -331,6 +332,12 @@ func (x *reducer) record(raw json.RawMessage) error {
 			end, e2 := strconv.ParseInt(f.End, 10, 64)
 			if e1 != nil || e2 != nil || start < 0 || end <= start {
 				return fmt.Errorf("invalid configured fault interval")
+			}
+			if f.LossPPM != "" {
+				n, err := strconv.Atoi(f.LossPPM)
+				if err != nil || n < 0 || n > 1_000_000 {
+					return fmt.Errorf("invalid configured loss probability")
+				}
 			}
 		}
 		for _, p := range h.Initial {
