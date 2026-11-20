@@ -113,25 +113,24 @@ All multibyte integers use network byte order.
 | --- | --- | --- |
 | 0 | 4 | ASCII `LPL!` |
 | 4 | 1 | Version `1` |
-| 5 | 1 | Flags: bit 0 LZW, bit 1 AES-GCM; other bits rejected |
+| 5 | 1 | Flags: bit 1 AES-GCM; other bits rejected |
 | 6 | 2 | Label byte length, at most 64 |
 | 8 | 4 | Protected body length, at most 8 MiB + 28 |
 | 12 | variable | Label, then protected body |
 
-The uncompressed JSON body is an array of 1–256 `wire.Message` records,
+The JSON body is an array of 1–256 `wire.Message` records,
 encoded by `encoding/json.Marshal` with explicit field names. Exactly one
 message variant is permitted per record. Unknown fields, invalid text,
 trailing values, oversized arrays and invalid addresses are rejected.
 Names and labels are limited to 64 UTF-8 bytes, metadata to 512 bytes,
-exchanges to 16,384 nodes, and uncompressed bodies to 8 MiB. The aggregate body limit
+exchanges to 16,384 nodes, and bodies to 8 MiB. The aggregate body limit
 still applies when individual fields fit. These bounds are fork contracts.
 
 Plaintext ends in a four-byte IEEE CRC32 over header, label and body.
 Encrypted bodies use standard-library AES-GCM with a random 12-byte nonce
 and 16-byte tag; the header and label are authenticated additional data.
-Compression is LZW LSB/8, used only when smaller, before protection.
 A configured keyring requires encrypted input and output. Datagram budgeting
-uses the exact uncompressed upper bound, including base64 metadata, batch
+uses the exact frame size, including base64 metadata, batch
 punctuation, label and protection. The default budget remains 1,400 bytes.
 
 The independent unencrypted ACK fixture (sequence 7, no label) is:

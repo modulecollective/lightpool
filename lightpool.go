@@ -32,15 +32,14 @@ type Config struct {
 	// It may read Snapshot or call APIs reentrantly. Notifications beyond the
 	// bounded queue are dropped and counted. Shutdown cancels the context; it
 	// never waits for Notify to return.
-	Notify      func(context.Context, core.Notification)
-	Keyring     *Keyring
-	Compression bool
-	Resolver    *net.Resolver
-	Logger      *log.Logger
+	Notify   func(context.Context, core.Notification)
+	Keyring  *Keyring
+	Resolver *net.Resolver
+	Logger   *log.Logger
 }
 
 func DefaultConfig(name string) Config {
-	return Config{Protocol: core.DefaultConfig(), Name: name, Bind: netip.MustParseAddrPort("127.0.0.1:7946"), Compression: true}
+	return Config{Protocol: core.DefaultConfig(), Name: name, Bind: netip.MustParseAddrPort("127.0.0.1:7946")}
 }
 
 type command struct {
@@ -172,7 +171,7 @@ func newOrdinaryNode(cfg Config, recording *recordingConfig) (*Node, error) {
 	}
 	if recording != nil {
 		engine.EnableInspection()
-		n.recorder, err = newOrdinaryRecorder(*recording, wire.Identity{Name: cfg.Name, Address: advertised, Meta: cfg.Meta}, seed, cfg.Protocol, cfg.Compression, n.epoch, engine.Inspection())
+		n.recorder, err = newOrdinaryRecorder(*recording, wire.Identity{Name: cfg.Name, Address: advertised, Meta: cfg.Meta}, seed, cfg.Protocol, n.epoch, engine.Inspection())
 		if err != nil {
 			cancel()
 			_ = tcp.Close()
@@ -193,7 +192,7 @@ func newOrdinaryNode(cfg Config, recording *recordingConfig) (*Node, error) {
 }
 func (n *Node) now() core.Instant { return core.Instant(time.Since(n.epoch)) }
 func (n *Node) options() wire.Options {
-	o := wire.Options{Label: n.cfg.Protocol.Label, Compress: n.cfg.Compression}
+	o := wire.Options{Label: n.cfg.Protocol.Label}
 	if n.cfg.Keyring != nil {
 		o.Keys = n.cfg.Keyring.Keys()
 	}

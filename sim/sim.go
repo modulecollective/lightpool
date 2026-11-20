@@ -53,7 +53,6 @@ type Scenario struct {
 	EventBudget                      int
 	DatagramCapacity, StreamCapacity int
 	Latency                          time.Duration
-	Compression                      bool
 }
 type NodeSeed struct {
 	Name string
@@ -559,7 +558,7 @@ func (r *runner) effect(name string, e core.Effect) {
 	m := r.nodes[name]
 	switch e := e.(type) {
 	case core.SendDatagram:
-		b, err := wire.Encode(e.Messages, wire.Options{Label: r.scenario.Protocol.Label, Compress: r.scenario.Compression})
+		b, err := wire.Encode(e.Messages, wire.Options{Label: r.scenario.Protocol.Label})
 		to := r.addresses[netipKey(e.To.String())]
 		t := r.attempt("datagram", name, to, e.Messages, len(b))
 		if err != nil || len(b) > r.scenario.Protocol.PacketBudget {
@@ -724,7 +723,7 @@ func (r *runner) write(name string, e core.WriteStream) {
 			to = conn.names[0]
 		}
 	}
-	b, encodeErr := wire.Encode(e.Messages, wire.Options{Label: r.scenario.Protocol.Label, Compress: r.scenario.Compression})
+	b, encodeErr := wire.Encode(e.Messages, wire.Options{Label: r.scenario.Protocol.Label})
 	t := r.attempt("stream", name, to, e.Messages, len(b))
 	if conn == nil || conn.closed {
 		t.Stage = "drop"

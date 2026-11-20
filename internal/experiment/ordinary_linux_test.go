@@ -53,7 +53,6 @@ func TestOrdinaryPilotNode(t *testing.T) {
 func pilotNode(name string) error {
 	cfg := lightpool.DefaultConfig(name)
 	cfg.Bind = netip.MustParseAddrPort("127.0.0.1:0")
-	cfg.Compression = false
 	node, err := lightpool.New(cfg)
 	if err != nil {
 		return err
@@ -209,7 +208,7 @@ func runOrdinary(t *testing.T, root, name string, replicate uint64) {
 	hostname, _ := os.Hostname()
 	kernel, _ := os.ReadFile("/proc/version")
 	evidence := ordinaryEvidence{Status: "incomplete", Case: name, Replicate: replicate, CompanionSpec: spec, Protocol: core.DefaultConfig(), Toolchain: runtime.Version(), Platform: runtime.GOOS + "/" + runtime.GOARCH, Hostname: hostname, Kernel: strings.TrimSpace(string(kernel)), PollNS: int64(ordinaryPoll), Faults: []signalEvidence{}, Warmup: []sampleState{}, Final: []sampleState{}, Transitions: []observedTransition{}, MaxSampleGapNS: map[string]int64{}, Samples: map[string]int{}, Joins: []pilotMessage{}, Limits: []string{
-		"Separate processes use public node API, real UDP/TCP, unchanged detector defaults, no encryption, compression or application callbacks. Notification drops are sampled; notifications are disabled without callbacks.",
+		"Separate processes use public node API, real UDP/TCP, unchanged detector defaults, no encryption. Notification drops are sampled; notifications are disabled without callbacks.",
 		"Ordinary protocol seeds are ambient and unpaired. Compare cohorts, observed recovery/non-completion and event ordering with simulated companions, not calibrated latency distributions.",
 		"Transition intervals span adjacent actual snapshot collection bounds, including gaps. Short transient states and exact episode counts are unobservable. Missing stopped-child samples are never fresh observations.",
 		"Linux loopback and process SIGSTOP differ from directional path faults, CPU stress and Lifeguard I/O blocking. No directional-path fidelity claim is admitted.",

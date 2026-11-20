@@ -18,8 +18,8 @@ is rejected. Headers, lengths and flags are also authenticated. Nonces come
 from the standard library's secure runtime entropy, independently of seeded
 protocol randomness. The simulator rejects encryption configuration.
 
-Identity/address/count checks, bounded frame allocation and decompression,
-stream deadlines and finite driver queues limit input handling. CIDR
+Identity/address/count checks, bounded frame allocation, stream deadlines
+and finite driver queues limit input handling. CIDR
 admission (`Protocol.Allowed`) applies to network sources and advertised
 membership addresses. These controls do not replace network isolation,
 secure key distribution, or application authorization. See the README for

@@ -41,7 +41,6 @@ func TestHealthyTiming(t *testing.T) {
 	for i := range nodes {
 		cfg := DefaultConfig(fmt.Sprintf("n%03d", i))
 		cfg.Bind = netip.MustParseAddrPort("127.0.0.1:0")
-		cfg.Compression = false
 		var c *recordingConfig
 		if i == 0 {
 			c = recording

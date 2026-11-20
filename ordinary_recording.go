@@ -37,7 +37,7 @@ type ordinaryRecorder struct {
 	due         map[core.Timer]int64 // owner only
 }
 
-func newOrdinaryRecorder(cfg recordingConfig, identity wire.Identity, seed core.Seed, protocol core.Config, compression bool, epoch time.Time, baseline []core.Inspection) (*ordinaryRecorder, error) {
+func newOrdinaryRecorder(cfg recordingConfig, identity wire.Identity, seed core.Seed, protocol core.Config, epoch time.Time, baseline []core.Inspection) (*ordinaryRecorder, error) {
 	if !cfg.Limits.Valid() || cfg.Source == "" || cfg.Binary == "" {
 		return nil, errors.New("invalid ordinary recording limits or provenance")
 	}
@@ -46,7 +46,7 @@ func newOrdinaryRecorder(cfg recordingConfig, identity wire.Identity, seed core.
 		return nil, err
 	}
 	r := startOrdinaryWriter(cfg, f)
-	r.submit(ordinary.Record{Header: &ordinary.Header{Format: ordinary.Version, Identity: identity, Seed: seed, Protocol: protocol, Compression: compression, Source: cfg.Source, Binary: cfg.Binary, Toolchain: runtime.Version(), EpochUnixNS: epoch.UnixNano(), Baseline: baseline, Limits: cfg.Limits}})
+	r.submit(ordinary.Record{Header: &ordinary.Header{Format: ordinary.Version, Identity: identity, Seed: seed, Protocol: protocol, Source: cfg.Source, Binary: cfg.Binary, Toolchain: runtime.Version(), EpochUnixNS: epoch.UnixNano(), Baseline: baseline, Limits: cfg.Limits}})
 	return r, nil
 }
 func startOrdinaryWriter(cfg recordingConfig, output io.WriteCloser) *ordinaryRecorder {
