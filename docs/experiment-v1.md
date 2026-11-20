@@ -24,8 +24,9 @@ records source, toolchain, platform, model and seed versions and fixed cohorts.
 `resources.json` records elapsed wall time and process high-water resident
 memory on Linux, separately from deterministic output. Host measurements are
 never inputs to replay. `status.json` retains recording failures as well as
-complete or invalid-warmup results. These files should live in a dedicated
-artifact directory; traces can be large and do not belong in source history.
+complete or invalid-warmup results. Record into a dedicated working
+directory, then retain declared campaign evidence under its experiment record
+using the packaging workflow below.
 
 ## Cases and boundaries
 
@@ -260,9 +261,11 @@ against a named baseline commit, and each experiment leaves one directory,
 | `<variant>.patch` | One per variant, from `git diff <base> -- core wire`. |
 | `run.sh` | The grid as a recipe: cases, overlays, replicates, variants. |
 | `cells.tsv` | One row per cell: identity, status, trace and summary SHA256, headline numbers named in advance. |
+| `evidence/<attempt>/` | Original payloads, compressed NDJSON and raw-byte `SHA256SUMS`. |
+| `evidence.tsv` | Attempt provenance, observed exit/status and raw/stored byte totals. |
 
-Traces and summaries are not stored; they are regenerated. A virtual cell
-is deterministic, so `run.sh <new-dir> [cell ...]` rebuilds the baseline and
+Original campaign evidence is stored independently of regeneration. A virtual
+cell is deterministic, so `run.sh <new-dir> [cell ...]` rebuilds the baseline and
 each patched variant from `git archive <base>`, records the named cells (all
 of them by default) and refuses any whose row differs from `cells.tsv`.
 Patches never compile on `master`, and stop applying once `master` moves
@@ -283,3 +286,124 @@ The recipe keeps comparisons honest:
 
 A winning candidate lands later as an ordinary unconditional change in
 `core`, which becomes the next baseline.
+
+## Retaining and restoring original evidence
+
+Retain every attempt in a declared campaign under
+`experiments/<id>/evidence/<attempt>/`, including controls, negative results,
+invalid warm-ups, recording failures and retries. Each retry or fresh-process
+repeat has a new attempt ID. Disposable development probes and compiled
+binaries are excluded. Keep evidence indefinitely in ordinary Git history;
+deleting it later does not reclaim that history. Measure campaign totals
+before committing. A materially larger campaign needs a new storage decision,
+not selective omission of failures. There is no automatic pruning or quota.
+
+`experiments/evidence.sh pack SOURCE NEW_DEST` reads a finished, quiescent
+attempt directory, compresses every `*.ndjson` as `*.ndjson.gz` with
+`gzip -n -6`, copies other files byte-for-byte and writes `SHA256SUMS` over
+original bytes and basenames. This covers both virtual `trace.ndjson` and
+ordinary `samples.ndjson`. JSON stays readable. Keep available specs, inputs,
+reports, summaries, admission results, status, resources and diagnostics.
+Missing output stays missing; empty and partial traces stay unchanged.
+
+`experiments/evidence.sh unpack SOURCE NEW_DEST` validates the manifest and
+exact payload file set, restores original names and verifies every raw-byte
+checksum. It runs no simulation or reduction. Both commands require Bash
+(tested with 5.2), coreutils and gzip, an existing destination parent and a new
+destination outside the source. Inputs must be flat regular files, with basenames starting
+with an ASCII letter/digit followed by letters, digits, dots, underscores or
+hyphens. Symlinks, nested directories, reserved `SHA256SUMS`, duplicate manifest
+names and compressed-name collisions (such as `trace.ndjson` alongside
+`trace.ndjson.gz`) are refused. Neither command changes its source or overwrites
+an existing destination. On an I/O or checksum failure the command exits
+nonzero; a partial destination remains inspectable. Retry into a new directory.
+
+The campaign workflow owns `evidence.tsv`: packaging cannot infer a command's
+exit code. Use these tab-separated columns:
+
+```text
+attempt	directory	provenance	exitCode	status	rawBytes	storedBytes
+```
+
+`directory` is relative to the experiment record. `provenance` is `original`
+or `regenerated`; regenerating a missing historical result never recovers its
+original host observations or failed output. Record unavailable historical
+attempts with provenance/status `unavailable` and `-` for path and byte totals.
+Use `unknown` for an exit code or status that was not observed. Preserve the
+observed command exit code separately from the recording's status. Keep the
+original source/toolchain, seeds and commands in the existing specs/recipe;
+do not change `cells.tsv` metric columns. Historical records without retained
+payloads remain regeneration recipes, not durable original evidence.
+
+For example, from the repository root, with a built experiment binary and an
+existing experiment record (choose a unique attempt and a new working path):
+
+```sh
+record=experiments/your-campaign-id
+attempt=correlated-dense-r1-attempt1
+work=/absolute/path/to/new-working-directory
+mkdir "$work"
+source_dir="$work/$attempt"
+# Capture diagnostics even if recording fails before it creates source_dir.
+if ./lightpool-experiment -case correlated-dense -replicate 1 \
+    -out "$source_dir" >"$work/stdout.txt" 2>"$work/stderr.txt"; then
+  exit_code=0
+else
+  exit_code=$?
+fi
+mkdir -p "$source_dir"
+cp "$work/stdout.txt" "$work/stderr.txt" "$source_dir/"
+status=unknown
+if [ -f "$source_dir/status.json" ]; then
+  status=$(jq -r .status "$source_dir/status.json")
+fi
+mkdir -p "$record/evidence"
+experiments/evidence.sh pack "$source_dir" "$record/evidence/$attempt"
+raw=$(find "$source_dir" -maxdepth 1 -type f -printf '%s\n' | awk '{n+=$1} END {printf "%.0f", n}')
+stored=$(find "$record/evidence/$attempt" -maxdepth 1 -type f -printf '%s\n' | awk '{n+=$1} END {printf "%.0f", n}')
+# Initialize the header once when creating the campaign inventory.
+if [ ! -e "$record/evidence.tsv" ]; then
+  printf 'attempt\tdirectory\tprovenance\texitCode\tstatus\trawBytes\tstoredBytes\n' >"$record/evidence.tsv"
+fi
+printf '%s\tevidence/%s\toriginal\t%s\t%s\t%s\t%s\n' \
+  "$attempt" "$attempt" "$exit_code" "$status" "$raw" "$stored" >>"$record/evidence.tsv"
+awk -F '\t' 'NR>1 {raw+=$6; stored+=$7} END {printf "campaign raw=%.0f stored=%.0f bytes\n", raw, stored}' "$record/evidence.tsv"
+```
+
+If recording never created output, this retains only captured diagnostics and
+an explicit observed failure in the inventory; it does not fabricate a trace
+or status file. If the original attempt directory is lost and no diagnostics
+survive, keep an unavailable inventory row with no invented evidence path.
+
+Include the evidence and inventory in the source commit. Then verify from
+that commit, using a fresh checkout or `git archive` and with the producing
+directory unavailable. For example, after committing, from the repository root:
+
+```sh
+saved=/absolute/path/to/new-restoration-check
+mkdir "$saved"
+git archive HEAD | tar -x -C "$saved"
+"$saved/experiments/evidence.sh" unpack \
+  "$saved/$record/evidence/$attempt" "$saved/restored"
+(cd "$saved/restored" && sha256sum -c "$saved/$record/evidence/$attempt/SHA256SUMS")
+```
+
+Only successful restoration from the committed record, followed by pushing
+through the existing workflow, establishes durable completion. A local pack
+alone does not. With the producing source/toolchain pinned, virtual recordings
+can then be remeasured offline without simulation:
+
+```sh
+./lightpool-experiment -reduce "$saved/restored" -out "$saved/summary.json"
+cmp "$saved/restored/summary.json" "$saved/summary.json"
+# For fixed correlated evidence with a saved admission.json:
+./lightpool-experiment -admission "$saved/restored" -out "$saved/admission.json"
+cmp "$saved/restored/admission.json" "$saved/admission.json"
+```
+
+Ordinary samples have no virtual reducer. Incomplete virtual evidence must
+still fail reduction; packaging success asserts byte preservation, not a
+completed experiment. The existing `run.sh` remains the independent recipe
+and refuses cells whose regenerated rows differ. It does not inventory or
+package attempts automatically; archive its working attempt directories and
+available external sidecars/diagnostics before discarding them.
