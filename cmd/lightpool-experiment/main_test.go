@@ -81,3 +81,19 @@ func TestProtocolOverlayOnlyWhenRecording(t *testing.T) {
 		t.Fatal("missing overlay file accepted", err)
 	}
 }
+
+func TestWitnessCLIExclusiveAndMissingEvidence(t *testing.T) {
+	for _, extra := range [][]string{{"-reduce", "missing"}, {"-admission", "missing"}, {"-case", "correlated"}, {"-replicate", "1"}} {
+		args := append([]string{"-witness", "missing", "-out", filepath.Join(t.TempDir(), "report.json")}, extra...)
+		if err := run(args, io.Discard); err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+			t.Fatal("accepted mixed modes", extra, err)
+		}
+	}
+	out := filepath.Join(t.TempDir(), "report.json")
+	if err := run([]string{"-witness", t.TempDir(), "-out", out}, io.Discard); err == nil {
+		t.Fatal("missing attempt became success")
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Fatal("report written without a manifest", err)
+	}
+}

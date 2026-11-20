@@ -22,6 +22,13 @@ type OrdinaryStep struct {
 	CoreAtNS int64
 	EndNS    int64
 	Journal  []core.Inspection
+	// Timing observations for the report; the classifier ignores them.
+	Input      string
+	ReadNS     *int64 // UDP read return or TCP frame read, child time
+	QueueDepth int
+	CoreEndNS  int64
+	RecorderNS int64
+	TimerDueNS *int64
 }
 
 // OrdinaryNode is one process's recorded lifetime and its raw clock exchanges.
@@ -34,6 +41,7 @@ type OrdinaryNode struct {
 	Address    netip.AddrPort
 	FileSHA256 string
 	Clock      []ordinary.Exchange
+	Baseline   []core.Inspection
 	Steps      []OrdinaryStep
 }
 
