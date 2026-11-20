@@ -412,7 +412,8 @@ available external sidecars/diagnostics before discarding them.
 
 `experiments/2026-11-20-ordinary-witness/verify.sh NEW_DIRECTORY` restores the
 26 original attempts, verifies raw checksums and binary identities, replays
-the recorded healthy nodes, and checks the derived virtual and timing tables.
+the recorded healthy nodes with the journal decoder pinned in `replay-base`,
+and checks the derived virtual and timing tables.
 The virtual table includes chain stopping points, exposure and validity.
 Interpret counts only in rows with complete status.
 
