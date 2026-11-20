@@ -1,0 +1,4 @@
+{
+  "status": "invalid-warmup",
+  "reason": "membership incomplete immediately before warm-up boundary"
+}

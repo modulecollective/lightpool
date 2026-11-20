@@ -1,0 +1,1389 @@
+{
+  "format": "lightpool-report",
+  "version": 1,
+  "complete": true,
+  "endReason": "horizon",
+  "calculator": "lightpool-report/v1",
+  "traceSHA256": "768bf935271896734569fc3a6cf7f22fc1bca1258bba06e868847bc6a23d232b",
+  "producer": {
+    "Code": "ee1051c0756925f2f5116d117cc64552d3a5b6b4",
+    "Generator": "math/rand/v2.PCG",
+    "NodeSeeds": [
+      {
+        "Name": "n000",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "5733352609168387174",
+          "Stream": "9279648143706152203"
+        }
+      },
+      {
+        "Name": "n001",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "7130007623122644547",
+          "Stream": "16162604861156807007"
+        }
+      },
+      {
+        "Name": "n002",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "2186583538366652712",
+          "Stream": "6476884042453947068"
+        }
+      },
+      {
+        "Name": "n003",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "4222723431476715017",
+          "Stream": "5126846849787332524"
+        }
+      },
+      {
+        "Name": "n004",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "733094299839094693",
+          "Stream": "10475397979569423172"
+        }
+      },
+      {
+        "Name": "n005",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "5069899794492063632",
+          "Stream": "15708412799955623311"
+        }
+      },
+      {
+        "Name": "n006",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "10725889930476629669",
+          "Stream": "5800160290563571486"
+        }
+      },
+      {
+        "Name": "n007",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "18154720108977837206",
+          "Stream": "13012513275945062790"
+        }
+      },
+      {
+        "Name": "n008",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "425249450819331538",
+          "Stream": "13381790169893525701"
+        }
+      },
+      {
+        "Name": "n009",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "10779257264673243785",
+          "Stream": "2932566946423137"
+        }
+      },
+      {
+        "Name": "n010",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "13296837270206915600",
+          "Stream": "5427344735353592164"
+        }
+      },
+      {
+        "Name": "n011",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "1166235307712530288",
+          "Stream": "5151759873962687132"
+        }
+      },
+      {
+        "Name": "n012",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "6345248414266805816",
+          "Stream": "3651792434968406659"
+        }
+      },
+      {
+        "Name": "n013",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "5602352871847663969",
+          "Stream": "4659417259908416569"
+        }
+      },
+      {
+        "Name": "n014",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "10603836055179101284",
+          "Stream": "4548795659757333214"
+        }
+      },
+      {
+        "Name": "n015",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "6043739890735473984",
+          "Stream": "4407841824468126163"
+        }
+      },
+      {
+        "Name": "n016",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "1584286368071330559",
+          "Stream": "13548482319286423378"
+        }
+      },
+      {
+        "Name": "n017",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "12144716804495891253",
+          "Stream": "12359004098766207341"
+        }
+      },
+      {
+        "Name": "n018",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "9607601973623224919",
+          "Stream": "10918203860760282359"
+        }
+      },
+      {
+        "Name": "n019",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "15979783605313731611",
+          "Stream": "13583071231154624625"
+        }
+      },
+      {
+        "Name": "n020",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "8171967182605656339",
+          "Stream": "8883389503945084327"
+        }
+      },
+      {
+        "Name": "n021",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "1038611398741614599",
+          "Stream": "17592701321540535811"
+        }
+      },
+      {
+        "Name": "n022",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "1471618495509428403",
+          "Stream": "8284154425872035959"
+        }
+      },
+      {
+        "Name": "n023",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "11276370493011798056",
+          "Stream": "1483375537426133864"
+        }
+      },
+      {
+        "Name": "n024",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "14262382592457877371",
+          "Stream": "17758974183331392474"
+        }
+      },
+      {
+        "Name": "n025",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "12315019622291173082",
+          "Stream": "9500454388865666388"
+        }
+      },
+      {
+        "Name": "n026",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "1939702937617837491",
+          "Stream": "12586887827710233542"
+        }
+      },
+      {
+        "Name": "n027",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "4889331559469464693",
+          "Stream": "7673687534792184001"
+        }
+      },
+      {
+        "Name": "n028",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "13626570168448286328",
+          "Stream": "13382863358894072048"
+        }
+      },
+      {
+        "Name": "n029",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "11119618871759653625",
+          "Stream": "5325392352305203394"
+        }
+      },
+      {
+        "Name": "n030",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "16229628276924091341",
+          "Stream": "18391882831457665244"
+        }
+      },
+      {
+        "Name": "n031",
+        "Seed": {
+          "Lifetime": "1",
+          "State": "14483220386130216501",
+          "Stream": "15092652547870748424"
+        }
+      }
+    ],
+    "Platform": "linux/amd64",
+    "PreparedFaults": [
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n000",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n001",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n002",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n003",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n004",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n007",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n010",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n011",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n013",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n014",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n016",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n018",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n019",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n020",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n022",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n023",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n024",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n025",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n026",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n027",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n028",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n029",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n030",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      },
+      {
+        "Delay": "0",
+        "Drop": true,
+        "Duplicate": false,
+        "End": "31384000000",
+        "From": "n031",
+        "Jitter": "0",
+        "Start": "15000000000",
+        "StreamFailure": true,
+        "To": "n017"
+      }
+    ],
+    "Scenario": {
+      "Actions": [
+        {
+          "At": "10000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n001",
+          "Peer": "n000"
+        },
+        {
+          "At": "20000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n002",
+          "Peer": "n000"
+        },
+        {
+          "At": "30000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n003",
+          "Peer": "n000"
+        },
+        {
+          "At": "40000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n004",
+          "Peer": "n000"
+        },
+        {
+          "At": "50000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n005",
+          "Peer": "n000"
+        },
+        {
+          "At": "60000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n006",
+          "Peer": "n000"
+        },
+        {
+          "At": "70000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n007",
+          "Peer": "n000"
+        },
+        {
+          "At": "80000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n008",
+          "Peer": "n000"
+        },
+        {
+          "At": "90000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n009",
+          "Peer": "n000"
+        },
+        {
+          "At": "100000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n010",
+          "Peer": "n000"
+        },
+        {
+          "At": "110000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n011",
+          "Peer": "n000"
+        },
+        {
+          "At": "120000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n012",
+          "Peer": "n000"
+        },
+        {
+          "At": "130000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n013",
+          "Peer": "n000"
+        },
+        {
+          "At": "140000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n014",
+          "Peer": "n000"
+        },
+        {
+          "At": "150000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n015",
+          "Peer": "n000"
+        },
+        {
+          "At": "160000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n016",
+          "Peer": "n000"
+        },
+        {
+          "At": "170000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n017",
+          "Peer": "n000"
+        },
+        {
+          "At": "180000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n018",
+          "Peer": "n000"
+        },
+        {
+          "At": "190000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n019",
+          "Peer": "n000"
+        },
+        {
+          "At": "200000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n020",
+          "Peer": "n000"
+        },
+        {
+          "At": "210000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n021",
+          "Peer": "n000"
+        },
+        {
+          "At": "220000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n022",
+          "Peer": "n000"
+        },
+        {
+          "At": "230000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n023",
+          "Peer": "n000"
+        },
+        {
+          "At": "240000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n024",
+          "Peer": "n000"
+        },
+        {
+          "At": "250000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n025",
+          "Peer": "n000"
+        },
+        {
+          "At": "260000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n026",
+          "Peer": "n000"
+        },
+        {
+          "At": "270000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n027",
+          "Peer": "n000"
+        },
+        {
+          "At": "280000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n028",
+          "Peer": "n000"
+        },
+        {
+          "At": "290000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n029",
+          "Peer": "n000"
+        },
+        {
+          "At": "300000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n030",
+          "Peer": "n000"
+        },
+        {
+          "At": "310000000",
+          "Data": null,
+          "Duration": "0",
+          "Kind": "join",
+          "Node": "n031",
+          "Peer": "n000"
+        }
+      ],
+      "Code": "ee1051c0756925f2f5116d117cc64552d3a5b6b4",
+      "Compression": false,
+      "DatagramCapacity": "1048576",
+      "EventBudget": "5000000",
+      "Faults": [
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n000",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n001",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n002",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n003",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n004",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n007",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n010",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n011",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n013",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n014",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n016",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n018",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n019",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n020",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n022",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n023",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n024",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n025",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n026",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n027",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n028",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n029",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n030",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        },
+        {
+          "Delay": "0",
+          "Drop": true,
+          "Duplicate": false,
+          "End": "31384000000",
+          "From": "n031",
+          "Jitter": "0",
+          "Start": "15000000000",
+          "StreamFailure": true,
+          "To": "n017"
+        }
+      ],
+      "Fixtures": null,
+      "Horizon": "120000000000",
+      "Latency": "100000",
+      "Nodes": [
+        {
+          "Identity": {
+            "address": "192.0.2.1:7946",
+            "name": "n000"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.2:7946",
+            "name": "n001"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.3:7946",
+            "name": "n002"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.4:7946",
+            "name": "n003"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.5:7946",
+            "name": "n004"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.6:7946",
+            "name": "n005"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.7:7946",
+            "name": "n006"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.8:7946",
+            "name": "n007"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.9:7946",
+            "name": "n008"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.10:7946",
+            "name": "n009"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.11:7946",
+            "name": "n010"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.12:7946",
+            "name": "n011"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.13:7946",
+            "name": "n012"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.14:7946",
+            "name": "n013"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.15:7946",
+            "name": "n014"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.16:7946",
+            "name": "n015"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.17:7946",
+            "name": "n016"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.18:7946",
+            "name": "n017"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.19:7946",
+            "name": "n018"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.20:7946",
+            "name": "n019"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.21:7946",
+            "name": "n020"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.22:7946",
+            "name": "n021"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.23:7946",
+            "name": "n022"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.24:7946",
+            "name": "n023"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.25:7946",
+            "name": "n024"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.26:7946",
+            "name": "n025"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.27:7946",
+            "name": "n026"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.28:7946",
+            "name": "n027"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.29:7946",
+            "name": "n028"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.30:7946",
+            "name": "n029"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.31:7946",
+            "name": "n030"
+          },
+          "Service": "0"
+        },
+        {
+          "Identity": {
+            "address": "192.0.2.32:7946",
+            "name": "n031"
+          },
+          "Service": "0"
+        }
+      ],
+      "Protocol": {
+        "Allowed": null,
+        "Application": false,
+        "AwarenessMax": "8",
+        "DisableTCP": false,
+        "DisableTCPFor": null,
+        "GossipInterval": "200000000",
+        "GossipNodes": "3",
+        "GossipToDead": "30000000000",
+        "IndirectChecks": "3",
+        "Label": "",
+        "MaxPushPull": "128",
+        "PacketBudget": "1400",
+        "ProbeInterval": "1000000000",
+        "ProbeTimeout": "500000000",
+        "Protected": false,
+        "PushPullInterval": "30000000000",
+        "QueueDepth": "1024",
+        "ReclaimAfter": "0",
+        "RetransmitMult": "4",
+        "StreamTimeout": "10000000000",
+        "SuspicionMaxMult": "6",
+        "SuspicionMult": "4"
+      },
+      "Seeds": {
+        "Fault": "11231724242123092822",
+        "Protocol": "16508659275336165770",
+        "Schedule": "255906654927968816"
+      },
+      "StreamCapacity": "1048576"
+    },
+    "Toolchain": "go1.26.3"
+  },
+  "nodeCount": "32",
+  "horizonNS": "120000000000",
+  "lastEvent": {
+    "timeNS": "119998713915",
+    "seq": "77623"
+  },
+  "observedThroughNS": "120000000000",
+  "declarations": [],
+  "runningDeclarations": "0",
+  "stoppedDeclarations": "0",
+  "affectedRunningTargets": "0",
+  "affectedRunningPairs": "0",
+  "crashes": [],
+  "recoveries": [],
+  "recoveryDurations": {
+    "completed": "0",
+    "eligible": "0",
+    "p50NS": null,
+    "p95NS": null,
+    "maxNS": null,
+    "reason": "empty eligible population"
+  },
+  "traffic": {
+    "datagram": {
+      "sent": "1647963",
+      "received": "1633262"
+    },
+    "stream": {
+      "sent": "480687",
+      "received": "480687"
+    },
+    "recordedDrops": [
+      {
+        "transport": "datagram",
+        "reason": "directional fault",
+        "count": "130"
+      },
+      {
+        "transport": "stream",
+        "reason": "open: remote transport failure",
+        "count": "15"
+      },
+      {
+        "transport": "stream",
+        "reason": "remote transport failure",
+        "count": "10"
+      }
+    ],
+    "total": {
+      "sent": "2128650",
+      "received": "2113949"
+    },
+    "durationNS": "120000000000",
+    "sentBytesPerSecond": "17738.750000",
+    "receivedBytesPerSecond": "17616.241667",
+    "endTotals": {
+      "sentBytes": "2128650",
+      "receivedBytes": "2113949",
+      "datagramDrops": "130",
+      "detections": "0"
+    },
+    "endBytesMatch": true
+  },
+  "unsupported": [],
+  "modelLimits": [
+    "Directional faults are prescribed send-time windows; jitter is sampled once per window. LossPPM independently admits each encoded datagram by directed-link send ordinal; duplicates copy the admitted datagram. Streams have no packet-loss probability.",
+    "Node service durations are configured, not calibrated CPU or scheduler behavior. Shared bandwidth bottlenecks and path topology are not modeled.",
+    "Streams model messages, ordering, credits and deadlines, not TCP packets. Bytes exclude IP/TCP overhead. This is a distinct Lightpool baseline.",
+    "Running-target declarations carry truth and fault context, not inferred causes or a universal false-crash percentage. Example scenarios use accelerated settings, including disabled TCP probing."
+  ]
+}

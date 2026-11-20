@@ -1,0 +1,12 @@
+Linux cloud-box 6.12.118-fly #1 SMP PREEMPT_DYNAMIC Tue Nov 17 20:27:34 UTC 2026 x86_64 GNU/Linux
+/home/dev/work/bureaucracy/.moe/clones/lightpool/correlated-ordinary-witness-2026-11-20/.healthy-witness-raw/driver.test: go1.26.3
+	path	github.com/modulecollective/lightpool.test
+	mod	github.com/modulecollective/lightpool	(devel)	
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	-trimpath=true
+	build	DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0
+	build	CGO_ENABLED=1
+	build	GOARCH=amd64
+	build	GOOS=linux
+	build	GOAMD64=v1

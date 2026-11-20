@@ -1,0 +1,4 @@
+sim=36.531056424s events=35347 trace=19486189 bytes
+sim=1m28.182287179s events=60008 trace=35325732 bytes
+sim=1m59.995178895s events=75091 trace=45086333 bytes
+lightpool-experiment: invalid-warmup: membership incomplete immediately before warm-up boundary

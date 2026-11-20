@@ -1,0 +1,3 @@
+=== RUN   TestHealthyTiming
+--- PASS: TestHealthyTiming (3.41s)
+PASS
