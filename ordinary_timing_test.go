@@ -145,3 +145,24 @@ func TestHealthyTiming(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestReplayHealthyJournal lets the evidence verifier replay a restored
+// journal with the checked-in decoder, without starting a node.
+func TestReplayHealthyJournal(t *testing.T) {
+	path := os.Getenv("LIGHTPOOL_REPLAY_HEALTHY_JOURNAL")
+	if path == "" {
+		t.Skip("set journal path to verify retained healthy recording")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts, err := experiment.ReplayOrdinary(file)
+	closeErr := file.Close()
+	if err != nil || closeErr != nil {
+		t.Fatalf("replay %v, close %v", err, closeErr)
+	}
+	if counts["Ping"] < 200 || counts["Datagram"] < 200 {
+		t.Fatalf("missing healthy workload: %v", counts)
+	}
+}
