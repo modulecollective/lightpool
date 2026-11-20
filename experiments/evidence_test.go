@@ -105,7 +105,7 @@ func TestEvidenceRoundTrip(t *testing.T) {
 
 func TestEvidenceRefusesInvalidSources(t *testing.T) {
 	for _, mode := range []string{"pack", "unpack"} {
-		for _, kind := range []string{"symlink", "nested", "unsafe", "reserved", "collision", "source-symlink"} {
+		for _, kind := range []string{"symlink", "nested", "unsafe", "reserved", "collision", "source-symlink", "source-symlink-slash"} {
 			t.Run(mode+"/"+kind, func(t *testing.T) {
 				source := t.TempDir()
 				writeFile(t, filepath.Join(source, "status.json"), []byte("{}\n"))
@@ -125,12 +125,15 @@ func TestEvidenceRefusesInvalidSources(t *testing.T) {
 				case "collision":
 					writeFile(t, filepath.Join(source, "trace.ndjson"), nil)
 					writeFile(t, filepath.Join(source, "trace.ndjson.gz"), nil)
-				case "source-symlink":
+				case "source-symlink", "source-symlink-slash":
 					link := filepath.Join(t.TempDir(), "link")
 					if err := os.Symlink(source, link); err != nil {
 						t.Fatal(err)
 					}
 					source = link
+					if kind == "source-symlink-slash" {
+						source += "///"
+					}
 				}
 				destination := filepath.Join(t.TempDir(), "output")
 				evidence(t, mode, source, destination, true)

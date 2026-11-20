@@ -8,8 +8,10 @@ die() { echo "evidence.sh: $*" >&2; exit 1; }
 [ "$#" -eq 3 ] || die "usage: evidence.sh {pack|unpack} SOURCE NEW_DEST"
 mode=$1
 [[ $mode == pack || $mode == unpack ]] || die "expected pack or unpack"
-[[ -d $2 && ! -L $2 ]] || die "source must be a regular directory, not a symlink"
-source_dir=$(cd -- "$2" && pwd -P)
+source_path=$2
+while [[ $source_path != / && $source_path == */ ]]; do source_path=${source_path%/}; done
+[[ -d $source_path && ! -L $source_path ]] || die "source must be a regular directory, not a symlink"
+source_dir=$(cd -- "$source_path" && pwd -P)
 [[ ! -e $3 && ! -L $3 ]] || die "destination already exists"
 parent=$(cd -- "$(dirname -- "$3")" && pwd -P)
 [[ $parent != "$source_dir" && $parent != "$source_dir/"* ]] || die "destination must be outside source"
