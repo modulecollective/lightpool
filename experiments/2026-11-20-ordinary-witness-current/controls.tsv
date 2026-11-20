@@ -1,0 +1,20 @@
+probe	expect	sent	delivered	pass	lowerP50NS	upperMaxNS
+healthy-udp-A-T	delivered	20	20	true	1150689	3649929
+healthy-udp-T-A	delivered	20	20	true	1161180	2277389
+healthy-udp-O-T	delivered	20	20	true	1122990	2203160
+healthy-udp-T-O	delivered	20	20	true	1157450	1622429
+healthy-tcp-A-T	delivered	1	1	true	-	-
+healthy-tcp-T-A	delivered	1	1	true	-	-
+healthy-tcp-O-T	delivered	1	1	true	-	-
+established-tcp-A-T	delivered	1	1	true	-	-
+fault-udp-A-T	dropped	20	0	true	-	-
+fault-udp-T-A	delivered	20	20	true	1138600	2903450
+fault-udp-O-T	delivered	20	20	true	1158640	1723850
+fault-udp-T-O	delivered	20	20	true	1398500	5306260
+fault-tcp-A-T	blocked	1	0	true	-	-
+fault-tcp-T-A	blocked	1	0	true	-	-
+fault-tcp-O-T	delivered	1	1	true	-	-
+fault-established-A-T	held then recovered	1	1	true	-	-
+recovery-udp-A-T	delivered	20	20	true	1135240	1629279
+recovery-udp-T-A	delivered	20	20	true	1146730	1910300
+recovery-tcp-A-T	delivered	1	1	true	-	-
