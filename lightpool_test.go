@@ -118,7 +118,7 @@ func TestOrdinaryClusterConcurrentOperations(t *testing.T) {
 			if rtt < 0 {
 				errs <- fmt.Errorf("negative RTT: %s", rtt)
 			}
-			if err = n.Update(ctx, []byte(fmt.Sprint(j))); err != nil {
+			if err = n.Update(ctx, fmt.Append(nil, j)); err != nil {
 				errs <- err
 			}
 			s := n.Snapshot()

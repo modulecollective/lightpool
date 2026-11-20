@@ -65,10 +65,9 @@ func New(config Config, identity wire.Identity, seed Seed) (*Core, error) {
 		nodes:  make(map[string]*member),
 		timers: make(map[string]deadline), timerKeys: make(map[uint64]string),
 		probes: make(map[uint64]*probe), streams: make(map[uint64]*stream),
-		sends:         make(map[uint64]uint64),
+		susp: make(map[string]*suspicion), sends: make(map[uint64]uint64),
 		broadcastKeys: make(map[string]*broadcast),
 	}
-	c.susp = make(map[string]*suspicion)
 	c.next = c.rng.Uint64() >> 1
 	c.nodes[c.self] = &member{Member: wire.Member{Identity: identity.Clone(), Incarnation: 1, State: wire.Alive}}
 	c.order = []string{c.self}
@@ -257,7 +256,6 @@ func (c *Core) shutdown(command uint64) {
 	for _, b := range c.broadcasts {
 		c.finishBroadcast(b, Canceled)
 	}
-	c.stopped = true
 	c.sends = make(map[uint64]uint64)
 	c.high = nil
 	c.low = nil
