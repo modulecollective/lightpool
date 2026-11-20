@@ -1,0 +1,489 @@
+{
+  "format": "lightpool-ordinary-witness-controls/v1",
+  "source": "62c746a8e1232c711a8a025e64675cb0c2c8e515",
+  "binary": "4a8e2eda9e136082f659dee687fec191253434dbd0213a5c4a9f1b856de12add",
+  "kernel": "Linux version 6.12.118-fly (support@fly.io) (x86_64-linux-gnu-gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #1 SMP PREEMPT_DYNAMIC Tue Nov 17 20:27:34 UTC 2026",
+  "tools": {
+    "ip": "/usr/bin/ip",
+    "nft": "/usr/sbin/nft",
+    "nsenter": "/usr/bin/nsenter",
+    "tc": "/usr/sbin/tc"
+  },
+  "egressDelay": "1ms",
+  "probes": [
+    {
+      "name": "healthy-udp-A-T",
+      "phase": "healthy",
+      "proto": "udp",
+      "from": "A",
+      "to": "T",
+      "expect": "delivered",
+      "sent": 20,
+      "delivered": 20,
+      "delayNS": {
+        "lower": {
+          "n": 20,
+          "p50": "1150689",
+          "p95": "1368900",
+          "p99": "3618969",
+          "max": "3618969",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        },
+        "upper": {
+          "n": 20,
+          "p50": "1207539",
+          "p95": "1414220",
+          "p99": "3649929",
+          "max": "3649929",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        }
+      },
+      "startNS": "74875756",
+      "endNS": "1188272148",
+      "pass": true
+    },
+    {
+      "name": "healthy-udp-T-A",
+      "phase": "healthy",
+      "proto": "udp",
+      "from": "T",
+      "to": "A",
+      "expect": "delivered",
+      "sent": 20,
+      "delivered": 20,
+      "delayNS": {
+        "lower": {
+          "n": 20,
+          "p50": "1161180",
+          "p95": "1795289",
+          "p99": "1823630",
+          "max": "1823630",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        },
+        "upper": {
+          "n": 20,
+          "p50": "1227279",
+          "p95": "1913650",
+          "p99": "2277389",
+          "max": "2277389",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        }
+      },
+      "startNS": "1188397448",
+      "endNS": "2302207861",
+      "pass": true
+    },
+    {
+      "name": "healthy-udp-O-T",
+      "phase": "healthy",
+      "proto": "udp",
+      "from": "O",
+      "to": "T",
+      "expect": "delivered",
+      "sent": 20,
+      "delivered": 20,
+      "delayNS": {
+        "lower": {
+          "n": 20,
+          "p50": "1122990",
+          "p95": "1491100",
+          "p99": "2152470",
+          "max": "2152470",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        },
+        "upper": {
+          "n": 20,
+          "p50": "1179250",
+          "p95": "1564610",
+          "p99": "2203160",
+          "max": "2203160",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        }
+      },
+      "startNS": "2302278601",
+      "endNS": "3414539764",
+      "pass": true
+    },
+    {
+      "name": "healthy-udp-T-O",
+      "phase": "healthy",
+      "proto": "udp",
+      "from": "T",
+      "to": "O",
+      "expect": "delivered",
+      "sent": 20,
+      "delivered": 20,
+      "delayNS": {
+        "lower": {
+          "n": 20,
+          "p50": "1157450",
+          "p95": "1293990",
+          "p99": "1547639",
+          "max": "1547639",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        },
+        "upper": {
+          "n": 20,
+          "p50": "1237959",
+          "p95": "1536510",
+          "p99": "1622429",
+          "max": "1622429",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        }
+      },
+      "startNS": "3414820464",
+      "endNS": "4532819656",
+      "pass": true
+    },
+    {
+      "name": "healthy-tcp-A-T",
+      "phase": "healthy",
+      "proto": "tcp",
+      "from": "A",
+      "to": "T",
+      "expect": "delivered",
+      "sent": 1,
+      "delivered": 1,
+      "startNS": "4532904446",
+      "endNS": "4538380556",
+      "pass": true
+    },
+    {
+      "name": "healthy-tcp-T-A",
+      "phase": "healthy",
+      "proto": "tcp",
+      "from": "T",
+      "to": "A",
+      "expect": "delivered",
+      "sent": 1,
+      "delivered": 1,
+      "startNS": "4538539626",
+      "endNS": "4544012906",
+      "pass": true
+    },
+    {
+      "name": "healthy-tcp-O-T",
+      "phase": "healthy",
+      "proto": "tcp",
+      "from": "O",
+      "to": "T",
+      "expect": "delivered",
+      "sent": 1,
+      "delivered": 1,
+      "startNS": "4544047336",
+      "endNS": "4549412975",
+      "pass": true
+    },
+    {
+      "name": "established-tcp-A-T",
+      "phase": "established",
+      "proto": "tcp",
+      "from": "A",
+      "to": "T",
+      "expect": "delivered",
+      "sent": 1,
+      "delivered": 1,
+      "startNS": "4549471075",
+      "endNS": "4554291875",
+      "pass": true
+    },
+    {
+      "name": "fault-udp-A-T",
+      "phase": "fault",
+      "proto": "udp",
+      "from": "A",
+      "to": "T",
+      "expect": "dropped",
+      "sent": 20,
+      "delivered": 0,
+      "delayNS": {
+        "lower": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        },
+        "upper": {
+          "n": 0,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        }
+      },
+      "startNS": "4562237615",
+      "endNS": "5674118727",
+      "pass": true
+    },
+    {
+      "name": "fault-udp-T-A",
+      "phase": "fault",
+      "proto": "udp",
+      "from": "T",
+      "to": "A",
+      "expect": "delivered",
+      "sent": 20,
+      "delivered": 20,
+      "delayNS": {
+        "lower": {
+          "n": 20,
+          "p50": "1138600",
+          "p95": "1895470",
+          "p99": "2870660",
+          "max": "2870660",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        },
+        "upper": {
+          "n": 20,
+          "p50": "1200660",
+          "p95": "1943700",
+          "p99": "2903450",
+          "max": "2903450",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        }
+      },
+      "startNS": "5674190577",
+      "endNS": "6789752280",
+      "pass": true
+    },
+    {
+      "name": "fault-udp-O-T",
+      "phase": "fault",
+      "proto": "udp",
+      "from": "O",
+      "to": "T",
+      "expect": "delivered",
+      "sent": 20,
+      "delivered": 20,
+      "delayNS": {
+        "lower": {
+          "n": 20,
+          "p50": "1158640",
+          "p95": "1465889",
+          "p99": "1575940",
+          "max": "1575940",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        },
+        "upper": {
+          "n": 20,
+          "p50": "1219100",
+          "p95": "1528629",
+          "p99": "1723850",
+          "max": "1723850",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        }
+      },
+      "startNS": "6789851610",
+      "endNS": "7905803800",
+      "pass": true
+    },
+    {
+      "name": "fault-udp-T-O",
+      "phase": "fault",
+      "proto": "udp",
+      "from": "T",
+      "to": "O",
+      "expect": "delivered",
+      "sent": 20,
+      "delivered": 20,
+      "delayNS": {
+        "lower": {
+          "n": 20,
+          "p50": "1398500",
+          "p95": "3385940",
+          "p99": "4366620",
+          "max": "4366620",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        },
+        "upper": {
+          "n": 20,
+          "p50": "1449170",
+          "p95": "3464580",
+          "p99": "5306260",
+          "max": "5306260",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        }
+      },
+      "startNS": "7905876560",
+      "endNS": "9028278773",
+      "pass": true
+    },
+    {
+      "name": "fault-tcp-A-T",
+      "phase": "fault",
+      "proto": "tcp",
+      "from": "A",
+      "to": "T",
+      "expect": "blocked",
+      "sent": 1,
+      "delivered": 0,
+      "startNS": "9028336943",
+      "endNS": "11028752372",
+      "error": "dial tcp 10.77.1.2:9001: i/o timeout",
+      "pass": true
+    },
+    {
+      "name": "fault-tcp-T-A",
+      "phase": "fault",
+      "proto": "tcp",
+      "from": "T",
+      "to": "A",
+      "expect": "blocked",
+      "sent": 1,
+      "delivered": 0,
+      "startNS": "11028776122",
+      "endNS": "13029446771",
+      "error": "dial tcp 10.77.0.2:9001: i/o timeout",
+      "pass": true
+    },
+    {
+      "name": "fault-tcp-O-T",
+      "phase": "fault",
+      "proto": "tcp",
+      "from": "O",
+      "to": "T",
+      "expect": "delivered",
+      "sent": 1,
+      "delivered": 1,
+      "startNS": "13029505791",
+      "endNS": "13037780811",
+      "pass": true
+    },
+    {
+      "name": "fault-established-A-T",
+      "phase": "fault",
+      "proto": "tcp",
+      "from": "A",
+      "to": "T",
+      "expect": "held then recovered",
+      "sent": 1,
+      "delivered": 1,
+      "delayNS": {
+        "afterRemoval": {
+          "n": 1,
+          "p50": "1320411541",
+          "p95": "1320411541",
+          "p99": "1320411541",
+          "max": "1320411541",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        }
+      },
+      "startNS": "13037824341",
+      "endNS": "17302520842",
+      "pass": true
+    },
+    {
+      "name": "recovery-udp-A-T",
+      "phase": "recovery",
+      "proto": "udp",
+      "from": "A",
+      "to": "T",
+      "expect": "delivered",
+      "sent": 20,
+      "delivered": 20,
+      "delayNS": {
+        "lower": {
+          "n": 20,
+          "p50": "1135240",
+          "p95": "1361100",
+          "p99": "1546289",
+          "max": "1546289",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        },
+        "upper": {
+          "n": 20,
+          "p50": "1183440",
+          "p95": "1487060",
+          "p99": "1629279",
+          "max": "1629279",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        }
+      },
+      "startNS": "15063528208",
+      "endNS": "16177964551",
+      "pass": true
+    },
+    {
+      "name": "recovery-udp-T-A",
+      "phase": "recovery",
+      "proto": "udp",
+      "from": "T",
+      "to": "A",
+      "expect": "delivered",
+      "sent": 20,
+      "delivered": 20,
+      "delayNS": {
+        "lower": {
+          "n": 20,
+          "p50": "1146730",
+          "p95": "1547960",
+          "p99": "1764850",
+          "max": "1764850",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        },
+        "upper": {
+          "n": 20,
+          "p50": "1202770",
+          "p95": "1691540",
+          "p99": "1910300",
+          "max": "1910300",
+          "note": "nearest-rank p99 equals the maximum",
+          "bounds": "coordinator monotonic send-call and read-return bounds"
+        }
+      },
+      "startNS": "16178033631",
+      "endNS": "17295843262",
+      "pass": true
+    },
+    {
+      "name": "recovery-tcp-A-T",
+      "phase": "recovery",
+      "proto": "tcp",
+      "from": "A",
+      "to": "T",
+      "expect": "delivered",
+      "sent": 1,
+      "delivered": 1,
+      "startNS": "17295912202",
+      "endNS": "17302465132",
+      "pass": true
+    }
+  ],
+  "fault": {
+    "rule": "ip saddr { 10.77.0.2 } ip daddr 10.77.1.2 meta l4proto { tcp, udp } counter name \"fault\" drop",
+    "handle": 4,
+    "requestedNS": "4554308545",
+    "appliedNS": "4562172315",
+    "removeRequestedNS": "15038659589",
+    "removedNS": "15059372568",
+    "packets": "31",
+    "bytes": "1385"
+  },
+  "pass": true,
+  "limits": [
+    "One 1 ms egress delay per endpoint; 20 datagrams per UDP probe, 5 ms apart, counted delivered within 1 s of the last send.",
+    "TCP connect and exchange use a 2 s bound; a timeout is the expected blocked outcome because nothing sends RST or ICMP.",
+    "Packet identity is the application payload; kernel arrival and in-kernel drops other than the rule counter stay unknown."
+  ]
+}

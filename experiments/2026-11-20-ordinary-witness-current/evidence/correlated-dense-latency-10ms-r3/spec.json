@@ -1,0 +1,72 @@
+{
+  "format": "lightpool-pilot/v1",
+  "case": "correlated-dense-latency-10ms",
+  "replicate": "3",
+  "code": "62c746a8e1232c711a8a025e64675cb0c2c8e515",
+  "toolchain": "go1.26.3",
+  "platform": "linux/amd64",
+  "seedDerivation": "sha256-replicate-namespace/v1",
+  "lossDraw": "sha256-link-ordinal-ppm/v1",
+  "lossBoundary": "after successful encoded in-budget datagram send, before delivery; not receiver loss",
+  "pairing": "same fault tape at matching directed-link send ordinals; different traffic can realize different losses",
+  "warmupNS": "15000000000",
+  "horizonNS": "120000000000",
+  "traceCap": "2147483648",
+  "anomaly": [
+    "n001",
+    "n003",
+    "n004",
+    "n005",
+    "n006",
+    "n007",
+    "n008",
+    "n009",
+    "n010",
+    "n011",
+    "n013",
+    "n014",
+    "n015",
+    "n016",
+    "n020",
+    "n021",
+    "n022",
+    "n025",
+    "n026",
+    "n027",
+    "n028",
+    "n029",
+    "n030",
+    "n031"
+  ],
+  "target": "n024",
+  "healthyPairs": [
+    {
+      "observer": "n000",
+      "subject": "n024"
+    },
+    {
+      "observer": "n002",
+      "subject": "n024"
+    },
+    {
+      "observer": "n012",
+      "subject": "n024"
+    },
+    {
+      "observer": "n017",
+      "subject": "n024"
+    },
+    {
+      "observer": "n018",
+      "subject": "n024"
+    },
+    {
+      "observer": "n019",
+      "subject": "n024"
+    },
+    {
+      "observer": "n023",
+      "subject": "n024"
+    }
+  ]
+}

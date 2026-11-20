@@ -1,0 +1,7 @@
+=== RUN   TestOrdinaryWitness
+=== RUN   TestOrdinaryWitness
+    ordinary_witness_linux_test.go:1017: 18-1ms-i2-healthy-on finished in 2m1s: <nil>
+--- PASS: TestOrdinaryWitness (120.97s)
+PASS
+--- PASS: TestOrdinaryWitness (120.98s)
+PASS

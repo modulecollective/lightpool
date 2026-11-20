@@ -1,0 +1,12 @@
+{
+  "childSystemNS": 10828937000,
+  "childUserNS": 13253977000,
+  "cpus": 2,
+  "freeBytesAfter": 24226275328,
+  "freeBytesBefore": 24235220992,
+  "loadavgAfter": "2.14 2.35 1.58 1/258 422",
+  "loadavgBefore": "2.76 2.17 1.41 3/224 7",
+  "maxChildRSSKiB": 22736,
+  "meminfoAfter": "MemAvailable:    6626820 kB",
+  "meminfoBefore": "MemAvailable:    6559584 kB"
+}

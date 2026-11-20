@@ -1,0 +1,5 @@
+{
+  "elapsedNS": "15151206132",
+  "peakRSSBytes": "12476416",
+  "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS"
+}

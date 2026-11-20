@@ -1,0 +1,9 @@
+=== RUN   TestOrdinaryWitness
+=== RUN   TestOrdinaryWitness
+    ordinary_witness_linux_test.go:1017: 25-10ms-i1-healthy-off finished in 2m1s: sampled membership not fully alive at the warm-up boundary; fault not injected
+    ordinary_witness_linux_test.go:1022: 25-10ms-i1-healthy-off sampled membership not fully alive at the warm-up boundary; fault not injected
+--- FAIL: TestOrdinaryWitness (121.15s)
+FAIL
+    ordinary_witness_linux_test.go:240: inner coordinator: exit status 1
+--- FAIL: TestOrdinaryWitness (121.16s)
+FAIL

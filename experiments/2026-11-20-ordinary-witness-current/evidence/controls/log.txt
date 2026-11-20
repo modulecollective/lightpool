@@ -1,0 +1,6 @@
+=== RUN   TestOrdinaryWitness
+=== RUN   TestOrdinaryWitness
+--- PASS: TestOrdinaryWitness (17.34s)
+PASS
+--- PASS: TestOrdinaryWitness (17.35s)
+PASS

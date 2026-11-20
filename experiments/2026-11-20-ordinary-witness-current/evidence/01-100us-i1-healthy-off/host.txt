@@ -1,0 +1,7 @@
+Linux cloud-box 6.12.118-fly #1 SMP PREEMPT_DYNAMIC Tue Nov 17 20:27:34 UTC 2026 x86_64 GNU/Linux
+2
+MemTotal:        8135912 kB
+MemFree:         2988828 kB
+MemAvailable:    6561016 kB
+/home/dev/work/bureaucracy/.moe/clones/lightpool/ordinary-witness-after-recorder-timing-2026-11-20/.moe/witness-run/driver.test: go1.26.3
+	path	github.com/modulecollective/lightpool.test

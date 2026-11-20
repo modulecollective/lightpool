@@ -1,0 +1,3 @@
+sim=33.997960388s events=37235 trace=20152004 bytes
+sim=1m56.326778522s events=76586 trace=45427106 bytes
+sim=1m59.998713915s events=78294 trace=46558096 bytes

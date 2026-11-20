@@ -1,0 +1,7 @@
+=== RUN   TestOrdinaryWitness
+=== RUN   TestOrdinaryWitness
+    ordinary_witness_linux_test.go:1017: 11-100us-i3-impaired-off finished in 2m1s: <nil>
+--- PASS: TestOrdinaryWitness (121.39s)
+PASS
+--- PASS: TestOrdinaryWitness (121.40s)
+PASS

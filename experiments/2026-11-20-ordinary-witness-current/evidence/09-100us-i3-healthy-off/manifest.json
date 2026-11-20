@@ -1,0 +1,397 @@
+{
+  "format": "lightpool-ordinary-witness/v1",
+  "cell": {
+    "order": 9,
+    "latencyNS": "100000",
+    "index": "3",
+    "impaired": false,
+    "mode": "off"
+  },
+  "spec": {
+    "format": "lightpool-pilot/v1",
+    "case": "correlated-dense",
+    "replicate": "3",
+    "code": "62c746a8e1232c711a8a025e64675cb0c2c8e515",
+    "toolchain": "go1.26.3",
+    "platform": "linux/amd64",
+    "seedDerivation": "sha256-replicate-namespace/v1",
+    "lossDraw": "sha256-link-ordinal-ppm/v1",
+    "lossBoundary": "after successful encoded in-budget datagram send, before delivery; not receiver loss",
+    "pairing": "same fault tape at matching directed-link send ordinals; different traffic can realize different losses",
+    "warmupNS": "15000000000",
+    "horizonNS": "120000000000",
+    "traceCap": "2147483648",
+    "anomaly": [
+      "n001",
+      "n003",
+      "n004",
+      "n005",
+      "n006",
+      "n007",
+      "n008",
+      "n009",
+      "n010",
+      "n011",
+      "n013",
+      "n014",
+      "n015",
+      "n016",
+      "n020",
+      "n021",
+      "n022",
+      "n025",
+      "n026",
+      "n027",
+      "n028",
+      "n029",
+      "n030",
+      "n031"
+    ],
+    "target": "n024",
+    "healthyPairs": [
+      {
+        "observer": "n000",
+        "subject": "n024"
+      },
+      {
+        "observer": "n002",
+        "subject": "n024"
+      },
+      {
+        "observer": "n012",
+        "subject": "n024"
+      },
+      {
+        "observer": "n017",
+        "subject": "n024"
+      },
+      {
+        "observer": "n018",
+        "subject": "n024"
+      },
+      {
+        "observer": "n019",
+        "subject": "n024"
+      },
+      {
+        "observer": "n023",
+        "subject": "n024"
+      }
+    ]
+  },
+  "schedule": {
+    "joinSpacingNS": "10000000",
+    "pollNS": "100000000",
+    "clockNS": "1000000000",
+    "warmupNS": "15000000000",
+    "faultEndNS": "31384000000",
+    "horizonNS": "120000000000"
+  },
+  "limits": {
+    "queueRecords": 4096,
+    "queueBytes": 8388608,
+    "records": 156250,
+    "bytes": 67108864
+  },
+  "sidecarBytes": "67108864",
+  "source": "62c746a8e1232c711a8a025e64675cb0c2c8e515",
+  "binary": "4a8e2eda9e136082f659dee687fec191253434dbd0213a5c4a9f1b856de12add",
+  "toolchain": "go1.26.3",
+  "kernel": "Linux version 6.12.118-fly (support@fly.io) (x86_64-linux-gnu-gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #1 SMP PREEMPT_DYNAMIC Tue Nov 17 20:27:34 UTC 2026",
+  "tools": {
+    "ip": "/usr/bin/ip",
+    "nft": "/usr/sbin/nft",
+    "nsenter": "/usr/bin/nsenter",
+    "tc": "/usr/sbin/tc"
+  },
+  "nodes": [
+    {
+      "name": "n000",
+      "role": "O",
+      "address": "10.77.0.2:7946",
+      "pid": 13,
+      "lifetime": "17735571211739162319",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n001",
+      "role": "A",
+      "address": "10.77.1.2:7946",
+      "pid": 24,
+      "lifetime": "17564852658119537153",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n002",
+      "role": "O",
+      "address": "10.77.2.2:7946",
+      "pid": 33,
+      "lifetime": "6954073126636895146",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n003",
+      "role": "A",
+      "address": "10.77.3.2:7946",
+      "pid": 44,
+      "lifetime": "6207457736059559335",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n004",
+      "role": "A",
+      "address": "10.77.4.2:7946",
+      "pid": 54,
+      "lifetime": "18112905414608147846",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n005",
+      "role": "A",
+      "address": "10.77.5.2:7946",
+      "pid": 63,
+      "lifetime": "14396537627214137757",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n006",
+      "role": "A",
+      "address": "10.77.6.2:7946",
+      "pid": 74,
+      "lifetime": "16291574095646169024",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n007",
+      "role": "A",
+      "address": "10.77.7.2:7946",
+      "pid": 83,
+      "lifetime": "2654201090345756261",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n008",
+      "role": "A",
+      "address": "10.77.8.2:7946",
+      "pid": 93,
+      "lifetime": "8385646366479417820",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n009",
+      "role": "A",
+      "address": "10.77.9.2:7946",
+      "pid": 104,
+      "lifetime": "6134156564639205279",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n010",
+      "role": "A",
+      "address": "10.77.10.2:7946",
+      "pid": 114,
+      "lifetime": "12271983400114211661",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n011",
+      "role": "A",
+      "address": "10.77.11.2:7946",
+      "pid": 124,
+      "lifetime": "13655818321533793706",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n012",
+      "role": "O",
+      "address": "10.77.12.2:7946",
+      "pid": 133,
+      "lifetime": "12626716651532369885",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n013",
+      "role": "A",
+      "address": "10.77.13.2:7946",
+      "pid": 145,
+      "lifetime": "11735955092290184668",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n014",
+      "role": "A",
+      "address": "10.77.14.2:7946",
+      "pid": 155,
+      "lifetime": "7695756929875402410",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n015",
+      "role": "A",
+      "address": "10.77.15.2:7946",
+      "pid": 165,
+      "lifetime": "14011822931972886163",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n016",
+      "role": "A",
+      "address": "10.77.16.2:7946",
+      "pid": 175,
+      "lifetime": "17060699016846261097",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n017",
+      "role": "O",
+      "address": "10.77.17.2:7946",
+      "pid": 185,
+      "lifetime": "12469633197688680206",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n018",
+      "role": "O",
+      "address": "10.77.18.2:7946",
+      "pid": 195,
+      "lifetime": "1531916127759611822",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n019",
+      "role": "O",
+      "address": "10.77.19.2:7946",
+      "pid": 204,
+      "lifetime": "8285432282762674616",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n020",
+      "role": "A",
+      "address": "10.77.20.2:7946",
+      "pid": 214,
+      "lifetime": "11104333484380124378",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n021",
+      "role": "A",
+      "address": "10.77.21.2:7946",
+      "pid": 225,
+      "lifetime": "13510817916589679408",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n022",
+      "role": "A",
+      "address": "10.77.22.2:7946",
+      "pid": 234,
+      "lifetime": "12234628586970435942",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n023",
+      "role": "O",
+      "address": "10.77.23.2:7946",
+      "pid": 244,
+      "lifetime": "12940637505825039432",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n024",
+      "role": "T",
+      "address": "10.77.24.2:7946",
+      "pid": 255,
+      "lifetime": "13783935558153482504",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n025",
+      "role": "A",
+      "address": "10.77.25.2:7946",
+      "pid": 266,
+      "lifetime": "4920865933018845560",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n026",
+      "role": "A",
+      "address": "10.77.26.2:7946",
+      "pid": 275,
+      "lifetime": "8925239802046105011",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n027",
+      "role": "A",
+      "address": "10.77.27.2:7946",
+      "pid": 286,
+      "lifetime": "14727068686126658684",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n028",
+      "role": "A",
+      "address": "10.77.28.2:7946",
+      "pid": 295,
+      "lifetime": "17038515522704944437",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n029",
+      "role": "A",
+      "address": "10.77.29.2:7946",
+      "pid": 306,
+      "lifetime": "2910668431884306420",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n030",
+      "role": "A",
+      "address": "10.77.30.2:7946",
+      "pid": 316,
+      "lifetime": "12974583595233966687",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    },
+    {
+      "name": "n031",
+      "role": "A",
+      "address": "10.77.31.2:7946",
+      "pid": 328,
+      "lifetime": "11541488102215479637",
+      "journal": "",
+      "seed": "unavailable: journal disabled"
+    }
+  ]
+}

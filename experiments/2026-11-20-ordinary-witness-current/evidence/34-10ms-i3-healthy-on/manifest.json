@@ -1,0 +1,397 @@
+{
+  "format": "lightpool-ordinary-witness/v1",
+  "cell": {
+    "order": 34,
+    "latencyNS": "10000000",
+    "index": "3",
+    "impaired": false,
+    "mode": "on"
+  },
+  "spec": {
+    "format": "lightpool-pilot/v1",
+    "case": "correlated-dense",
+    "replicate": "3",
+    "code": "62c746a8e1232c711a8a025e64675cb0c2c8e515",
+    "toolchain": "go1.26.3",
+    "platform": "linux/amd64",
+    "seedDerivation": "sha256-replicate-namespace/v1",
+    "lossDraw": "sha256-link-ordinal-ppm/v1",
+    "lossBoundary": "after successful encoded in-budget datagram send, before delivery; not receiver loss",
+    "pairing": "same fault tape at matching directed-link send ordinals; different traffic can realize different losses",
+    "warmupNS": "15000000000",
+    "horizonNS": "120000000000",
+    "traceCap": "2147483648",
+    "anomaly": [
+      "n001",
+      "n003",
+      "n004",
+      "n005",
+      "n006",
+      "n007",
+      "n008",
+      "n009",
+      "n010",
+      "n011",
+      "n013",
+      "n014",
+      "n015",
+      "n016",
+      "n020",
+      "n021",
+      "n022",
+      "n025",
+      "n026",
+      "n027",
+      "n028",
+      "n029",
+      "n030",
+      "n031"
+    ],
+    "target": "n024",
+    "healthyPairs": [
+      {
+        "observer": "n000",
+        "subject": "n024"
+      },
+      {
+        "observer": "n002",
+        "subject": "n024"
+      },
+      {
+        "observer": "n012",
+        "subject": "n024"
+      },
+      {
+        "observer": "n017",
+        "subject": "n024"
+      },
+      {
+        "observer": "n018",
+        "subject": "n024"
+      },
+      {
+        "observer": "n019",
+        "subject": "n024"
+      },
+      {
+        "observer": "n023",
+        "subject": "n024"
+      }
+    ]
+  },
+  "schedule": {
+    "joinSpacingNS": "10000000",
+    "pollNS": "100000000",
+    "clockNS": "1000000000",
+    "warmupNS": "15000000000",
+    "faultEndNS": "31384000000",
+    "horizonNS": "120000000000"
+  },
+  "limits": {
+    "queueRecords": 4096,
+    "queueBytes": 8388608,
+    "records": 156250,
+    "bytes": 67108864
+  },
+  "sidecarBytes": "67108864",
+  "source": "62c746a8e1232c711a8a025e64675cb0c2c8e515",
+  "binary": "4a8e2eda9e136082f659dee687fec191253434dbd0213a5c4a9f1b856de12add",
+  "toolchain": "go1.26.3",
+  "kernel": "Linux version 6.12.118-fly (support@fly.io) (x86_64-linux-gnu-gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #1 SMP PREEMPT_DYNAMIC Tue Nov 17 20:27:34 UTC 2026",
+  "tools": {
+    "ip": "/usr/bin/ip",
+    "nft": "/usr/sbin/nft",
+    "nsenter": "/usr/bin/nsenter",
+    "tc": "/usr/sbin/tc"
+  },
+  "nodes": [
+    {
+      "name": "n000",
+      "role": "O",
+      "address": "10.77.0.2:7946",
+      "pid": 14,
+      "lifetime": "15013057737481454827",
+      "journal": "node-n000.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n001",
+      "role": "A",
+      "address": "10.77.1.2:7946",
+      "pid": 23,
+      "lifetime": "2290197494133466187",
+      "journal": "node-n001.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n002",
+      "role": "O",
+      "address": "10.77.2.2:7946",
+      "pid": 34,
+      "lifetime": "6881992400878661715",
+      "journal": "node-n002.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n003",
+      "role": "A",
+      "address": "10.77.3.2:7946",
+      "pid": 43,
+      "lifetime": "5871177414890644982",
+      "journal": "node-n003.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n004",
+      "role": "A",
+      "address": "10.77.4.2:7946",
+      "pid": 52,
+      "lifetime": "8824351878895525989",
+      "journal": "node-n004.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n005",
+      "role": "A",
+      "address": "10.77.5.2:7946",
+      "pid": 63,
+      "lifetime": "16958568084444268643",
+      "journal": "node-n005.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n006",
+      "role": "A",
+      "address": "10.77.6.2:7946",
+      "pid": 73,
+      "lifetime": "9674891062282274447",
+      "journal": "node-n006.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n007",
+      "role": "A",
+      "address": "10.77.7.2:7946",
+      "pid": 83,
+      "lifetime": "3424842067037350662",
+      "journal": "node-n007.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n008",
+      "role": "A",
+      "address": "10.77.8.2:7946",
+      "pid": 93,
+      "lifetime": "14153786981188009006",
+      "journal": "node-n008.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n009",
+      "role": "A",
+      "address": "10.77.9.2:7946",
+      "pid": 103,
+      "lifetime": "15283177207101122388",
+      "journal": "node-n009.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n010",
+      "role": "A",
+      "address": "10.77.10.2:7946",
+      "pid": 113,
+      "lifetime": "14703466922284321226",
+      "journal": "node-n010.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n011",
+      "role": "A",
+      "address": "10.77.11.2:7946",
+      "pid": 124,
+      "lifetime": "10828325514112980919",
+      "journal": "node-n011.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n012",
+      "role": "O",
+      "address": "10.77.12.2:7946",
+      "pid": 134,
+      "lifetime": "8908477259880688788",
+      "journal": "node-n012.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n013",
+      "role": "A",
+      "address": "10.77.13.2:7946",
+      "pid": 144,
+      "lifetime": "1677342269205749539",
+      "journal": "node-n013.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n014",
+      "role": "A",
+      "address": "10.77.14.2:7946",
+      "pid": 153,
+      "lifetime": "18150459920037942026",
+      "journal": "node-n014.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n015",
+      "role": "A",
+      "address": "10.77.15.2:7946",
+      "pid": 163,
+      "lifetime": "9070122908238691037",
+      "journal": "node-n015.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n016",
+      "role": "A",
+      "address": "10.77.16.2:7946",
+      "pid": 174,
+      "lifetime": "10443853263429357780",
+      "journal": "node-n016.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n017",
+      "role": "O",
+      "address": "10.77.17.2:7946",
+      "pid": 183,
+      "lifetime": "17580772182802439955",
+      "journal": "node-n017.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n018",
+      "role": "O",
+      "address": "10.77.18.2:7946",
+      "pid": 194,
+      "lifetime": "17667459199631617016",
+      "journal": "node-n018.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n019",
+      "role": "O",
+      "address": "10.77.19.2:7946",
+      "pid": 204,
+      "lifetime": "9489492379900309062",
+      "journal": "node-n019.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n020",
+      "role": "A",
+      "address": "10.77.20.2:7946",
+      "pid": 214,
+      "lifetime": "10792914682330173450",
+      "journal": "node-n020.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n021",
+      "role": "A",
+      "address": "10.77.21.2:7946",
+      "pid": 225,
+      "lifetime": "1295785293280672062",
+      "journal": "node-n021.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n022",
+      "role": "A",
+      "address": "10.77.22.2:7946",
+      "pid": 235,
+      "lifetime": "16355886362218985173",
+      "journal": "node-n022.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n023",
+      "role": "O",
+      "address": "10.77.23.2:7946",
+      "pid": 245,
+      "lifetime": "5374706091773398291",
+      "journal": "node-n023.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n024",
+      "role": "T",
+      "address": "10.77.24.2:7946",
+      "pid": 254,
+      "lifetime": "1454823358841712692",
+      "journal": "node-n024.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n025",
+      "role": "A",
+      "address": "10.77.25.2:7946",
+      "pid": 264,
+      "lifetime": "6636684077758441303",
+      "journal": "node-n025.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n026",
+      "role": "A",
+      "address": "10.77.26.2:7946",
+      "pid": 275,
+      "lifetime": "18041226837819130065",
+      "journal": "node-n026.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n027",
+      "role": "A",
+      "address": "10.77.27.2:7946",
+      "pid": 286,
+      "lifetime": "14401543793784918817",
+      "journal": "node-n027.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n028",
+      "role": "A",
+      "address": "10.77.28.2:7946",
+      "pid": 296,
+      "lifetime": "1564382702360681764",
+      "journal": "node-n028.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n029",
+      "role": "A",
+      "address": "10.77.29.2:7946",
+      "pid": 306,
+      "lifetime": "4058467994397471363",
+      "journal": "node-n029.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n030",
+      "role": "A",
+      "address": "10.77.30.2:7946",
+      "pid": 315,
+      "lifetime": "4463791606560316268",
+      "journal": "node-n030.ndjson",
+      "seed": "full seed in the journal header"
+    },
+    {
+      "name": "n031",
+      "role": "A",
+      "address": "10.77.31.2:7946",
+      "pid": 325,
+      "lifetime": "5895090252410386331",
+      "journal": "node-n031.ndjson",
+      "seed": "full seed in the journal header"
+    }
+  ]
+}

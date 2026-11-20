@@ -1,0 +1,493 @@
+{
+  "format": "lightpool-ordinary-witness/v1",
+  "status": "complete",
+  "reason": "fixed 120-second horizon",
+  "epochNS": "911578885",
+  "sampledWarmup": true,
+  "warmup": {
+    "loNS": "15912247495",
+    "hiNS": "15912260605"
+  },
+  "horizon": {
+    "loNS": "120913268017",
+    "hiNS": "120920652607"
+  },
+  "fault": null,
+  "joins": [
+    {
+      "node": "n001",
+      "requestedNS": "921578885",
+      "sentNS": "922390414",
+      "childStartNS": "77770305",
+      "childEndNS": "79906085",
+      "error": ""
+    },
+    {
+      "node": "n002",
+      "requestedNS": "931578885",
+      "sentNS": "932069624",
+      "childStartNS": "91864004",
+      "childEndNS": "94587494",
+      "error": ""
+    },
+    {
+      "node": "n003",
+      "requestedNS": "941578885",
+      "sentNS": "942496563",
+      "childStartNS": "59162597",
+      "childEndNS": "61486967",
+      "error": ""
+    },
+    {
+      "node": "n004",
+      "requestedNS": "951578885",
+      "sentNS": "952404582",
+      "childStartNS": "86530095",
+      "childEndNS": "88549745",
+      "error": ""
+    },
+    {
+      "node": "n005",
+      "requestedNS": "961578885",
+      "sentNS": "961995502",
+      "childStartNS": "97563914",
+      "childEndNS": "101474423",
+      "error": ""
+    },
+    {
+      "node": "n006",
+      "requestedNS": "971578885",
+      "sentNS": "971623761",
+      "childStartNS": "106729004",
+      "childEndNS": "109292164",
+      "error": ""
+    },
+    {
+      "node": "n007",
+      "requestedNS": "981578885",
+      "sentNS": "981814591",
+      "childStartNS": "125475693",
+      "childEndNS": "127234402",
+      "error": ""
+    },
+    {
+      "node": "n008",
+      "requestedNS": "991578885",
+      "sentNS": "992072390",
+      "childStartNS": "169877530",
+      "childEndNS": "172926650",
+      "error": ""
+    },
+    {
+      "node": "n009",
+      "requestedNS": "1001578885",
+      "sentNS": "1001628989",
+      "childStartNS": "141106991",
+      "childEndNS": "143452651",
+      "error": ""
+    },
+    {
+      "node": "n010",
+      "requestedNS": "1011578885",
+      "sentNS": "1011721979",
+      "childStartNS": "147477601",
+      "childEndNS": "154749740",
+      "error": ""
+    },
+    {
+      "node": "n011",
+      "requestedNS": "1021578885",
+      "sentNS": "1023104168",
+      "childStartNS": "146560461",
+      "childEndNS": "149256251",
+      "error": ""
+    },
+    {
+      "node": "n012",
+      "requestedNS": "1031578885",
+      "sentNS": "1032426438",
+      "childStartNS": "154936481",
+      "childEndNS": "157366170",
+      "error": ""
+    },
+    {
+      "node": "n013",
+      "requestedNS": "1041578885",
+      "sentNS": "1041813837",
+      "childStartNS": "245014955",
+      "childEndNS": "247138585",
+      "error": ""
+    },
+    {
+      "node": "n014",
+      "requestedNS": "1051578885",
+      "sentNS": "1052969506",
+      "childStartNS": "165273810",
+      "childEndNS": "169643970",
+      "error": ""
+    },
+    {
+      "node": "n015",
+      "requestedNS": "1061578885",
+      "sentNS": "1062012106",
+      "childStartNS": "188536369",
+      "childEndNS": "191083759",
+      "error": ""
+    },
+    {
+      "node": "n016",
+      "requestedNS": "1071578885",
+      "sentNS": "1073027185",
+      "childStartNS": "196852688",
+      "childEndNS": "199218928",
+      "error": ""
+    },
+    {
+      "node": "n017",
+      "requestedNS": "1081578885",
+      "sentNS": "1082115345",
+      "childStartNS": "193931859",
+      "childEndNS": "197275548",
+      "error": ""
+    },
+    {
+      "node": "n018",
+      "requestedNS": "1091578885",
+      "sentNS": "1092921023",
+      "childStartNS": "199913547",
+      "childEndNS": "202456517",
+      "error": ""
+    },
+    {
+      "node": "n019",
+      "requestedNS": "1101578885",
+      "sentNS": "1102313343",
+      "childStartNS": "230553456",
+      "childEndNS": "233964846",
+      "error": ""
+    },
+    {
+      "node": "n020",
+      "requestedNS": "1111578885",
+      "sentNS": "1113136502",
+      "childStartNS": "226303836",
+      "childEndNS": "229463996",
+      "error": ""
+    },
+    {
+      "node": "n021",
+      "requestedNS": "1121578885",
+      "sentNS": "1122646632",
+      "childStartNS": "233682076",
+      "childEndNS": "236466206",
+      "error": ""
+    },
+    {
+      "node": "n022",
+      "requestedNS": "1131578885",
+      "sentNS": "1132379011",
+      "childStartNS": "250932164",
+      "childEndNS": "253750664",
+      "error": ""
+    },
+    {
+      "node": "n023",
+      "requestedNS": "1141578885",
+      "sentNS": "1142132361",
+      "childStartNS": "244970984",
+      "childEndNS": "247234274",
+      "error": ""
+    },
+    {
+      "node": "n024",
+      "requestedNS": "1151578885",
+      "sentNS": "1153537460",
+      "childStartNS": "270635074",
+      "childEndNS": "276333974",
+      "error": ""
+    },
+    {
+      "node": "n025",
+      "requestedNS": "1161578885",
+      "sentNS": "1162390319",
+      "childStartNS": "301913461",
+      "childEndNS": "304091941",
+      "error": ""
+    },
+    {
+      "node": "n026",
+      "requestedNS": "1171578885",
+      "sentNS": "1172128089",
+      "childStartNS": "281106543",
+      "childEndNS": "283729443",
+      "error": ""
+    },
+    {
+      "node": "n027",
+      "requestedNS": "1181578885",
+      "sentNS": "1182519878",
+      "childStartNS": "300771222",
+      "childEndNS": "314585781",
+      "error": ""
+    },
+    {
+      "node": "n028",
+      "requestedNS": "1191578885",
+      "sentNS": "1193323668",
+      "childStartNS": "316194151",
+      "childEndNS": "320989251",
+      "error": ""
+    },
+    {
+      "node": "n029",
+      "requestedNS": "1201578885",
+      "sentNS": "1201854447",
+      "childStartNS": "383754097",
+      "childEndNS": "385981687",
+      "error": ""
+    },
+    {
+      "node": "n030",
+      "requestedNS": "1211578885",
+      "sentNS": "1213082366",
+      "childStartNS": "324581270",
+      "childEndNS": "333413520",
+      "error": ""
+    },
+    {
+      "node": "n031",
+      "requestedNS": "1221578885",
+      "sentNS": "1222110216",
+      "childStartNS": "410558425",
+      "childEndNS": "417256554",
+      "error": ""
+    }
+  ],
+  "exits": [
+    {
+      "node": "n000",
+      "pid": 13,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n001",
+      "pid": 23,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n002",
+      "pid": 33,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n003",
+      "pid": 43,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n004",
+      "pid": 54,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n005",
+      "pid": 64,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n006",
+      "pid": 73,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n007",
+      "pid": 83,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n008",
+      "pid": 93,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n009",
+      "pid": 103,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n010",
+      "pid": 114,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n011",
+      "pid": 124,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n012",
+      "pid": 135,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n013",
+      "pid": 146,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n014",
+      "pid": 156,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n015",
+      "pid": 165,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n016",
+      "pid": 175,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n017",
+      "pid": 185,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n018",
+      "pid": 196,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n019",
+      "pid": 206,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n020",
+      "pid": 215,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n021",
+      "pid": 225,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n022",
+      "pid": 235,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n023",
+      "pid": 245,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n024",
+      "pid": 256,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n025",
+      "pid": 265,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n026",
+      "pid": 275,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n027",
+      "pid": 285,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n028",
+      "pid": 296,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n029",
+      "pid": 308,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n030",
+      "pid": 317,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    },
+    {
+      "node": "n031",
+      "pid": 329,
+      "shutdown": "",
+      "recording": "",
+      "wait": ""
+    }
+  ],
+  "survivors": []
+}
