@@ -9,6 +9,11 @@ last=$(jq '.Rounds[-1].EndNS' "$dir/rounds.json")
   jq -r '.Rounds[] | ["observerPingNS", .PingNS[0]]|@tsv' "$dir/rounds.json"
   if [[ -f "$dir/observer.ndjson" ]]; then
     jq -r --argjson start "$first" --argjson end "$last" '
+      if .step and .step.StartNS >= $start then ["start",.step.sequence,.step.StartNS]
+      elif .end and .end.endNS <= $end then ["end",.end.sequence,.end.endNS,.end.recorderNS]
+      else empty end | @tsv' "$dir/observer.ndjson" | awk '
+      $1=="start" {seq=$2; at=$3} $1=="end" && $2==seq {print "ownerStepNS\t" $3-at; print "recorderNS\t" $4}'
+    jq -r --argjson start "$first" --argjson end "$last" '
       select(.step and .step.StartNS >= $start and .step.CoreEndNS <= $end) | .step |
       (["coreStepNS", .CoreEndNS-.CoreAtNS], ["queueDepth", .queueDepth],
        (select(.timerDueNS != null) | ["timerLatenessNS", .StartNS-.timerDueNS]),
