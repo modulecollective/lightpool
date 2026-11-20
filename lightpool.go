@@ -104,7 +104,7 @@ func newOrdinaryNode(cfg Config, recording *recordingConfig) (*Node, error) {
 	cfg.Protocol.Protected = cfg.Keyring != nil
 	opts := wire.Options{Label: cfg.Protocol.Label}
 	if cfg.Keyring != nil {
-		opts.Keys = cfg.Keyring.Keys()
+		opts.Keys = cfg.Keyring.frameKeys()
 		if len(opts.Keys) == 0 {
 			return nil, errors.New("empty keyring")
 		}
@@ -194,7 +194,7 @@ func (n *Node) now() core.Instant { return core.Instant(time.Since(n.epoch)) }
 func (n *Node) options() wire.Options {
 	o := wire.Options{Label: n.cfg.Protocol.Label}
 	if n.cfg.Keyring != nil {
-		o.Keys = n.cfg.Keyring.Keys()
+		o.Keys = n.cfg.Keyring.frameKeys()
 	}
 	return o
 }

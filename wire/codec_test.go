@@ -113,9 +113,9 @@ func variants() [][]Message {
 }
 
 func TestSizeMatchesEncodingAndRoundTrips(t *testing.T) {
-	key := bytes.Repeat([]byte{7}, 32)
+	key := mustKey(t, 7)
 	for _, messages := range variants() {
-		for _, o := range []Options{{}, {Label: strings.Repeat("l", MaxLabel)}, {Keys: [][]byte{key}}} {
+		for _, o := range []Options{{}, {Label: strings.Repeat("l", MaxLabel)}, {Keys: []Key{key}}} {
 			size, err := Size(messages, o.Label, len(o.Keys) > 0)
 			if err != nil {
 				t.Fatal(err)
@@ -263,8 +263,8 @@ func TestDeclaredCountsAllocateNothingFirst(t *testing.T) {
 
 func TestProtectionAndKeys(t *testing.T) {
 	messages := []Message{{Exchange: &Exchange{Members: bulkMembers(400)}}}
-	a, b := bytes.Repeat([]byte{1}, 16), bytes.Repeat([]byte{2}, 32)
-	for _, o := range []Options{{Label: "cluster"}, {Label: "cluster", Keys: [][]byte{a}}} {
+	a, b := mustKey(t, 1), mustKey(t, 2)
+	for _, o := range []Options{{Label: "cluster"}, {Label: "cluster", Keys: []Key{a}}} {
 		frame, err := Encode(messages, o)
 		if err != nil {
 			t.Fatal(err)
@@ -283,17 +283,17 @@ func TestProtectionAndKeys(t *testing.T) {
 		}
 	}
 	plaintext, _ := Encode(messages, Options{Label: "cluster"})
-	if _, err := Decode(plaintext, Options{Label: "cluster", Keys: [][]byte{a}}); err == nil {
+	if _, err := Decode(plaintext, Options{Label: "cluster", Keys: []Key{a}}); err == nil {
 		t.Fatal("plaintext accepted")
 	}
-	protected, _ := Encode(messages, Options{Keys: [][]byte{b}})
-	if _, err := Decode(protected, Options{Keys: [][]byte{a, b}}); err != nil {
+	protected, _ := Encode(messages, Options{Keys: []Key{b}})
+	if _, err := Decode(protected, Options{Keys: []Key{a, b}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Decode(protected, Options{Keys: [][]byte{a}}); err == nil {
+	if _, err := Decode(protected, Options{Keys: []Key{a}}); err == nil {
 		t.Fatal("wrong key accepted")
 	}
-	second, _ := Encode(messages, Options{Keys: [][]byte{b}})
+	second, _ := Encode(messages, Options{Keys: []Key{b}})
 	if bytes.Equal(protected, second) {
 		t.Fatal("nonce reused")
 	}
@@ -313,7 +313,7 @@ func TestDefaultPacketCosts(t *testing.T) {
 				}
 				o := Options{Label: label}
 				if protected {
-					o.Keys = [][]byte{bytes.Repeat([]byte{3}, 32)}
+					o.Keys = []Key{mustKey(t, 3)}
 				}
 				frame, err := Encode(messages, o)
 				if err != nil || len(frame) != size {
@@ -460,4 +460,22 @@ func bulkMembers(count int) []Member {
 		members[j] = n
 	}
 	return members
+}
+func mustKey(t testing.TB, fill byte) Key {
+	t.Helper()
+	k, err := NewKey(bytes.Repeat([]byte{fill}, KeySize))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return k
+}
+func TestKeysMustBe32Bytes(t *testing.T) {
+	for _, size := range []int{0, 16, 24, 31, 33} {
+		if _, err := NewKey(make([]byte, size)); err == nil {
+			t.Fatalf("accepted a %d-byte key", size)
+		}
+	}
+	if err := (Options{Keys: []Key{{}}}).Validate(); err == nil {
+		t.Fatal("accepted an unbuilt key")
+	}
 }

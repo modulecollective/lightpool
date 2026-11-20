@@ -4,7 +4,6 @@
 package wire
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/binary"
@@ -18,11 +17,31 @@ const Version = 2
 const encrypted = 2
 const MaxFrame = HeaderSize + MaxLabel + MaxBody + 28
 
+// KeySize is the only accepted key length: AES-256.
+const KeySize = 32
+
+// Key is a frame-protection key: AES-256-GCM with random 96-bit nonces, built
+// once and safe for concurrent use. Random nonces bound one key to about 2^32
+// sealed frames; rotate keys well before that.
+type Key struct{ aead cipher.AEAD }
+
+func NewKey(secret []byte) (Key, error) {
+	if len(secret) != KeySize {
+		return Key{}, errors.New("key must be 32 bytes")
+	}
+	block, err := aes.NewCipher(secret)
+	if err != nil {
+		return Key{}, err
+	}
+	aead, err := cipher.NewGCMWithRandomNonce(block)
+	return Key{aead}, err
+}
+
 // Options is an immutable codec configuration. Keys[0] encrypts; every key may
 // decrypt. A nonempty key list requires encryption on all incoming frames.
 type Options struct {
 	Label string
-	Keys  [][]byte
+	Keys  []Key
 }
 
 func (o Options) Validate() error {
@@ -30,19 +49,11 @@ func (o Options) Validate() error {
 		return errors.New("invalid label")
 	}
 	for _, k := range o.Keys {
-		if _, err := aes.NewCipher(k); err != nil {
-			return err
+		if k.aead == nil {
+			return errors.New("key not built with NewKey")
 		}
 	}
 	return nil
-}
-func (o Options) Clone() Options {
-	keys := o.Keys
-	o.Keys = make([][]byte, len(keys))
-	for j, k := range keys {
-		o.Keys[j] = bytes.Clone(k)
-	}
-	return o
 }
 
 // Size is the exact frame size, including all protection overhead, computed
@@ -80,12 +91,7 @@ func Encode(messages []Message, o Options) ([]byte, error) {
 	binary.BigEndian.PutUint32(h[8:12], uint32(len(b)+extra))
 	copy(h[HeaderSize:], o.Label)
 	if flags&encrypted != 0 {
-		block, _ := aes.NewCipher(o.Keys[0])
-		g, err := cipher.NewGCMWithRandomNonce(block)
-		if err != nil {
-			return nil, err
-		}
-		return g.Seal(h, nil, b, h), nil
+		return o.Keys[0].aead.Seal(h, nil, b, h), nil
 	}
 	out := append(h, b...)
 	sum := crc32.ChecksumIEEE(out)
@@ -144,12 +150,7 @@ func Decode(frame []byte, o Options) ([]Message, error) {
 		}
 		var plain []byte
 		for _, k := range o.Keys {
-			block, _ := aes.NewCipher(k)
-			g, e := cipher.NewGCMWithRandomNonce(block)
-			if e != nil {
-				return nil, e
-			}
-			plain, err = g.Open(nil, nil, b, h)
+			plain, err = k.aead.Open(nil, nil, b, h)
 			if err == nil {
 				break
 			}
