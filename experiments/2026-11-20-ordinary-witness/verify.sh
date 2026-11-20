@@ -16,7 +16,7 @@ git -C "$repo" archive "$(cat "$record/healthy-base")" | tar -x -C "$out/driver"
 sha=$(sha256sum "$out/producer" | cut -d' ' -f1)
 driver=$(sha256sum "$out/driver.test" | cut -d' ' -f1)
 (cd "$repo" && go test -c -trimpath -buildvcs=false -o "$out/replay.test" .)
-printf 'case\tindex\tstatus\tfailedProbes\tlocalSuspicions\teligibleEpisodes\twitnesses\tharmful\thealthyDead\tstop\n' > "$out/cells.tsv"
+printf 'case\tindex\tstatus\tfailedProbes\tlocalSuspicions\teligibleEpisodes\twitnesses\tharmful\thealthyDead\tpairExposureNS\tmaxBacklog\tlateTimers\tmaxTimerLatenessNS\tstop\n' > "$out/cells.tsv"
 printf 'attempt\tmetric\tn\tmedian\tp95\tp99\tmax\n' > "$out/timing.tsv"
 while IFS=$'\t' read -r id path provenance code status rawBytes storedBytes; do
   [[ $id != attempt ]] || continue
@@ -48,7 +48,7 @@ while IFS=$'\t' read -r id path provenance code status rawBytes storedBytes; do
     cmp "$dest/summary.json" "$out/$id.reduce.$pass.json"
   done
   cmp "$out/$id.admission.1.json" "$out/$id.admission.2.json"
-  jq -r '[.spec.case,.spec.replicate,.status,.aProbeFailures,.aLocalSuspicions,.eligibleEpisodes,.accelerationWitnesses,.harmfulEpisodes,(.populations[] | select(.label=="healthy-pair-exclusions")|.transitions),.chainStoppedAt]|@tsv' "$out/$id.admission.1.json" >> "$out/cells.tsv"
+  jq -r '[.spec.case,.spec.replicate,.status,.aProbeFailures,.aLocalSuspicions,.eligibleEpisodes,.accelerationWitnesses,.harmfulEpisodes,(.populations[] | select(.label=="healthy-pair-exclusions")|.transitions),(.populations[] | select(.label=="healthy-pair-exclusions")|.pairNS),.maxBacklog,.lateTimers,.maxTimerLatenessNS,.chainStoppedAt]|@tsv' "$out/$id.admission.1.json" >> "$out/cells.tsv"
   echo "verified $id"
 done < "$record/evidence.tsv"
 [[ $(wc -l < "$out/cells.tsv") == 19 ]]
