@@ -181,7 +181,7 @@ func TestFixtureShapesAndSeedNamespaces(t *testing.T) {
 		if !bytes.Equal(a, b) {
 			t.Fatal("detector defaults changed", name)
 		}
-		if s.EventBudget != EventBudget || spec.TraceCap != TraceCap || spec.WarmupNS != int64(15*time.Second) || spec.HorizonNS != int64(120*time.Second) || s.Compression || s.Latency != time.Millisecond || s.Nodes[0].Service != 0 || s.DatagramCapacity != 1<<20 || s.StreamCapacity != 1<<20 {
+		if s.EventBudget != EventBudget || spec.TraceCap != TraceCap || spec.WarmupNS != int64(15*time.Second) || spec.HorizonNS != int64(120*time.Second) || s.Latency != time.Millisecond || s.Nodes[0].Service != 0 || s.DatagramCapacity != 1<<20 || s.StreamCapacity != 1<<20 {
 			t.Fatal("fixed bounds", name)
 		}
 		if s.Seeds.Protocol == s.Seeds.Fault || s.Seeds.Protocol == s.Seeds.Schedule || s.Seeds.Fault == s.Seeds.Schedule {

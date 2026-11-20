@@ -33,7 +33,7 @@ using the packaging workflow below.
 The six cases use 32 nodes, default `core.Config`, 1 ms one-way latency,
 zero node service duration and 1 MiB datagram/stream capacities. TCP probing
 and periodic push/pull remain enabled. Nodes join node 0 at 10 ms spacing;
-identities are fixed and encryption and compression are disabled.
+identities are fixed and encryption is disabled.
 There is no automatic rejoin. Warm-up ends at 15 seconds and the fixed horizon
 is 120 seconds. Every observer must know every member as alive immediately
 before the warm-up boundary. Failure is retained as `invalid-warmup`, never
@@ -168,10 +168,9 @@ LIGHTPOOL_PILOT_REVISION="<tested-source-identity>" \
 
 This runs healthy, 8.192-second SIGSTOP/SIGCONT pause, and SIGKILL crash cases
 three times each, sequentially. One child process per node uses the public
-node API and real loopback UDP/TCP, default detector values and no encryption
-or compression. Child startup is bounded at 30 seconds;
-all-ready establishes time zero, followed by the same 15-second warm-up and
-120-second horizon. A warm-up failure is retained without a delayed fault or
+node API and real loopback UDP/TCP, default detector values and no
+encryption. Child startup is bounded at 30 seconds; all-ready establishes
+time zero, followed by the same 15-second warm-up and 120-second horizon. A warm-up failure is retained without a delayed fault or
 replacement run. Normal unit CI skips the workload.
 
 Children collect snapshots and traffic every nominal 100 ms independently;

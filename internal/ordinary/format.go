@@ -101,7 +101,6 @@ type Header struct {
 	Identity                  wire.Identity `json:"identity"`
 	Seed                      core.Seed     `json:"seed"`
 	Protocol                  core.Config   `json:"protocol"`
-	Compression               bool          `json:"compression"`
 	Source, Binary, Toolchain string
 	EpochUnixNS               int64             `json:"epochUnixNS"`
 	Baseline                  []core.Inspection `json:"baseline"`

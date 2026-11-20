@@ -5,7 +5,6 @@ package wire
 
 import (
 	"bytes"
-	"compress/lzw"
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/binary"
@@ -19,16 +18,14 @@ import (
 
 const HeaderSize = 12
 const Version = 1
-const compressed = 1
 const encrypted = 2
 const MaxFrame = HeaderSize + MaxLabel + MaxBody + 28
 
 // Options is an immutable codec configuration. Keys[0] encrypts; every key may
 // decrypt. A nonempty key list requires encryption on all incoming frames.
 type Options struct {
-	Label    string
-	Compress bool
-	Keys     [][]byte
+	Label string
+	Keys  [][]byte
 }
 
 func (o Options) Validate() error {
@@ -66,8 +63,7 @@ func body(messages []Message) ([]byte, error) {
 	return b, err
 }
 
-// Size is the exact uncompressed frame size, including all protection overhead.
-// Compression can only reduce this upper bound. It never needs entropy.
+// Size is the exact frame size, including all protection overhead.
 func Size(messages []Message, label string, protect bool) (int, error) {
 	b, err := body(messages)
 	if err != nil {
@@ -88,20 +84,6 @@ func Encode(messages []Message, o Options) ([]byte, error) {
 		return nil, err
 	}
 	flags := byte(0)
-	if o.Compress {
-		var z bytes.Buffer
-		w := lzw.NewWriter(&z, lzw.LSB, 8)
-		if _, err = w.Write(b); err != nil {
-			return nil, err
-		}
-		if err = w.Close(); err != nil {
-			return nil, err
-		}
-		if z.Len() < len(b) {
-			b = z.Bytes()
-			flags |= compressed
-		}
-	}
 	extra := 4
 	if len(o.Keys) > 0 {
 		flags |= encrypted
@@ -128,7 +110,7 @@ func Encode(messages []Message, o Options) ([]byte, error) {
 	return out, nil
 }
 func header(h []byte) (int, int, error) {
-	if len(h) < HeaderSize || string(h[:4]) != "LPL!" || h[4] != Version || h[5]&^(byte(compressed|encrypted)) != 0 {
+	if len(h) < HeaderSize || string(h[:4]) != "LPL!" || h[4] != Version || h[5]&^encrypted != 0 {
 		return 0, 0, errors.New("unsupported frame header")
 	}
 	label := int(binary.BigEndian.Uint16(h[6:8]))
@@ -201,25 +183,6 @@ func Decode(frame []byte, o Options) ([]Message, error) {
 			return nil, errors.New("checksum mismatch")
 		}
 		b = b[:len(b)-4]
-	}
-	if frame[5]&compressed != 0 {
-		input := bytes.NewReader(b)
-		r := lzw.NewReader(input, lzw.LSB, 8)
-		plain, e := io.ReadAll(io.LimitReader(r, MaxBody+1))
-		closeErr := r.Close()
-		if e != nil {
-			return nil, e
-		}
-		if closeErr != nil {
-			return nil, closeErr
-		}
-		if input.Len() != 0 {
-			return nil, errors.New("trailing compressed content")
-		}
-		if len(plain) > MaxBody {
-			return nil, errors.New("decompression limit")
-		}
-		b = plain
 	}
 	return DecodeBody(b)
 }

@@ -5,11 +5,8 @@ package wire
 
 import (
 	"bytes"
-	"compress/lzw"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"hash/crc32"
 	"io"
 	"net/netip"
 	"strings"
@@ -85,11 +82,10 @@ func TestStrictBodies(t *testing.T) {
 		t.Fatal("invalid UTF-8")
 	}
 }
-func TestProtectionCompressionAndKeys(t *testing.T) {
+func TestProtectionAndKeys(t *testing.T) {
 	messages := []Message{{Exchange: &Exchange{Members: bulkMembers(400)}}}
-	data, _ := json.Marshal(messages)
 	a, b := bytes.Repeat([]byte{1}, 16), bytes.Repeat([]byte{2}, 32)
-	for _, o := range []Options{{Label: "cluster"}, {Label: "cluster", Compress: true}, {Label: "cluster", Compress: true, Keys: [][]byte{a}}} {
+	for _, o := range []Options{{Label: "cluster"}, {Label: "cluster", Keys: [][]byte{a}}} {
 		frame, err := Encode(messages, o)
 		if err != nil {
 			t.Fatal(err)
@@ -106,9 +102,6 @@ func TestProtectionCompressionAndKeys(t *testing.T) {
 		if _, err = Decode(changed, o); err == nil {
 			t.Fatal("tampering accepted")
 		}
-		if o.Compress && len(frame) > len(data)/10 {
-			t.Fatalf("not compressed: %d", len(frame))
-		}
 	}
 	plaintext, _ := Encode(messages, Options{Label: "cluster"})
 	if _, err := Decode(plaintext, Options{Label: "cluster", Keys: [][]byte{a}}); err == nil {
@@ -124,26 +117,6 @@ func TestProtectionCompressionAndKeys(t *testing.T) {
 	second, _ := Encode(messages, Options{Keys: [][]byte{b}})
 	if bytes.Equal(protected, second) {
 		t.Fatal("nonce reused")
-	}
-}
-func TestDecompressionLimit(t *testing.T) {
-	var compressed bytes.Buffer
-	w := lzw.NewWriter(&compressed, lzw.LSB, 8)
-	chunk := bytes.Repeat([]byte{' '}, 4096)
-	for j := 0; j <= MaxBody/len(chunk); j++ {
-		if _, err := w.Write(chunk); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := w.Close(); err != nil {
-		t.Fatal(err)
-	}
-	h := []byte{'L', 'P', 'L', '!', 1, 1, 0, 0}
-	h = binary.BigEndian.AppendUint32(h, uint32(compressed.Len()+4))
-	h = append(h, compressed.Bytes()...)
-	h = binary.BigEndian.AppendUint32(h, crc32.ChecksumIEEE(h))
-	if _, err := Decode(h, Options{}); err == nil {
-		t.Fatal("decompression exceeded limit")
 	}
 }
 func TestDefaultPacketCosts(t *testing.T) {
@@ -241,45 +214,6 @@ func BenchmarkCodec(b *testing.B) {
 	}
 }
 
-func FuzzCompressedBody(f *testing.F) {
-	var z bytes.Buffer
-	w := lzw.NewWriter(&z, lzw.LSB, 8)
-	_, _ = w.Write([]byte(`[{"ack":{"sequence":7}}]`))
-	_ = w.Close()
-	f.Add(z.Bytes())
-	f.Add([]byte{0, 1, 255})
-	f.Fuzz(func(t *testing.T, compressed []byte) {
-		if len(compressed) > MaxBody {
-			return
-		}
-		h := []byte{'L', 'P', 'L', '!', 1, 1, 0, 0}
-		h = binary.BigEndian.AppendUint32(h, uint32(len(compressed)+4))
-		h = append(h, compressed...)
-		h = binary.BigEndian.AppendUint32(h, crc32.ChecksumIEEE(h))
-		messages, err := Decode(h, Options{})
-		if err == nil {
-			b, err := Encode(messages, Options{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err = Decode(b, Options{}); err != nil {
-				t.Fatal(err)
-			}
-		}
-	})
-}
-func TestCompressedTrailingBytesRejected(t *testing.T) {
-	frame, err := Encode([]Message{{Exchange: &Exchange{Members: bulkMembers(20)}}}, Options{Compress: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	payload := append(bytes.Clone(frame[:len(frame)-4]), 0)
-	binary.BigEndian.PutUint32(payload[8:12], binary.BigEndian.Uint32(payload[8:12])+1)
-	payload = binary.BigEndian.AppendUint32(payload, crc32.ChecksumIEEE(payload))
-	if _, err = Decode(payload, Options{}); err == nil {
-		t.Fatal("trailing compressed data accepted")
-	}
-}
 func bulkMembers(count int) []Member {
 	n := Member{Identity: Identity{Name: "node", Address: netip.MustParseAddrPort("127.0.0.1:7946")}, Incarnation: 1}
 	members := make([]Member, count)
