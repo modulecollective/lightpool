@@ -103,6 +103,13 @@ The caller owns and closes the writer; errors propagate. The opt-in
 probe facts and timer lifecycle separately from protocol effects.
 See the [trace format](docs/trace-v1.md) and [report definitions](docs/report-v1.md).
 
+`cmd/lightpool-experiment` records fixed baseline pilot cases, windowed metrics
+and replay inputs. For example, `lightpool-experiment -case threshold -replicate
+1 -out results-threshold-1` retains the trace, scenario, report and summary in a
+new directory. See the [pilot contract](docs/experiment-v1.md) for implemented
+cases, exact populations, independent datagram loss and the opt-in Linux process
+probe. Resource limits and invalid warm-up remain explicit failed results.
+
 ## Frame contract (wire version 1)
 
 One envelope carries one bounded JSON message batch. UDP requires exactly

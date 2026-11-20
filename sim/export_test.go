@@ -17,10 +17,11 @@ import (
 )
 
 func TestExportMatchesRunAndReplaysState(t *testing.T) {
-	scenarios := []Scenario{fixture(), fixture(), fixture()}
+	scenarios := []Scenario{fixture(), fixture(), fixture(), fixture()}
 	scenarios[1].Actions = append(scenarios[1].Actions, Action{At: core.Instant(400 * time.Millisecond), Node: "b", Kind: "pause", Duration: 100 * time.Millisecond})
 	scenarios[1].Faults = []Fault{{From: "a", To: "b", Start: 1, End: scenarios[1].Horizon, Duplicate: true}}
 	scenarios[2].Actions = append(scenarios[2].Actions, Action{At: core.Instant(400 * time.Millisecond), Node: "b", Kind: "crash"}, Action{At: core.Instant(500 * time.Millisecond), Node: "b", Kind: "start"}, Action{At: core.Instant(550 * time.Millisecond), Node: "b", Kind: "join", Peer: "a"})
+	scenarios[3].Faults = []Fault{{From: "a", To: "b", Start: 1, End: scenarios[3].Horizon, LossPPM: 300000}}
 	var positions []Scenario
 	for _, s := range scenarios {
 		for _, h := range []time.Duration{250 * time.Millisecond, 450 * time.Millisecond, 500 * time.Millisecond, 650 * time.Millisecond, time.Second} {

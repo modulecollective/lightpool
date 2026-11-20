@@ -65,7 +65,8 @@ streams (including partial stream chunks). Attempts, arrivals and handler
 events add no bytes. Recorded drop entries are grouped by transport and
 reason; these are diagnostics, not a unique packet-loss population. End
 sent/received totals are a cross-check. End `datagramDrops` counts directional
-fault and receive-queue drops; it excludes some other diagnostic drops.
+faults, independent datagram loss and receive-queue drops; it excludes some
+other diagnostic drops.
 End `detections` counts raw dead-membership notifications regardless of
 truth, and is not a detection-success metric.
 
@@ -75,7 +76,8 @@ integer byte totals and the exact duration remain available. Zero duration
 produces null rates and a reason. Bytes exclude IP/TCP overhead.
 
 The report includes current model limitations: prescribed directional fault
-windows with jitter sampled once per window, configured service time, no
+send-time windows with jitter sampled once per window, independent per-datagram
+`LossPPM` when configured (never stream packet loss), configured service time, no
 shared bandwidth/path topology and message-level streams rather than TCP
 packets. Accelerated example settings, including disabled TCP probes, remain
 visible in the manifest; they are validation fixtures, not tuned research

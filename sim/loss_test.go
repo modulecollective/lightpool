@@ -173,3 +173,38 @@ func TestLossReplayOrdinalContinuityAndSeedSeparation(t *testing.T) {
 		t.Fatal("fault randomness leaked")
 	}
 }
+
+func TestIndependentLossNeverDropsStreamChunks(t *testing.T) {
+	s := fixture()
+	s.Protocol.ProbeInterval = 0
+	s.Protocol.GossipInterval = 0
+	s.Protocol.PushPullInterval = 0
+	var baseline, loss bytes.Buffer
+	if _, err := Export(s, &baseline, ExportOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range s.Nodes {
+		for _, b := range s.Nodes {
+			if a.Identity.Name != b.Identity.Name {
+				s.Faults = append(s.Faults, Fault{From: a.Identity.Name, To: b.Identity.Name, Start: 0, End: s.Horizon, LossPPM: 1000000})
+			}
+		}
+	}
+	if _, err := Export(s, &loss, ExportOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	_, baselineEvents, ok := bytes.Cut(baseline.Bytes(), []byte("\n"))
+	if !ok {
+		t.Fatal("missing header")
+	}
+	_, lossEvents, ok := bytes.Cut(loss.Bytes(), []byte("\n"))
+	if !ok {
+		t.Fatal("missing header")
+	}
+	if !bytes.Equal(baselineEvents, lossEvents) {
+		t.Fatal("loss probability changed stream-only execution")
+	}
+	if len(effects(run(t, s), "core.WriteStream")) < 4 {
+		t.Fatal("join stream path did not execute")
+	}
+}

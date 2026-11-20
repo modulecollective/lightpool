@@ -100,3 +100,59 @@ func TestInspectionTimerCancellationAndStaleFire(t *testing.T) {
 		}
 	}
 }
+
+func TestInspectionSuspicionExpiryIsAuthoritativeAndNeutral(t *testing.T) {
+	a, b := testCore(t), testCore(t)
+	for _, c := range []*Core{a, b} {
+		add(t, c, "c", 3)
+		add(t, c, "d", 4)
+	}
+	b.EnableInspection()
+	input := func(from string) Datagram {
+		return Datagram{From: identity(from, 3).Address, Messages: []wire.Message{{Suspect: &wire.Accusation{Node: "b", From: from, Incarnation: 1}}}}
+	}
+	same := func(now Instant, e Event) []Effect {
+		t.Helper()
+		queue := []Event{e}
+		var effects []Effect
+		for len(queue) > 0 {
+			e, queue = queue[0], queue[1:]
+			ae, be := step(t, a, now, e), step(t, b, now, e)
+			if !reflect.DeepEqual(ae, be) || !reflect.DeepEqual(a.Snapshot(), b.Snapshot()) {
+				t.Fatal("inspection changed suspicion behavior")
+			}
+			effects = append(effects, be...)
+			for _, effect := range be {
+				if d, ok := effect.(Defer); ok {
+					queue = append(queue, Work(d))
+				}
+			}
+		}
+		return effects
+	}
+	original := timer(t, same(0, input("c")), "")
+	shortened := timer(t, same(Instant(time.Second), input("d")), "")
+	if shortened.At >= original.At {
+		t.Fatal("confirmation did not shorten timer")
+	}
+	same(shortened.At, Fired{Timer: shortened.Timer})
+	journal := b.Inspection()
+	fire, dead := -1, -1
+	for i, j := range journal {
+		if j.Kind == "timer" && j.Purpose == "suspicion" && j.Subject == "b" && j.Phase == "fire" && j.Generation == shortened.Timer.Generation {
+			fire = i
+		}
+		if j.Kind == "member.upsert" && j.Member.Name == "b" && j.Member.State == wire.Dead {
+			dead = i
+		}
+	}
+	if fire < 0 || dead <= fire {
+		t.Fatal("missing ordered expiry/dead witness", journal)
+	}
+	same(original.At, Fired{Timer: original.Timer})
+	for _, j := range b.Inspection() {
+		if j.Kind == "timer" && j.Purpose == "suspicion" && j.Phase == "fire" {
+			t.Fatal("stale suspicion fire recorded", j)
+		}
+	}
+}
