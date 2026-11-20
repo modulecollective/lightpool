@@ -1,0 +1,50 @@
+diff --git a/core/probe.go b/core/probe.go
+index e02088f..e328659 100644
+--- a/core/probe.go
++++ b/core/probe.go
+@@ -41,7 +41,7 @@ func (c *Core) admit(m wire.Message, from netip.AddrPort, received Instant) {
+ 		c.probes[id] = &probe{id: id, peer: p.Target.Clone(), start: c.now, relay: &p.Source, relaySequence: p.Sequence}
+ 		c.recordProbe(c.probes[id], "relay", "")
+ 		c.arm(key("relay:", id), "relay", c.now.Add(c.config.ProbeTimeout), id, "")
+-		c.datagram(p.Target.Address, []wire.Message{{Ping: &wire.Ping{Sequence: id, Target: p.Target.Name, Source: routing(c.nodes[c.self].Identity)}}}, 0, id, true)
++		c.datagram(p.Target.Address, []wire.Message{{Ping: &wire.Ping{Sequence: id, Target: p.Target.Name, Source: routingIdentity(c.nodes[c.self].Identity)}}}, 0, id, true)
+ 	case m.Ack != nil:
+ 		c.ack(m.Ack, from, received)
+ 	case m.Nack != nil:
+@@ -84,7 +84,7 @@ func (c *Core) startProbe(peer wire.Identity, command uint64, explicit, periodic
+ 	if !explicit {
+ 		c.arm(key("overall:", id), "overall", p.deadline, id, "")
+ 	}
+-	messages := []wire.Message{{Ping: &wire.Ping{Sequence: id, Target: peer.Name, Source: routing(c.nodes[c.self].Identity)}}}
++	messages := []wire.Message{{Ping: &wire.Ping{Sequence: id, Target: peer.Name, Source: routingIdentity(c.nodes[c.self].Identity)}}}
+ 	if n := c.nodes[peer.Name]; !explicit && n != nil && n.State != wire.Alive {
+ 		messages = append(messages, wire.Message{Suspect: &wire.Accusation{Node: n.Name, Incarnation: n.Incarnation, From: c.self}})
+ 	}
+@@ -128,7 +128,7 @@ func (c *Core) escalate(id uint64) {
+ 	peers := c.randomNodes(c.config.IndirectChecks, func(n *member) bool { return n.Name == c.self || n.Name == p.peer.Name || n.State != wire.Alive })
+ 	for _, n := range peers {
+ 		p.helpers = append(p.helpers, n.Identity.Clone())
+-		c.datagram(n.Address, []wire.Message{{Indirect: &wire.Indirect{Sequence: id, Target: routing(p.peer), Source: routing(c.nodes[c.self].Identity)}}}, 0, 0, true)
++		c.datagram(n.Address, []wire.Message{{Indirect: &wire.Indirect{Sequence: id, Target: routingIdentity(p.peer), Source: routingIdentity(c.nodes[c.self].Identity)}}}, 0, 0, true)
+ 	}
+ 	c.recordProbe(p, "indirect", "")
+ 	if !c.tcpDisabled(p.peer.Name) {
+@@ -317,4 +317,4 @@ func (c *Core) fire(t Timer) {
+ 	}
+ }
+ 
+-func routing(i wire.Identity) wire.Identity { i.Meta = nil; i.Application = ""; return i }
++func routingIdentity(i wire.Identity) wire.Identity { i.Meta = nil; i.Application = ""; return i }
+diff --git a/core/stream.go b/core/stream.go
+index 2f06f00..155b3b5 100644
+--- a/core/stream.go
++++ b/core/stream.go
+@@ -50,7 +50,7 @@ func (c *Core) openPing(p *probe) {
+ 	s.probe = p.id
+ 	s.deadline = p.deadline
+ 	c.arm(key("stream:", s.id.ID), "stream", s.deadline, s.id.ID, "")
+-	s.outgoing = wire.Message{Ping: &wire.Ping{Sequence: p.id, Target: p.peer.Name, Source: routing(c.nodes[c.self].Identity)}}
++	s.outgoing = wire.Message{Ping: &wire.Ping{Sequence: p.id, Target: p.peer.Name, Source: routingIdentity(c.nodes[c.self].Identity)}}
+ 	c.emit(OpenStream{ID: s.id, To: s.peer, Deadline: s.deadline})
+ }
+ func (c *Core) openUser(peer wire.Identity, m wire.Message, command uint64) {

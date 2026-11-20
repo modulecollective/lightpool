@@ -246,3 +246,40 @@ recovery can leave acceleration observed with no harm. These are observed
 orderings; they supply no counterfactual candidate-benefit claim. Helper
 identities and enclosing-step traffic are retained, but the route of a
 successful ACK remains unknown.
+
+## Experiment records
+
+Protocol candidates are not configuration in `core`. A candidate is a patch
+against a named baseline commit, and each experiment leaves one directory,
+`experiments/<id>/`:
+
+| File | Contents |
+| --- | --- |
+| `base` | Baseline commit, an ancestor of the commit carrying the record. |
+| `toolchain` | Go version and platform; replay is only promised on both. |
+| `<variant>.patch` | One per variant, from `git diff <base> -- core wire`. |
+| `run.sh` | The grid as a recipe: cases, overlays, replicates, variants. |
+| `cells.tsv` | One row per cell: identity, status, trace and summary SHA256, headline numbers named in advance. |
+
+Traces and summaries are not stored; they are regenerated. A virtual cell
+is deterministic, so `run.sh <new-dir> [cell ...]` rebuilds the baseline and
+each patched variant from `git archive <base>`, records the named cells (all
+of them by default) and refuses any whose row differs from `cells.tsv`.
+Patches never compile on `master`, and stop applying once `master` moves
+away from their base; the record is a claim about that base.
+
+The recipe keeps comparisons honest:
+
+- A patch touching anything outside `core/` and `wire/` is refused. A
+  candidate that needs a new trace fact lands that fact on `master` first,
+  which makes a new baseline.
+- A variant is recorded with `-revision <base>+<variant>:<first 12 hex of
+  the patch SHA256>`, so every trace header identifies its source.
+- The baseline binary reduces every cell, and its summary must equal the
+  one written while recording.
+- Null control: with inputs that should leave a variant inert, its trace
+  must equal the baseline's after the header line. The whole files must
+  differ, since the header carries the identity.
+
+A winning candidate lands later as an ordinary unconditional change in
+`core`, which becomes the next baseline.
