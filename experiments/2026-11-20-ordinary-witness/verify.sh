@@ -39,14 +39,21 @@ while IFS=$'\t' read -r id path provenance code status rawBytes storedBytes; do
     continue
   fi
   [[ $(<"$dest/binary.sha256") == "$sha" && $(<"$dest/exit.txt") == "$code" && $(jq -r .status "$dest/status.json") == "$status" ]]
-  for pass in 1 2; do
+  verify_pass() {
+    local pass=$1 verb actual
     for verb in reduce admission; do
       actual=0
       "$out/producer" "-$verb" "$dest" -out "$out/$id.$verb.$pass.json" || actual=$?
       [[ $actual == "$code" ]]
     done
     cmp "$dest/summary.json" "$out/$id.reduce.$pass.json"
-  done
+  }
+  verify_pass 1 & first=$!
+  verify_pass 2 & second=$!
+  failed=0
+  wait "$first" || failed=1
+  wait "$second" || failed=1
+  (( failed == 0 ))
   cmp "$out/$id.admission.1.json" "$out/$id.admission.2.json"
   jq -r '[.spec.case,.spec.replicate,.status,.aProbeFailures,.aLocalSuspicions,.eligibleEpisodes,.accelerationWitnesses,.harmfulEpisodes,(.populations[] | select(.label=="healthy-pair-exclusions")|.transitions),(.populations[] | select(.label=="healthy-pair-exclusions")|.pairNS),.maxBacklog,.lateTimers,.maxTimerLatenessNS,.chainStoppedAt]|@tsv' "$out/$id.admission.1.json" >> "$out/cells.tsv"
   echo "verified $id"
