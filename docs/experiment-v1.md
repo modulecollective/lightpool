@@ -170,8 +170,9 @@ This runs healthy, 8.192-second SIGSTOP/SIGCONT pause, and SIGKILL crash cases
 three times each, sequentially. One child process per node uses the public
 node API and real loopback UDP/TCP, default detector values and no
 encryption. Child startup is bounded at 30 seconds; all-ready establishes
-time zero, followed by the same 15-second warm-up and 120-second horizon. A warm-up failure is retained without a delayed fault or
-replacement run. Normal unit CI skips the workload.
+time zero, followed by the same 15-second warm-up and 120-second horizon. A
+warm-up failure is retained without a delayed fault or replacement run.
+Normal unit CI skips the workload.
 
 Children collect snapshots and traffic every nominal 100 ms independently;
 a stopped child cannot block others. Raw collection start/end and parent
