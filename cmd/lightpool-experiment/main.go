@@ -29,6 +29,7 @@ func run(args []string, stderr io.Writer) error {
 	revision := flags.String("revision", "", "explicit source identity for unstamped/modified builds")
 	reduce := flags.String("reduce", "", "saved run directory to remeasure offline")
 	admission := flags.String("admission", "", "saved fixed correlated run to classify offline")
+	protocol := flags.String("protocol", "", "JSON object overlaid onto the case's core.Config when recording")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -36,14 +37,14 @@ func run(args []string, stderr io.Writer) error {
 		return errors.New("-out is required; no positional arguments")
 	}
 	if *admission != "" {
-		if *reduce != "" || *name != "" || *replicate != 0 || *revision != "" {
+		if *reduce != "" || *name != "" || *replicate != 0 || *revision != "" || *protocol != "" {
 			return errors.New("-admission cannot be combined with recording flags or -reduce")
 		}
 		result, err := experiment.Admit(*admission)
 		return errors.Join(err, experiment.WriteAdmission(*out, result))
 	}
 	if *reduce != "" {
-		if *name != "" || *replicate != 0 || *revision != "" {
+		if *name != "" || *replicate != 0 || *revision != "" || *protocol != "" {
 			return errors.New("-reduce cannot be combined with recording flags")
 		}
 		summary, err := experiment.Reduce(*reduce)
@@ -65,6 +66,11 @@ func run(args []string, stderr io.Writer) error {
 	spec, scenario, err := experiment.Fixture(*name, *replicate, code)
 	if err != nil {
 		return err
+	}
+	if *protocol != "" {
+		if err = experiment.OverlayProtocol(&scenario, *protocol); err != nil {
+			return err
+		}
 	}
 	return experiment.Run(spec, scenario, *out, func(p sim.Progress) {
 		_, _ = fmt.Fprintf(stderr, "sim=%s events=%d trace=%d bytes\n", time.Duration(p.Time), p.Events, p.Bytes)

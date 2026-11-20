@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,5 +67,17 @@ func TestAdmissionCLIExclusiveAndDiagnosticOutput(t *testing.T) {
 	raw, err = os.ReadFile(out)
 	if err != nil || !bytes.Equal(before, raw) {
 		t.Fatal("diagnostic overwrite modified output", err)
+	}
+}
+
+func TestProtocolOverlayOnlyWhenRecording(t *testing.T) {
+	for _, mode := range [][]string{{"-reduce", "missing"}, {"-admission", "missing"}} {
+		args := append([]string{"-protocol", "missing.json", "-out", filepath.Join(t.TempDir(), "out.json")}, mode...)
+		if err := run(args, io.Discard); err == nil || !strings.Contains(err.Error(), "cannot be combined") {
+			t.Fatal("accepted -protocol outside recording", mode, err)
+		}
+	}
+	if err := run([]string{"-protocol", "missing.json", "-case", "healthy", "-replicate", "1", "-revision", "explicit", "-out", filepath.Join(t.TempDir(), "run")}, io.Discard); err == nil || !strings.Contains(err.Error(), "protocol overlay") {
+		t.Fatal("missing overlay file accepted", err)
 	}
 }

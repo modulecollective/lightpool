@@ -65,6 +65,25 @@ before a complete header is a recording failure with no reducible trace.
 The runner never fabricates a successful end record. `-reduce` also exits
 nonzero for incomplete or invalid evidence, retaining its new summary file.
 
+## Protocol overlay
+
+```sh
+echo '{"SuspicionMult": 6}' > protocol.json
+./lightpool-experiment -case correlated-dense -replicate 1 -protocol protocol.json -out results-sm6-1
+```
+
+`-protocol` decodes one JSON object onto the case's `core.Config` before
+recording. Omitted fields keep the case's values; an unknown field, trailing
+value or a configuration `core.Config.Validate` refuses is an error. Field
+names are the Go names and durations are integer nanoseconds, as in
+`scenario.json`. Cases, populations, seeds and the specification are
+unchanged.
+
+The overlay is only an input: it is saved in `scenario.json`, so `-reduce`
+works unchanged. `-protocol` cannot be combined with `-reduce` or
+`-admission`, and `-admission` refuses a retuned run because it is not the
+fixed fixture.
+
 ## Measurement semantics
 
 `summary.json` uses `lightpool-pilot/v1`; integer counters, times, lifetimes,

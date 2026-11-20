@@ -275,3 +275,51 @@ func TestDenseFixturePairingAndOneFactorSensitivity(t *testing.T) {
 		}
 	}
 }
+
+func TestProtocolOverlayIsStrictAndReplays(t *testing.T) {
+	write := func(body string) string {
+		path := filepath.Join(t.TempDir(), "protocol.json")
+		if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	for _, body := range []string{`{"SuspicionMult": 7, "Candidate": true}`, `{"SuspicionMult": 0}`, `{"SuspicionMult": 7} {}`, `[]`} {
+		_, s := smallFixture(t)
+		if err := OverlayProtocol(&s, write(body)); err == nil {
+			t.Fatal("accepted overlay", body)
+		}
+	}
+	spec, s := smallFixture(t)
+	if err := OverlayProtocol(&s, write(`{"SuspicionMult": 7}`)); err != nil {
+		t.Fatal(err)
+	}
+	want := core.DefaultConfig()
+	want.SuspicionMult = 7
+	if HashJSON(s.Protocol) != HashJSON(want) {
+		t.Fatal("overlay did not keep omitted fields", s.Protocol)
+	}
+	directory := filepath.Join(t.TempDir(), "run")
+	if err := Run(spec, s, directory, nil); err != nil {
+		t.Fatal(err)
+	}
+	var saved sim.Scenario
+	if err := readJSON(filepath.Join(directory, "scenario.json"), &saved); err != nil || saved.Protocol.SuspicionMult != 7 {
+		t.Fatal("saved scenario lost the overlay", saved.Protocol.SuspicionMult, err)
+	}
+	recorded, err := os.ReadFile(filepath.Join(directory, "summary.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := Reduce(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "summary.json")
+	if err = WriteSummary(out, again); err != nil {
+		t.Fatal(err)
+	}
+	if replayed, err := os.ReadFile(out); err != nil || !bytes.Equal(recorded, replayed) {
+		t.Fatal("overlay run did not reduce byte for byte", err)
+	}
+}

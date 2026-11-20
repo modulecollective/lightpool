@@ -174,6 +174,17 @@ func Fixture(name string, replicate uint64, code string) (Spec, sim.Scenario, er
 	return spec, s, sim.Validate(s)
 }
 
+// OverlayProtocol decodes the JSON object at path onto scenario.Protocol, so
+// fields it omits keep their fixed-case values. Unknown fields are refused. The
+// overlay is harness input: it lands in the saved scenario.json, which -reduce
+// reads unchanged and -admission refuses as a differing fixture.
+func OverlayProtocol(scenario *sim.Scenario, path string) error {
+	if err := readJSON(path, &scenario.Protocol); err != nil {
+		return fmt.Errorf("protocol overlay: %w", err)
+	}
+	return sim.Validate(*scenario)
+}
+
 // Use the report's lifetime, recovery and crash-cohort rules unchanged.
 type Reference = report.Reference
 type Pair = report.Pair
