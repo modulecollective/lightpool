@@ -37,6 +37,9 @@ for patch in "$record"/*.patch; do
 	[ -e "$patch" ] || continue
 	outside=$(git apply --numstat "$patch" | awk '$3 !~ /^(core|wire)\//')
 	[ -z "$outside" ] || die "$(basename "$patch") touches files outside core/ and wire/: $outside"
+	# Numstat reports only the destination of a rename or copy.
+	outside=$(awk '/^(rename|copy) from / { sub(/^(rename|copy) from /, ""); if ($0 !~ /^(core|wire)\//) print }' "$patch")
+	[ -z "$outside" ] || die "$(basename "$patch") has sources outside core/ and wire/: $outside"
 	variants+=("$(basename "$patch" .patch)")
 done
 
