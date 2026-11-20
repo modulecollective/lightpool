@@ -13,7 +13,7 @@ import (
 	"github.com/modulecollective/lightpool/wire"
 )
 
-const Version = "lightpool-ordinary-journal/v1"
+const Version = "lightpool-ordinary-journal/v2"
 
 // Value preserves the concrete type of an input or effect for exact local replay.
 type Value struct {
@@ -42,8 +42,6 @@ func (v Value) Event() (core.Event, error) {
 		event = &core.Update{}
 	case "Leave":
 		event = &core.Leave{}
-	case "Send":
-		event = &core.Send{}
 	case "Datagram":
 		event = &core.Datagram{}
 	case "Sent":
@@ -62,8 +60,6 @@ func (v Value) Event() (core.Event, error) {
 		event = &core.StreamMessage{}
 	case "Closed":
 		event = &core.Closed{}
-	case "Response":
-		event = &core.Response{}
 	case "CancelCommand":
 		event = &core.CancelCommand{}
 	default:

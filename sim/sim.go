@@ -42,19 +42,12 @@ type Fault struct {
 	StreamFailure bool
 	LossPPM       int `json:",omitempty"`
 }
-type Fixture struct {
-	Kind   core.RequestKind
-	Delay  time.Duration
-	Reject bool
-	Data   []byte
-}
 type Scenario struct {
 	Code                             string
 	Protocol                         core.Config
 	Nodes                            []Node
 	Actions                          []Action
 	Faults                           []Fault
-	Fixtures                         []Fixture
 	Seeds                            Seeds
 	Horizon                          core.Instant
 	EventBudget                      int
@@ -408,9 +401,6 @@ func validate(s Scenario) error {
 	if s.Protocol.Protected {
 		return errors.New("encryption is unsupported in simulation")
 	}
-	if s.Protocol.Application && len(s.Fixtures) == 0 {
-		return errors.New("application scenarios require deterministic fixtures")
-	}
 	names := make(map[string]bool)
 	addresses := make(map[netipKey]bool)
 	for _, n := range s.Nodes {
@@ -421,15 +411,15 @@ func validate(s Scenario) error {
 		addresses[netipKey(n.Identity.Address.String())] = true
 	}
 	for _, a := range s.Actions {
-		if !names[a.Node] || a.At < 0 || a.Duration < 0 || len(a.Data) > wire.MaxData {
+		if !names[a.Node] || a.At < 0 || a.Duration < 0 {
 			return errors.New("invalid scenario action")
 		}
 		switch a.Kind {
-		case "join", "ping", "probe", "send", "reliable":
+		case "join", "ping", "probe":
 			if !names[a.Peer] {
 				return errors.New("unknown action peer")
 			}
-		case "pause", "crash", "start", "leave", "update", "shutdown", "broadcast":
+		case "pause", "crash", "start", "leave", "update", "shutdown":
 		default:
 			return errors.New("unsupported scenario action")
 		}
@@ -444,11 +434,6 @@ func validate(s Scenario) error {
 					return errors.New("overlapping independent loss windows on directed link")
 				}
 			}
-		}
-	}
-	for _, f := range s.Fixtures {
-		if f.Delay < 0 || len(f.Data) > wire.MaxData {
-			return errors.New("invalid application fixture")
 		}
 	}
 	return nil
@@ -551,8 +536,6 @@ func (r *runner) action(a Action) error {
 		input = core.Leave{Command: command}
 	case "update":
 		input = core.Update{Command: command, Meta: a.Data}
-	case "send", "reliable", "broadcast":
-		input = core.Send{Command: command, Peer: identity, Data: a.Data, Reliable: a.Kind == "reliable", Broadcast: a.Kind == "broadcast"}
 	case "shutdown":
 		input = core.Shutdown{Command: command}
 	}
@@ -621,7 +604,7 @@ func (r *runner) effect(name string, e core.Effect) {
 		}
 	case core.Arm:
 		r.coreEvent(name, e.At, core.Fired{Timer: e.Timer})
-	case core.Cancel, core.CancelRequest: // Queued generations deliberately remain to test cancellation.
+	case core.Cancel: // Queued generations deliberately remain to test cancellation.
 	case core.Defer:
 		r.coreEvent(name, r.now, core.Work(e))
 	case core.OpenStream:
@@ -632,15 +615,6 @@ func (r *runner) effect(name string, e core.Effect) {
 		if id := r.tokens[name][e.ID]; id != 0 {
 			r.closeSide(r.streams[id], name)
 		}
-	case core.Request:
-		fixture := Fixture{Kind: e.Kind}
-		for _, f := range r.scenario.Fixtures {
-			if f.Kind == e.Kind {
-				fixture = f
-				break
-			}
-		}
-		r.coreEvent(name, r.now.Add(fixture.Delay), core.Response{ID: e.ID, Reject: fixture.Reject, Data: slices.Clone(fixture.Data)})
 	case core.Notification:
 		if e.Kind == "leave" && e.Member.State == wire.Dead {
 			m.detections++

@@ -6,7 +6,6 @@ package core
 import (
 	"github.com/modulecollective/lightpool/wire"
 	"net/netip"
-	"slices"
 	"time"
 )
 
@@ -30,18 +29,14 @@ func (c *Core) admit(m wire.Message, from netip.AddrPort, received Instant) {
 		if p.Target != c.self {
 			return
 		}
-		if c.config.Application {
-			c.request(pending{kind: AckPayload, peer: p.Source.Clone(), sequence: p.Sequence}, Request{Kind: AckPayload})
-		} else {
-			c.datagram(p.Source.Address, []wire.Message{{Ack: &wire.Ack{Sequence: p.Sequence}}}, 0, 0, true)
-		}
+		c.datagram(p.Source.Address, []wire.Message{{Ack: &wire.Ack{Sequence: p.Sequence}}}, 0)
 	case m.Indirect != nil:
 		p := m.Indirect
 		id := c.token().ID
 		c.probes[id] = &probe{id: id, peer: p.Target.Clone(), start: c.now, relay: &p.Source, relaySequence: p.Sequence}
 		c.recordProbe(c.probes[id], "relay", "")
 		c.arm(key("relay:", id), "relay", c.now.Add(c.config.ProbeTimeout), id, "")
-		c.datagram(p.Target.Address, []wire.Message{{Ping: &wire.Ping{Sequence: id, Target: p.Target.Name, Source: routing(c.nodes[c.self].Identity)}}}, 0, id, true)
+		c.datagram(p.Target.Address, []wire.Message{{Ping: &wire.Ping{Sequence: id, Target: p.Target.Name, Source: routing(c.nodes[c.self].Identity)}}}, id)
 	case m.Ack != nil:
 		c.ack(m.Ack, from, received)
 	case m.Nack != nil:
@@ -53,7 +48,7 @@ func (c *Core) admit(m wire.Message, from netip.AddrPort, received Instant) {
 				}
 			}
 		}
-	case m.Alive != nil || m.Suspect != nil || m.Dead != nil || m.User != nil:
+	case m.Alive != nil || m.Suspect != nil || m.Dead != nil:
 		q := &c.low
 		if m.Alive != nil {
 			q = &c.high
@@ -88,7 +83,7 @@ func (c *Core) startProbe(peer wire.Identity, command uint64, explicit, periodic
 	if n := c.nodes[peer.Name]; !explicit && n != nil && n.State != wire.Alive {
 		messages = append(messages, wire.Message{Suspect: &wire.Accusation{Node: n.Name, Incarnation: n.Incarnation, From: c.self}})
 	}
-	c.datagram(peer.Address, messages, 0, id, true)
+	c.datagram(peer.Address, messages, id)
 }
 func (c *Core) ack(a *wire.Ack, from netip.AddrPort, received Instant) {
 	p := c.probes[a.Sequence]
@@ -105,14 +100,14 @@ func (c *Core) ack(a *wire.Ack, from netip.AddrPort, received Instant) {
 	if p.relay != nil {
 		target := p.relay.Address
 		seq := p.relaySequence
-		c.finishProbe(p.id, Success, 0, nil)
-		c.datagram(target, []wire.Message{{Ack: &wire.Ack{Sequence: seq}}}, 0, 0, true)
+		c.finishProbe(p.id, Success, 0)
+		c.datagram(target, []wire.Message{{Ack: &wire.Ack{Sequence: seq}}}, 0)
 		return
 	}
 	rtt := time.Duration(max(0, received-p.start))
 	// Direct RTT includes send-side work but cannot become negative if the
 	// send completion arrives after the network receive timestamp.
-	c.finishProbe(p.id, Success, rtt, a.Payload)
+	c.finishProbe(p.id, Success, rtt)
 }
 func (c *Core) escalate(id uint64) {
 	p := c.probes[id]
@@ -120,7 +115,7 @@ func (c *Core) escalate(id uint64) {
 		return
 	}
 	if p.explicit {
-		c.finishProbe(id, Timeout, 0, nil)
+		c.finishProbe(id, Timeout, 0)
 		return
 	}
 	p.indirect = true
@@ -128,10 +123,10 @@ func (c *Core) escalate(id uint64) {
 	peers := c.randomNodes(c.config.IndirectChecks, func(n *member) bool { return n.Name == c.self || n.Name == p.peer.Name || n.State != wire.Alive })
 	for _, n := range peers {
 		p.helpers = append(p.helpers, n.Identity.Clone())
-		c.datagram(n.Address, []wire.Message{{Indirect: &wire.Indirect{Sequence: id, Target: routing(p.peer), Source: routing(c.nodes[c.self].Identity)}}}, 0, 0, true)
+		c.datagram(n.Address, []wire.Message{{Indirect: &wire.Indirect{Sequence: id, Target: routing(p.peer), Source: routing(c.nodes[c.self].Identity)}}}, 0)
 	}
 	c.recordProbe(p, "indirect", "")
-	if !c.tcpDisabled(p.peer.Name) {
+	if !c.config.DisableTCP {
 		c.openPing(p)
 	}
 }
@@ -142,17 +137,17 @@ func (c *Core) sendFailed(id uint64, f Failure) {
 	}
 	if p.relay != nil {
 		if f == LocalFailure {
-			c.finishProbe(id, f, 0, nil)
+			c.finishProbe(id, f, 0)
 		}
 		return
 	}
 	if f == LocalFailure || p.explicit {
-		c.finishProbe(id, f, 0, nil)
+		c.finishProbe(id, f, 0)
 	} else {
 		c.escalate(id)
 	}
 }
-func (c *Core) finishProbe(id uint64, f Failure, rtt time.Duration, payload []byte) {
+func (c *Core) finishProbe(id uint64, f Failure, rtt time.Duration) {
 	p := c.probes[id]
 	if p == nil {
 		return
@@ -168,7 +163,7 @@ func (c *Core) finishProbe(id uint64, f Failure, rtt time.Duration, payload []by
 		}
 	}
 	for _, sid := range sortedIDs(c.sends) {
-		if c.sends[sid].probe == id {
+		if c.sends[sid] == id {
 			delete(c.sends, sid)
 		}
 	}
@@ -189,9 +184,6 @@ func (c *Core) finishProbe(id uint64, f Failure, rtt time.Duration, payload []by
 				c.suspect(wire.Accusation{Node: p.peer.Name, Incarnation: p.incarnation, From: c.self})
 			}
 		}
-	}
-	if f == Success && !p.indirect && p.relay == nil {
-		c.emit(Notification{Kind: "ping", Member: wire.Member{Identity: p.peer.Clone()}, Data: slices.Clone(payload), RTT: rtt})
 	}
 	if p.command != 0 {
 		c.emit(Result{Command: p.command, Failure: f, RTT: rtt})
@@ -257,7 +249,7 @@ func (c *Core) gossip() {
 		return n.Name == c.self || n.State == wire.Left || (n.State == wire.Dead && c.now-n.changed > Instant(c.config.GossipToDead))
 	})
 	for _, n := range peers {
-		c.datagram(n.Address, nil, 0, 0, true)
+		c.datagram(n.Address, nil, 0)
 	}
 }
 func (c *Core) fire(t Timer) {
@@ -286,14 +278,14 @@ func (c *Core) fire(t Timer) {
 				c.stats.TCPOnly++
 				c.emit(Observation{Kind: "tcp-only", Node: p.peer.Name, Value: 1})
 			}
-			c.finishProbe(d.op, f, 0, nil)
+			c.finishProbe(d.op, f, 0)
 		}
 	case "relay":
 		if p := c.probes[d.op]; p != nil {
 			to := p.relay.Address
 			seq := p.relaySequence
-			c.finishProbe(d.op, Timeout, 0, nil)
-			c.datagram(to, []wire.Message{{Nack: &wire.Ack{Sequence: seq}}}, 0, 0, true)
+			c.finishProbe(d.op, Timeout, 0)
+			c.datagram(to, []wire.Message{{Nack: &wire.Ack{Sequence: seq}}}, 0)
 		}
 	case "suspicion":
 		if n := c.nodes[d.node]; n != nil && n.State == wire.Suspect {
@@ -312,9 +304,9 @@ func (c *Core) fire(t Timer) {
 		if len(peers) == 0 {
 			c.schedulePush()
 		} else {
-			c.openExchange(peers[0].Identity, 0, false, true)
+			c.openExchange(peers[0].Identity, 0, true)
 		}
 	}
 }
 
-func routing(i wire.Identity) wire.Identity { i.Meta = nil; i.Application = ""; return i }
+func routing(i wire.Identity) wire.Identity { i.Meta = nil; return i }

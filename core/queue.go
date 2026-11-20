@@ -45,12 +45,6 @@ func (c *Core) queue(m wire.Message, name string, command uint64) {
 	}
 }
 func broadcastCompare(a, b *broadcast) int {
-	if (a.message.User == nil) != (b.message.User == nil) {
-		if a.message.User == nil {
-			return -1
-		}
-		return 1
-	}
 	if v := cmp.Compare(a.transmits, b.transmits); v != 0 {
 		return v
 	}
@@ -108,46 +102,21 @@ func frameOverhead(config Config) int {
 	}
 	return n
 }
-func (c *Core) datagram(to netip.AddrPort, messages []wire.Message, command, probe uint64, piggyback bool) {
+func (c *Core) datagram(to netip.AddrPort, messages []wire.Message, probe uint64) {
 	n, err := wire.Size(messages, c.config.Label, c.config.Protected)
 	if len(messages) > 0 && (err != nil || n > c.config.PacketBudget) {
-		if command != 0 {
-			c.emit(Result{Command: command, Failure: LocalFailure})
-		}
 		if probe != 0 {
-			c.finishProbe(probe, LocalFailure, 0, nil)
+			c.finishProbe(probe, LocalFailure, 0)
 		}
 		return
 	}
-	if piggyback {
-		messages = c.pack(messages)
-	}
+	messages = c.pack(messages)
 	if len(messages) == 0 {
 		return
 	}
 	id := c.token()
-	if command != 0 || probe != 0 {
-		c.sends[id.ID] = sendPending{command, probe}
+	if probe != 0 {
+		c.sends[id.ID] = probe
 	}
 	c.emit(SendDatagram{ID: id, To: to, Messages: messages})
-}
-func (c *Core) send(e Send) {
-	if len(e.Data) > wire.MaxData || (!e.Broadcast && e.Peer.Validate() != nil) {
-		c.emit(Result{Command: e.Command, Failure: LocalFailure})
-		return
-	}
-	data := slices.Clone(e.Data)
-	m := wire.Message{User: &data}
-	if e.Broadcast {
-		n, err := wire.Size([]wire.Message{m}, c.config.Label, c.config.Protected)
-		if err != nil || n > c.config.PacketBudget {
-			c.emit(Result{Command: e.Command, Failure: LocalFailure})
-			return
-		}
-		c.queue(m, "", e.Command)
-	} else if e.Reliable {
-		c.openUser(e.Peer, m, e.Command)
-	} else {
-		c.datagram(e.Peer.Address, []wire.Message{m}, e.Command, 0, false)
-	}
 }

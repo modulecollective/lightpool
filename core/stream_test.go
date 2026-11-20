@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"github.com/modulecollective/lightpool/wire"
 	"testing"
-	"time"
 )
 
 func findOpen(t testing.TB, es []Effect) OpenStream {
@@ -21,68 +20,26 @@ func findOpen(t testing.TB, es []Effect) OpenStream {
 	return OpenStream{}
 }
 
-func TestOperationEndCancelsApplicationRequest(t *testing.T) {
-	for _, reason := range []string{"cancel", "timeout", "shutdown"} {
-		t.Run(reason, func(t *testing.T) {
-			c := testCore(t)
-			c.config.Application = true
-			o := findOpen(t, step(t, c, 0, Join{Command: 7, Peer: identity("b", 2)}))
-			req := findRequest(t, step(t, c, 0, Opened{ID: o.ID}), LocalState)
-			var es []Effect
-			switch reason {
-			case "cancel":
-				es = step(t, c, 1, CancelCommand{Command: 7})
-			case "timeout":
-				d := c.timers[key("stream:", o.ID.ID)]
-				es = step(t, c, d.at, Fired{Timer: d.timer})
-			case "shutdown":
-				es = step(t, c, 1, Shutdown{})
-			}
-			cancels := 0
-			for _, e := range es {
-				if cancel, ok := e.(CancelRequest); ok {
-					if cancel.ID != req.ID {
-						t.Fatal("wrong request canceled", cancel)
-					}
-					cancels++
-				}
-			}
-			if cancels != 1 || countResults(es, 7) != 1 {
-				t.Fatal("missing unique cancellation/result", es)
-			}
-			if es = step(t, c, c.now.Add(time.Nanosecond), Response{ID: req.ID, Data: []byte("late")}); len(es) != 0 {
-				t.Fatal("late response acted", es)
-			}
-		})
-	}
-}
-func findRequest(t testing.TB, es []Effect, kind RequestKind) Request {
-	t.Helper()
-	for _, e := range es {
-		if r, ok := e.(Request); ok && r.Kind == kind {
-			return r
-		}
-	}
-	t.Fatal("missing request", kind, es)
-	return Request{}
-}
 func TestPassiveResponseBeforeMergeAndCap(t *testing.T) {
 	c := testCore(t)
-	c.config.Application = true
 	c.config.MaxPushPull = 1
 	id := Token{Lifetime: 3, ID: 1 << 63}
 	step(t, c, 0, Accepted{ID: id, Peer: identity("c", 3).Address})
 	remote := wire.Member{Identity: identity("c", 3), Incarnation: 1}
-	es := step(t, c, 0, StreamMessage{ID: id, Messages: []wire.Message{{Exchange: &wire.Exchange{Join: true, Members: []wire.Member{remote}, Data: []byte("remote")}}}})
-	local := findRequest(t, es, LocalState)
-	es = step(t, c, 0, Response{ID: local.ID, Data: []byte("local")})
+	es := step(t, c, 0, StreamMessage{ID: id, Messages: []wire.Message{{Exchange: &wire.Exchange{Members: []wire.Member{remote}}}}})
+	found := false
 	for _, e := range es {
-		if r, ok := e.(Request); ok && r.Kind == ApproveMerge {
-			t.Fatal("merge approval preceded response write")
+		if w, ok := e.(WriteStream); ok {
+			found = true
+			for _, m := range w.Messages[0].Exchange.Members {
+				if m.Name == "c" {
+					t.Fatal("response carried the remote membership")
+				}
+			}
 		}
 	}
-	if c.nodes["c"] != nil {
-		t.Fatal("merged before response write")
+	if !found || c.nodes["c"] != nil {
+		t.Fatal("merged before response write", es)
 	}
 	second := Token{Lifetime: 3, ID: 1<<63 | 1}
 	step(t, c, 0, Accepted{ID: second, Peer: identity("d", 4).Address})
@@ -90,40 +47,16 @@ func TestPassiveResponseBeforeMergeAndCap(t *testing.T) {
 	if c.streams[second.ID] != nil || len(es) == 0 {
 		t.Fatal("push/pull cap failed")
 	}
-	es = step(t, c, 0, Written{ID: id})
-	merge := findRequest(t, es, ApproveMerge)
-	if c.nodes["c"] != nil {
-		t.Fatal("merged before approval")
-	}
-	es = step(t, c, 0, Response{ID: merge.ID})
-	approval := findRequest(t, es, ApproveAlive)
-	// A newer incarnation wins while the old asynchronous approval is pending.
-	changed := remote.Clone()
-	changed.Incarnation = 3
-	changed.Meta = []byte("newer")
-	c.applyAlive(changed)
-	es = step(t, c, 0, Response{ID: approval.ID})
-	if c.nodes["c"].Incarnation != 3 || !bytes.Equal(c.nodes["c"].Meta, []byte("newer")) {
-		t.Fatal("late approval overwrote newer state")
-	}
-	found := false
-	for _, e := range es {
-		if n, ok := e.(Notification); ok && n.Kind == "merge-state" && bytes.Equal(n.Data, []byte("remote")) {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatal("user state absent")
+	step(t, c, 0, Written{ID: id})
+	if c.nodes["c"] == nil || c.streams[id.ID] != nil {
+		t.Fatal("merge did not follow response write")
 	}
 }
 func TestStreamStagesAndDeadlineMatrix(t *testing.T) {
-	for _, stage := range []string{"connect", "write", "receive", "approval"} {
+	for _, stage := range []string{"connect", "write", "receive"} {
 		for _, before := range []bool{true, false} {
 			t.Run(stage+"/"+map[bool]string{true: "before", false: "after"}[before], func(t *testing.T) {
 				c := testCore(t)
-				if stage == "approval" {
-					c.config.Application = true
-				}
 				open := findOpen(t, step(t, c, 0, Join{Command: 10, Peer: identity("b", 2)}))
 				id := open.ID
 				switch stage {
@@ -132,12 +65,6 @@ func TestStreamStagesAndDeadlineMatrix(t *testing.T) {
 					if stage == "receive" {
 						step(t, c, 0, Written{ID: id})
 					}
-				case "approval":
-					es := step(t, c, 0, Opened{ID: id})
-					r := findRequest(t, es, LocalState)
-					step(t, c, 0, Response{ID: r.ID})
-					step(t, c, 0, Written{ID: id})
-					step(t, c, 0, StreamMessage{ID: id, Messages: []wire.Message{{Exchange: &wire.Exchange{}}}})
 				}
 				d := c.timers[key("stream:", id.ID)]
 				var event Event
@@ -148,12 +75,6 @@ func TestStreamStagesAndDeadlineMatrix(t *testing.T) {
 					event = Written{ID: id}
 				case "receive":
 					event = StreamMessage{ID: id, Messages: []wire.Message{{Exchange: &wire.Exchange{}}}}
-				case "approval":
-					for appID, p := range c.app {
-						if p.kind == ApproveMerge {
-							event = Response{ID: Token{3, appID}}
-						}
-					}
 				}
 				var effects []Effect
 				if before {
@@ -192,22 +113,6 @@ func TestReplyBeforeLocalWriteCompletion(t *testing.T) {
 	}
 	if es = step(t, c, 0, Written{ID: o.ID}); len(es) != 0 {
 		t.Fatal("duplicate completion acted")
-	}
-}
-func TestApplicationRejectionTimeoutAndShutdown(t *testing.T) {
-	c := testCore(t)
-	c.config.Application = true
-	o := findOpen(t, step(t, c, 0, Join{Command: 7, Peer: identity("b", 2)}))
-	req := findRequest(t, step(t, c, 0, Opened{ID: o.ID}), LocalState)
-	es := step(t, c, 0, Response{ID: req.ID, Reject: true})
-	if countResults(es, 7) != 1 || len(c.streams) != 0 {
-		t.Fatal(es)
-	}
-	o = findOpen(t, step(t, c, 0, Join{Command: 8, Peer: identity("b", 2)}))
-	req = findRequest(t, step(t, c, 0, Opened{ID: o.ID}), LocalState)
-	step(t, c, 0, Shutdown{})
-	if es = step(t, c, 1, Response{ID: req.ID, Data: []byte("late")}); len(es) != 0 {
-		t.Fatal("late application response acted")
 	}
 }
 func TestTCPDeadlineEqualTime(t *testing.T) {
@@ -272,23 +177,27 @@ func TestLargestProbeControlMessagesFit(t *testing.T) {
 	}
 }
 
-func TestReliableSendCloseCannotOvertakeWrite(t *testing.T) {
-	for _, failure := range []Failure{Success, RemoteFailure} {
+func TestCloseCannotOvertakeWrite(t *testing.T) {
+	for _, written := range []Failure{Success, Timeout} {
 		c := testCore(t)
-		es := step(t, c, 0, Send{Command: 1, Peer: identity("b", 2), Data: []byte("bytes"), Reliable: true})
-		o := findOpen(t, es)
+		o := findOpen(t, step(t, c, 0, Join{Command: 1, Peer: identity("b", 2)}))
 		step(t, c, 0, Opened{ID: o.ID})
-		es = step(t, c, 0, Closed{ID: o.ID, Failure: RemoteFailure})
+		es := step(t, c, 0, Closed{ID: o.ID, Failure: RemoteFailure})
 		if countResults(es, 1) != 0 {
 			t.Fatal("read close ended pending write")
 		}
-		es = step(t, c, 0, Written{ID: o.ID, Failure: failure})
+		es = step(t, c, 0, Written{ID: o.ID, Failure: written})
 		if countResults(es, 1) != 1 {
 			t.Fatal(es)
 		}
+		// A failed write reports itself; a completed one reports the held close.
+		want := written
+		if written == Success {
+			want = RemoteFailure
+		}
 		for _, e := range es {
-			if r, ok := e.(Result); ok && r.Command == 1 && r.Failure != failure {
-				t.Fatal("write completion lost", r)
+			if r, ok := e.(Result); ok && r.Command == 1 && r.Failure != want {
+				t.Fatal("wrong completion", r)
 			}
 		}
 	}
@@ -296,10 +205,8 @@ func TestReliableSendCloseCannotOvertakeWrite(t *testing.T) {
 
 func TestExchangeRejectsUngossipableIdentity(t *testing.T) {
 	c := testCore(t)
-	application := string(bytes.Repeat([]byte{'<'}, wire.MaxName))
-	c.nodes["a"].Application = application
+	c.config.PacketBudget = 256
 	n := wire.Member{Identity: identity(string(bytes.Repeat([]byte{'<'}, wire.MaxName)), 3), Incarnation: 1}
-	n.Application = application
 	n.Meta = make([]byte, wire.MaxMeta)
 	if c.fitsAlive(n) {
 		t.Fatal("fixture fits")
@@ -315,29 +222,5 @@ func TestExchangeRejectsUngossipableIdentity(t *testing.T) {
 		if r, ok := e.(Result); ok && r.Command == 1 && r.Failure != Rejected {
 			t.Fatal(r)
 		}
-	}
-}
-
-func TestMembershipSnapshotPrecedesApplicationState(t *testing.T) {
-	c := testCore(t)
-	c.config.Application = true
-	o := findOpen(t, step(t, c, 0, Join{Command: 1, Peer: identity("b", 2)}))
-	request := findRequest(t, step(t, c, 0, Opened{ID: o.ID}), LocalState)
-	n := wire.Member{Identity: identity("c", 3), Incarnation: 1}
-	c.applyAlive(n)
-	es := step(t, c, 0, Response{ID: request.ID, Data: []byte("state")})
-	found := false
-	for _, e := range es {
-		if write, ok := e.(WriteStream); ok {
-			found = true
-			for _, m := range write.Messages[0].Exchange.Members {
-				if m.Name == "c" {
-					t.Fatal("membership snapshot moved across application request")
-				}
-			}
-		}
-	}
-	if !found {
-		t.Fatal("no response write")
 	}
 }

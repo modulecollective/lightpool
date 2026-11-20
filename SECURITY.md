@@ -21,7 +21,6 @@ protocol randomness. The simulator rejects encryption configuration.
 Identity/address/count checks, bounded frame allocation and decompression,
 stream deadlines and finite driver queues limit input handling. CIDR
 admission (`Protocol.Allowed`) applies to network sources and advertised
-membership addresses. Application approvals can additionally veto alive and
-join merges. These controls do not replace network isolation, secure key
-distribution, or application authorization. See the README for the wire
-limits and callback contract.
+membership addresses. These controls do not replace network isolation,
+secure key distribution, or application authorization. See the README for
+the wire limits and notification contract.

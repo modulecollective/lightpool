@@ -32,11 +32,12 @@ type Member struct {
 	Incarnation string `json:"incarnation"`
 	State       string `json:"state"`
 	Meta        []byte `json:"meta,omitempty"`
+	// Application is no longer produced; v1 traces that carry it still read.
 	Application string `json:"application,omitempty"`
 }
 
 func Membership(n wire.Member) *Member {
-	return &Member{n.Name, n.Address.String(), Decimal(n.Incarnation), []string{"alive", "suspect", "dead", "left"}[n.State], n.Meta, n.Application}
+	return &Member{n.Name, n.Address.String(), Decimal(n.Incarnation), []string{"alive", "suspect", "dead", "left"}[n.State], n.Meta, ""}
 }
 
 type Summary struct {

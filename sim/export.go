@@ -196,8 +196,6 @@ func messageKinds(ms []wire.Message) []string {
 			out = append(out, "dead")
 		case m.Exchange != nil:
 			out = append(out, "exchange")
-		case m.User != nil:
-			out = append(out, "user")
 		}
 	}
 	return out
@@ -225,8 +223,6 @@ func coreKind(input core.Event) string {
 		return "core.update"
 	case core.Leave:
 		return "core.leave"
-	case core.Send:
-		return "core.send"
 	case core.Datagram:
 		return "core.datagram"
 	case core.Sent:
@@ -245,8 +241,6 @@ func coreKind(input core.Event) string {
 		return "core.stream-message"
 	case core.Closed:
 		return "core.stream-closed"
-	case core.Response:
-		return "core.response"
 	case core.CancelCommand:
 		return "core.cancel-command"
 	default:

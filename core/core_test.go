@@ -222,14 +222,14 @@ func TestSuspicionRefutationAndExpiryOrders(t *testing.T) {
 		var out []Effect
 		if first {
 			c.now = d.at
-			c.applyAlive(alive)
+			c.alive(alive)
 		}
 		out = step(t, c, d.at, Fired{d.timer})
 		if !first {
 			if state(c, "b") != wire.Dead {
 				t.Fatal("expiry failed")
 			}
-			c.applyAlive(alive)
+			c.alive(alive)
 		}
 		if state(c, "b") != wire.Alive || c.nodes["b"].Incarnation != 2 {
 			t.Fatal(first, c.Snapshot())
@@ -275,12 +275,12 @@ func TestMembershipRules(t *testing.T) {
 	c := testCore(t)
 	n := c.nodes["b"].Clone()
 	n.Meta = []byte("new")
-	c.applyAlive(n)
+	c.alive(n)
 	if len(c.nodes["b"].Meta) != 0 {
 		t.Fatal("equal incarnation replaced metadata")
 	}
 	n.Incarnation++
-	c.applyAlive(n)
+	c.alive(n)
 	if !bytes.Equal(c.nodes["b"].Meta, n.Meta) {
 		t.Fatal("metadata update ignored")
 	}
@@ -292,12 +292,12 @@ func TestMembershipRules(t *testing.T) {
 	if state(c, "b") != wire.Left {
 		t.Fatal("leave not distinguished")
 	}
-	c.applyAlive(n)
+	c.alive(n)
 	if state(c, "b") != wire.Left {
 		t.Fatal("alive replay resurrected node")
 	}
 	n.Incarnation++
-	c.applyAlive(n)
+	c.alive(n)
 	if state(c, "b") != wire.Alive {
 		t.Fatal("higher incarnation did not resurrect")
 	}
@@ -308,7 +308,7 @@ func TestMembershipRules(t *testing.T) {
 	}
 	n.Address = identity("b", 9).Address
 	n.Incarnation++
-	c.applyAlive(n)
+	c.alive(n)
 	if c.nodes["b"].Address == n.Address {
 		t.Fatal("name conflict accepted")
 	}
@@ -324,10 +324,10 @@ func TestQueuePriorityOverflowAndLIFO(t *testing.T) {
 	c.high = nil
 	c.low = nil
 	c.work = Token{}
-	user := []byte("first")
-	later := []byte("last")
+	first := wire.Accusation{Node: "b", Incarnation: 1, From: "x"}
+	later := wire.Accusation{Node: "b", Incarnation: 1, From: "y"}
 	n := wire.Member{Identity: identity("c", 3), Incarnation: 1}
-	effects := step(t, c, 0, Datagram{From: n.Address, Messages: []wire.Message{{User: &user}, {User: &later}, {Alive: &n}, {User: &user}}})
+	effects := step(t, c, 0, Datagram{From: n.Address, Messages: []wire.Message{{Suspect: &first}, {Dead: &later}, {Alive: &n}, {Suspect: &first}}})
 	var work Token
 	for _, e := range effects {
 		if w, ok := e.(Defer); ok {
@@ -341,11 +341,10 @@ func TestQueuePriorityOverflowAndLIFO(t *testing.T) {
 	if c.nodes["c"] == nil {
 		t.Fatal("alive did not win priority")
 	}
-	effects = step(t, c, 0, Work{ID: c.work})
-	for _, e := range effects {
-		if n, ok := e.(Notification); ok && n.Kind == "user" && !bytes.Equal(n.Data, later) {
-			t.Fatal("not LIFO")
-		}
+	// LIFO: the later dead record runs before the earlier suspicion.
+	step(t, c, 0, Work{ID: c.work})
+	if state(c, "b") != wire.Dead {
+		t.Fatal("not LIFO")
 	}
 }
 func TestShutdownInvalidatesAllWorkAndLifetime(t *testing.T) {
@@ -358,7 +357,7 @@ func TestShutdownInvalidatesAllWorkAndLifetime(t *testing.T) {
 	if countResults(out, 9) != 1 || countResults(out, 10) != 1 {
 		t.Fatal(out)
 	}
-	for _, event := range []Event{Fired{a.Timer}, Sent{ID: p.ID, Failure: RemoteFailure}, Response{ID: p.ID}, Work{ID: p.ID}} {
+	for _, event := range []Event{Fired{a.Timer}, Sent{ID: p.ID, Failure: RemoteFailure}, Work{ID: p.ID}} {
 		if es := step(t, c, 10, event); len(es) != 0 {
 			t.Fatal("stale event acted", es)
 		}
@@ -419,8 +418,9 @@ func TestBroadcastReferenceAndBudget(t *testing.T) {
 	for j := range 1000 {
 		if r.IntN(3) != 0 || len(ref) == 0 {
 			name := fmt.Sprint(r.IntN(30))
-			data := bytes.Repeat([]byte{byte(j)}, 1+r.IntN(500))
-			m := wire.Message{User: &data}
+			n := wire.Member{Identity: identity(name, uint16(10+j)), Incarnation: 1}
+			n.Meta = bytes.Repeat([]byte{byte(j)}, 1+r.IntN(500))
+			m := wire.Message{Alive: &n}
 			ref = slices.DeleteFunc(ref, func(i item) bool { return i.name == name })
 			c.queue(m, name, 0)
 			b := c.broadcasts[len(c.broadcasts)-1]
@@ -490,8 +490,8 @@ func BenchmarkBacklog(b *testing.B) {
 			c := testCore(b)
 			c.broadcasts = nil
 			for j := range count {
-				data := []byte(fmt.Sprint(j))
-				c.queue(wire.Message{User: &data}, "", 0)
+				n := wire.Member{Identity: identity(fmt.Sprint(j), uint16(10+j)), Incarnation: 1}
+				c.queue(wire.Message{Alive: &n}, n.Name, 0)
 			}
 			records := slices.Clone(c.broadcasts)
 			b.ReportAllocs()
@@ -514,14 +514,10 @@ func TestMonotonicTimeAndOwnership(t *testing.T) {
 		t.Fatal("time moved backwards")
 	}
 	data := []byte("original")
-	es := step(t, c, 10, Send{Command: 9, Peer: identity("b", 2), Data: data})
+	step(t, c, 10, Update{Command: 9, Meta: data})
 	data[0] = 'X'
-	for _, e := range es {
-		if s, ok := e.(SendDatagram); ok {
-			if string(*s.Messages[0].User) != "original" {
-				t.Fatal("effect aliased command data")
-			}
-		}
+	if string(c.nodes["a"].Meta) != "original" || string(c.broadcastKeys["a"].message.Alive.Meta) != "original" {
+		t.Fatal("state aliased command data")
 	}
 	before := c.nodes["a"].Meta
 	s := c.Snapshot()
@@ -532,21 +528,6 @@ func TestMonotonicTimeAndOwnership(t *testing.T) {
 	}
 	if !bytes.Equal(c.nodes["a"].Meta, before) || c.nodes["a"].Meta[0] == 'X' {
 		t.Fatal("snapshot aliases membership")
-	}
-}
-func TestProtocolBroadcastsBeforeUserBacklog(t *testing.T) {
-	c := testCore(t)
-	c.broadcasts = nil
-	c.broadcastKeys = make(map[string]*broadcast)
-	for range 10 {
-		data := bytes.Repeat([]byte{'x'}, 600)
-		c.queue(wire.Message{User: &data}, "", 0)
-	}
-	m := c.nodes["a"].Member
-	c.queue(wire.Message{Alive: &m}, "a", 0)
-	messages := c.pack(nil)
-	if len(messages) == 0 || messages[0].Alive == nil {
-		t.Fatal("user backlog starved protocol broadcast")
 	}
 }
 func TestHelperSelectionAndReaping(t *testing.T) {
@@ -668,14 +649,11 @@ func TestCancelCommandClosesOnlyItsOperation(t *testing.T) {
 
 func TestOversizeInputsFailExplicitly(t *testing.T) {
 	c := testCore(t)
-	for _, input := range []Event{Update{Command: 1, Meta: make([]byte, wire.MaxMeta+1)}, Send{Command: 1, Peer: identity("b", 2), Data: make([]byte, 2000)}, Send{Command: 1, Broadcast: true, Data: make([]byte, 2000)}} {
-		es := step(t, c, 0, input)
-		if len(es) != 1 {
-			t.Fatal(es)
-		}
-		r, ok := es[0].(Result)
-		if !ok || r.Failure != LocalFailure {
-			t.Fatal(es)
-		}
+	es := step(t, c, 0, Update{Command: 1, Meta: make([]byte, wire.MaxMeta+1)})
+	if len(es) != 1 {
+		t.Fatal(es)
+	}
+	if r, ok := es[0].(Result); !ok || r.Failure != LocalFailure {
+		t.Fatal(es)
 	}
 }

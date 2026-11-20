@@ -18,39 +18,6 @@ import (
 
 var ackFixture = "4c504c21010000000000001c5b7b2261636b223a7b2273657175656e6365223a377d7d5da1448745"
 
-func TestEmptyUserRoundTrip(t *testing.T) {
-	for _, payload := range [][]byte{nil, {}, {1}} {
-		for _, clone := range []bool{false, true} {
-			m := Message{User: &payload}
-			if clone {
-				m = m.Clone()
-			}
-			frame, err := Encode([]Message{m}, Options{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			size, err := Size([]Message{m}, "", false)
-			if err != nil || size != len(frame) {
-				t.Fatalf("empty-user frame budget: size=%d encoded=%d err=%v", size, len(frame), err)
-			}
-			if !clone && payload == nil && *m.User != nil {
-				t.Fatal("codec mutated caller's nil payload")
-			}
-			decoded, err := Decode(frame, Options{})
-			if err != nil {
-				t.Errorf("payload=%v clone=%v: %v", payload, clone, err)
-				continue
-			}
-			if len(decoded) != 1 || decoded[0].User == nil || !bytes.Equal(*decoded[0].User, payload) {
-				t.Fatalf("payload changed: %+v", decoded)
-			}
-			if len(payload) == 0 && !bytes.Contains(frame, []byte(`{"user":""}`)) {
-				t.Fatalf("empty user is not canonical: %s", frame)
-			}
-		}
-	}
-}
-
 func TestIndependentFixture(t *testing.T) {
 	frame, err := hex.DecodeString(ackFixture)
 	if err != nil {
@@ -119,8 +86,8 @@ func TestStrictBodies(t *testing.T) {
 	}
 }
 func TestProtectionCompressionAndKeys(t *testing.T) {
-	data := bytes.Repeat([]byte("payload"), 10000)
-	messages := []Message{{User: &data}}
+	messages := []Message{{Exchange: &Exchange{Members: bulkMembers(400)}}}
+	data, _ := json.Marshal(messages)
 	a, b := bytes.Repeat([]byte{1}, 16), bytes.Repeat([]byte{2}, 32)
 	for _, o := range []Options{{Label: "cluster"}, {Label: "cluster", Compress: true}, {Label: "cluster", Compress: true, Keys: [][]byte{a}}} {
 		frame, err := Encode(messages, o)
@@ -128,7 +95,7 @@ func TestProtectionCompressionAndKeys(t *testing.T) {
 			t.Fatal(err)
 		}
 		decoded, err := Decode(frame, o)
-		if err != nil || !bytes.Equal(*decoded[0].User, data) {
+		if err != nil || len(decoded[0].Exchange.Members) != 400 {
 			t.Fatal(err)
 		}
 		if _, err = Decode(frame, Options{Label: "wrong", Keys: o.Keys}); err == nil {
@@ -181,7 +148,7 @@ func TestDecompressionLimit(t *testing.T) {
 }
 func TestDefaultPacketCosts(t *testing.T) {
 	for _, addr := range []string{"192.0.2.255:65535", "[2001:db8:ffff:ffff:ffff:ffff:ffff:ffff]:65535"} {
-		n := Member{Identity: Identity{Name: strings.Repeat("n", MaxName), Address: netip.MustParseAddrPort(addr), Meta: bytes.Repeat([]byte{255}, MaxMeta), Application: strings.Repeat("a", MaxName)}, Incarnation: ^uint64(0), State: Alive}
+		n := Member{Identity: Identity{Name: strings.Repeat("n", MaxName), Address: netip.MustParseAddrPort(addr), Meta: bytes.Repeat([]byte{255}, MaxMeta)}, Incarnation: ^uint64(0), State: Alive}
 		for _, label := range []string{"", strings.Repeat("l", MaxLabel)} {
 			for _, protected := range []bool{false, true} {
 				messages := []Message{{Alive: &n}}
@@ -302,8 +269,7 @@ func FuzzCompressedBody(f *testing.F) {
 	})
 }
 func TestCompressedTrailingBytesRejected(t *testing.T) {
-	data := bytes.Repeat([]byte{'x'}, 500)
-	frame, err := Encode([]Message{{User: &data}}, Options{Compress: true})
+	frame, err := Encode([]Message{{Exchange: &Exchange{Members: bulkMembers(20)}}}, Options{Compress: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,4 +279,12 @@ func TestCompressedTrailingBytesRejected(t *testing.T) {
 	if _, err = Decode(payload, Options{}); err == nil {
 		t.Fatal("trailing compressed data accepted")
 	}
+}
+func bulkMembers(count int) []Member {
+	n := Member{Identity: Identity{Name: "node", Address: netip.MustParseAddrPort("127.0.0.1:7946")}, Incarnation: 1}
+	members := make([]Member, count)
+	for j := range members {
+		members[j] = n
+	}
+	return members
 }

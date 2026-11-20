@@ -174,157 +174,37 @@ func TestOrdinaryClusterConcurrentOperations(t *testing.T) {
 	}
 }
 
-type app struct {
-	request func(context.Context, core.Request) (core.Response, error)
-	notify  func(context.Context, core.Notification)
-}
-
-func (a app) Request(ctx context.Context, r core.Request) (core.Response, error) {
-	if a.request != nil {
-		return a.request(ctx, r)
-	}
-	return core.Response{}, nil
-}
-func (a app) Notify(ctx context.Context, n core.Notification) {
-	if a.notify != nil {
-		a.notify(ctx, n)
-	}
-}
-
-func TestUserPayloadBoundariesOverLoopback(t *testing.T) {
-	for _, mode := range []string{"datagram", "reliable", "broadcast"} {
-		for _, data := range [][]byte{nil, {}, {1}} {
-			t.Run(fmt.Sprintf("%s/%#v", mode, data), func(t *testing.T) {
-				received := make(chan []byte, 16)
-				cfg := testConfig("b")
-				cfg.Application = app{notify: func(_ context.Context, n core.Notification) {
-					if n.Kind == "user" {
-						received <- n.Data
-					}
-				}}
-				b := newNode(t, cfg)
-				a := newNode(t, testConfig("a"))
-				join(t, a, b)
-				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-				defer cancel()
-				var err error
-				if mode == "broadcast" {
-					err = a.Broadcast(ctx, data)
-				} else {
-					err = a.Send(ctx, b.Identity(), data, mode == "reliable")
-				}
-				if err != nil {
-					t.Fatal(err)
-				}
-				select {
-				case got := <-received:
-					if !bytes.Equal(got, data) {
-						t.Fatalf("user payload changed: %x", got)
-					}
-				case <-ctx.Done():
-					t.Fatal("accepted user payload was not delivered", ctx.Err())
-				}
-			})
-		}
-	}
-}
-func TestApplicationReentrancyDataAndDelayedState(t *testing.T) {
+func TestNotifyDeliversMembershipInOrder(t *testing.T) {
 	var reference atomic.Pointer[Node]
-	var merge atomic.Bool
-	var users atomic.Int64
-	gate := make(chan struct{})
-	started := make(chan struct{}, 1)
-	var delayed atomic.Bool
+	kinds := make(chan string, 64)
 	c := testConfig("a")
-	c.Application = app{request: func(ctx context.Context, r core.Request) (core.Response, error) {
-		if n := reference.Load(); n != nil {
-			_ = n.Snapshot()
+	c.Notify = func(_ context.Context, n core.Notification) {
+		_ = reference.Load().Snapshot() // reentrant reads must not deadlock
+		if n.Member.Name == "b" {
+			kinds <- n.Kind
 		}
-		switch r.Kind {
-		case core.LocalState:
-			if delayed.Load() {
-				select {
-				case started <- struct{}{}:
-				default:
-				}
-				select {
-				case <-gate:
-				case <-ctx.Done():
-					return core.Response{}, ctx.Err()
-				}
-			}
-			return core.Response{Data: []byte("state")}, nil
-		case core.AckPayload:
-			return core.Response{Data: []byte("ack")}, nil
-		}
-		return core.Response{}, nil
-	}, notify: func(_ context.Context, n core.Notification) {
-		_ = reference.Load().Snapshot()
-		if n.Kind == "merge-state" && bytes.Equal(n.Data, []byte("state")) {
-			merge.Store(true)
-		}
-		if n.Kind == "user" {
-			users.Add(1)
-		}
-	}}
+	}
 	a := newNode(t, c)
 	reference.Store(a)
 	b := newNode(t, testConfig("b"))
 	join(t, b, a)
-	join(t, a, b)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	if err := b.Send(ctx, a.Identity(), []byte("datagram"), false); err != nil {
+	if err := b.Update(ctx, []byte("meta")); err != nil {
 		t.Fatal(err)
 	}
-	if err := b.Send(ctx, a.Identity(), []byte("stream"), true); err != nil {
+	if err := b.Leave(ctx); err != nil {
 		t.Fatal(err)
 	}
-	wait(t, "application user bytes", func() bool { return users.Load() == 2 })
-	// Block one push/pull's application data; an unrelated explicit ping still completes.
-	delayed.Store(true)
-	joined := make(chan error, 1)
-	go func() { _, err := a.Join(ctx, b.Identity().Address.String()); joined <- err }()
-	select {
-	case <-started:
-	case <-ctx.Done():
-		t.Fatal(ctx.Err())
-	}
-	if _, err := b.Ping(ctx, a.Identity()); err != nil {
-		t.Fatal("slow local-state blocked probe", err)
-	}
-	close(gate)
-	if err := <-joined; err != nil {
-		t.Fatal(err)
-	}
-	// b has no LocalState application; a's local state still reaches an enabled peer.
-	d := testConfig("c")
-	d.Application = app{notify: func(_ context.Context, n core.Notification) {
-		if n.Kind == "merge-state" && bytes.Equal(n.Data, []byte("state")) {
-			merge.Store(true)
-		}
-	}}
-	third := newNode(t, d)
-	join(t, third, a)
-	wait(t, "state bytes reach application", merge.Load)
-}
-func TestApplicationVeto(t *testing.T) {
-	for _, kind := range []core.RequestKind{core.ApproveMerge, core.ApproveAlive} {
-		t.Run(string(kind), func(t *testing.T) {
-			c := testConfig("a")
-			c.Application = app{request: func(_ context.Context, r core.Request) (core.Response, error) {
-				return core.Response{Reject: r.Kind == kind}, nil
-			}}
-			a := newNode(t, c)
-			b := newNode(t, testConfig("b"))
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-			defer cancel()
-			_, _ = b.Join(ctx, a.Identity().Address.String())
-			wait(t, "veto processed", func() bool { return a.Snapshot().PendingStreams == 0 })
-			if _, ok := memberState(a, "b"); ok {
-				t.Fatal("rejected peer merged")
+	for _, want := range []string{"join", "update", "leave"} {
+		select {
+		case got := <-kinds:
+			if got != want {
+				t.Fatalf("notification %q, want %q", got, want)
 			}
-		})
+		case <-ctx.Done():
+			t.Fatal("missing notification", want)
+		}
 	}
 }
 func TestEncryptedLabeledLoopbackAndRotation(t *testing.T) {
@@ -453,83 +333,39 @@ func TestIPv6AndCIDRAdmission(t *testing.T) {
 	}
 }
 
-func TestRealStreamReadAndBlockedWriteDeadlines(t *testing.T) {
-	for _, blockedWrite := range []bool{false, true} {
-		t.Run(fmt.Sprint("write=", blockedWrite), func(t *testing.T) {
-			listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP("127.0.0.1")})
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer func() { _ = listener.Close() }()
-			_ = listener.SetDeadline(time.Now().Add(2 * time.Second))
-			gate := make(chan struct{})
-			defer func() {
-				select {
-				case <-gate:
-				default:
-					close(gate)
-				}
-			}()
-			cfg := testConfig("deadline")
-			cfg.Protocol.ProbeInterval = 0
-			cfg.Protocol.GossipInterval = 0
-			cfg.Protocol.PushPullInterval = 0
-			cfg.Protocol.StreamTimeout = 200 * time.Millisecond
-			if blockedWrite {
-				cfg.Application = app{request: func(ctx context.Context, r core.Request) (core.Response, error) {
-					if r.Kind == core.LocalState {
-						select {
-						case <-gate:
-						case <-ctx.Done():
-							return core.Response{}, ctx.Err()
-						}
-						return core.Response{Data: bytes.Repeat([]byte{'x'}, wire.MaxData)}, nil
-					}
-					return core.Response{}, nil
-				}}
-			}
-			node := newNode(t, cfg)
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			defer cancel()
-			result := make(chan error, 1)
-			go func() { _, err := node.Join(ctx, listener.Addr().String()); result <- err }()
-			conn, err := listener.AcceptTCP()
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer func() { _ = conn.Close() }()
-			_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
-			if blockedWrite {
-				if err = conn.SetReadBuffer(1024); err != nil {
-					t.Fatal(err)
-				}
-				wait(t, "outbound stream connected", func() bool {
-					node.streamMu.Lock()
-					defer node.streamMu.Unlock()
-					for _, s := range node.streams {
-						if tcp, ok := s.conn.(*net.TCPConn); ok {
-							if err := tcp.SetWriteBuffer(1024); err != nil {
-								t.Error(err)
-							}
-							return true
-						}
-					}
-					return false
-				})
-				close(gate)
-			} else {
-				if _, err = wire.Read(conn, wire.Options{}); err != nil {
-					t.Fatal(err)
-				}
-			}
-			err = <-result
-			var failure OperationError
-			if !errors.As(err, &failure) || failure.Failure != core.Timeout {
-				t.Fatal("expected protocol deadline", err)
-			}
-			wait(t, "timed-out stream cleaned up", func() bool { return node.Snapshot().PendingStreams == 0 })
-		})
+func TestRealStreamReadDeadline(t *testing.T) {
+	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.ParseIP("127.0.0.1")})
+	if err != nil {
+		t.Fatal(err)
 	}
+	defer func() { _ = listener.Close() }()
+	_ = listener.SetDeadline(time.Now().Add(2 * time.Second))
+	cfg := testConfig("deadline")
+	cfg.Protocol.ProbeInterval = 0
+	cfg.Protocol.GossipInterval = 0
+	cfg.Protocol.PushPullInterval = 0
+	cfg.Protocol.StreamTimeout = 200 * time.Millisecond
+	node := newNode(t, cfg)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	result := make(chan error, 1)
+	go func() { _, err := node.Join(ctx, listener.Addr().String()); result <- err }()
+	conn, err := listener.AcceptTCP()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
+	// Read the request and never answer: the node's read deadline must end it.
+	if _, err = wire.Read(conn, wire.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	err = <-result
+	var failure OperationError
+	if !errors.As(err, &failure) || failure.Failure != core.Timeout {
+		t.Fatal("expected protocol deadline", err)
+	}
+	wait(t, "timed-out stream cleaned up", func() bool { return node.Snapshot().PendingStreams == 0 })
 }
 func TestStreamAdmissionRecoversAfterOverflow(t *testing.T) {
 	cfg := testConfig("limited")

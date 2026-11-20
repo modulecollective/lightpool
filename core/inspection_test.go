@@ -37,8 +37,8 @@ func TestInspectionMembershipAndOwnership(t *testing.T) {
 	// must publish silent updates that the application notification API omits.
 	apply := func(f func()) { c.journal = nil; f(); check() }
 	apply(func() { c.suspect(wire.Accusation{Node: "b", From: "a", Incarnation: 1}) })
-	apply(func() { c.applyAlive(wire.Member{Identity: identity("b", 2), Incarnation: 2}) })
-	apply(func() { c.applyAlive(wire.Member{Identity: identity("b", 2), Incarnation: 3}) })
+	apply(func() { c.alive(wire.Member{Identity: identity("b", 2), Incarnation: 2}) })
+	apply(func() { c.alive(wire.Member{Identity: identity("b", 2), Incarnation: 3}) })
 	apply(func() { c.refute(10) })
 	apply(func() { c.update(Update{Meta: []byte("owned")}) })
 	j := c.Inspection()
@@ -54,7 +54,7 @@ func TestInspectionMembershipAndOwnership(t *testing.T) {
 	}
 	step(t, c, c.now, Update{Meta: []byte("new")})
 	check()
-	step(t, c, c.now, Send{})
+	step(t, c, c.now, CancelCommand{})
 	check()
 	if len(c.Inspection()) != 0 {
 		t.Fatal("journal retained previous step")

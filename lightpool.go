@@ -23,25 +23,20 @@ import (
 	"time"
 )
 
-// Application runs outside the owner loop. Request calls can overlap and must
-// honor cancellation. A request's context ends with its operation or response.
-// Notify calls are ordered. Both may read Snapshot or call APIs reentrantly.
-// Shutdown cancels callbacks; it never waits for user code.
-type Application interface {
-	Request(context.Context, core.Request) (core.Response, error)
-	Notify(context.Context, core.Notification)
-}
 type Config struct {
-	Protocol           core.Config
-	Name               string
-	Bind, Advertise    netip.AddrPort
-	Meta               []byte
-	ApplicationVersion string
-	Application        Application
-	Keyring            *Keyring
-	Compression        bool
-	Resolver           *net.Resolver
-	Logger             *log.Logger
+	Protocol        core.Config
+	Name            string
+	Bind, Advertise netip.AddrPort
+	Meta            []byte
+	// Notify receives membership notifications in order, outside the owner loop.
+	// It may read Snapshot or call APIs reentrantly. Notifications beyond the
+	// bounded queue are dropped and counted. Shutdown cancels the context; it
+	// never waits for Notify to return.
+	Notify      func(context.Context, core.Notification)
+	Keyring     *Keyring
+	Compression bool
+	Resolver    *net.Resolver
+	Logger      *log.Logger
 }
 
 func DefaultConfig(name string) Config {
@@ -65,10 +60,6 @@ type ioStream struct {
 	cancel context.CancelFunc
 	conn   net.Conn
 }
-type applicationRequest struct {
-	ctx     context.Context
-	request core.Request
-}
 type Traffic struct{ SentBytes, ReceivedBytes, RejectedFrames, NotificationDrops uint64 }
 type counters struct{ sent, received, rejected, drops atomic.Uint64 }
 type Node struct {
@@ -84,8 +75,6 @@ type Node struct {
 	commands           chan command
 	deferred           chan driverInput
 	writes             chan core.SendDatagram
-	requests           chan applicationRequest
-	requestCancels     map[core.Token]context.CancelFunc // owner only
 	notices            chan core.Notification
 	done               chan struct{}
 	workers            sync.WaitGroup
@@ -113,7 +102,6 @@ func newOrdinaryNode(cfg Config, recording *recordingConfig) (*Node, error) {
 	if cfg.Resolver == nil {
 		cfg.Resolver = net.DefaultResolver
 	}
-	cfg.Protocol.Application = cfg.Application != nil
 	cfg.Protocol.Protected = cfg.Keyring != nil
 	opts := wire.Options{Label: cfg.Protocol.Label}
 	if cfg.Keyring != nil {
@@ -166,7 +154,7 @@ func newOrdinaryNode(cfg Config, recording *recordingConfig) (*Node, error) {
 		return nil, err
 	}
 	seed := core.Seed{State: binary.LittleEndian.Uint64(entropy[:8]), Stream: binary.LittleEndian.Uint64(entropy[8:16]), Lifetime: binary.LittleEndian.Uint64(entropy[16:])}
-	engine, err := core.New(cfg.Protocol, wire.Identity{Name: cfg.Name, Address: advertised, Meta: cfg.Meta, Application: cfg.ApplicationVersion}, seed)
+	engine, err := core.New(cfg.Protocol, wire.Identity{Name: cfg.Name, Address: advertised, Meta: cfg.Meta}, seed)
 	if err != nil {
 		_ = tcp.Close()
 		_ = udp.Close()
@@ -178,14 +166,13 @@ func newOrdinaryNode(cfg Config, recording *recordingConfig) (*Node, error) {
 		ctx: ctx, cancel: cancel, udp: udp, tcp: tcp,
 		inbox: make(chan driverInput, 256), commands: make(chan command, 256),
 		deferred: make(chan driverInput, 1), writes: make(chan core.SendDatagram, 256),
-		requests: make(chan applicationRequest, 256), notices: make(chan core.Notification, 1024),
-		requestCancels: make(map[core.Token]context.CancelFunc),
-		done:           make(chan struct{}), streams: make(map[core.Token]*ioStream),
+		notices: make(chan core.Notification, 1024),
+		done:    make(chan struct{}), streams: make(map[core.Token]*ioStream),
 		timers: make(map[core.Timer]*time.Timer), waiters: make(map[uint64]chan core.Result),
 	}
 	if recording != nil {
 		engine.EnableInspection()
-		n.recorder, err = newOrdinaryRecorder(*recording, wire.Identity{Name: cfg.Name, Address: advertised, Meta: cfg.Meta, Application: cfg.ApplicationVersion}, seed, cfg.Protocol, cfg.Compression, n.epoch, engine.Inspection())
+		n.recorder, err = newOrdinaryRecorder(*recording, wire.Identity{Name: cfg.Name, Address: advertised, Meta: cfg.Meta}, seed, cfg.Protocol, cfg.Compression, n.epoch, engine.Inspection())
 		if err != nil {
 			cancel()
 			_ = tcp.Close()
@@ -198,10 +185,7 @@ func newOrdinaryNode(cfg Config, recording *recordingConfig) (*Node, error) {
 	go n.readUDP()
 	go n.acceptTCP()
 	go n.writeUDP()
-	if cfg.Application != nil {
-		for range 8 {
-			go n.applicationWorker()
-		}
+	if cfg.Notify != nil {
 		go n.notificationWorker()
 	}
 	go n.run()
@@ -292,12 +276,6 @@ func (n *Node) step(input driverInput, parent uint64) {
 	if n.recorder != nil {
 		captured, recorderNS = n.recordInput(input, parent)
 	}
-	if response, ok := e.(core.Response); ok {
-		if cancel := n.requestCancels[response.ID]; cancel != nil {
-			cancel()
-			delete(n.requestCancels, response.ID)
-		}
-	}
 	coreAt := n.now()
 	effects, err := n.engine.Step(coreAt, e)
 	if captured != nil {
@@ -350,21 +328,8 @@ func (n *Node) step(input driverInput, parent uint64) {
 			default:
 				panic("duplicate deferred turn")
 			}
-		case core.Request:
-			ctx, cancel := context.WithCancel(n.ctx)
-			n.requestCancels[e.ID] = cancel
-			select {
-			case n.requests <- applicationRequest{ctx: ctx, request: e}:
-			default:
-				immediate = append(immediate, core.Response{ID: e.ID, Reject: true})
-			}
-		case core.CancelRequest:
-			if cancel := n.requestCancels[e.ID]; cancel != nil {
-				cancel()
-				delete(n.requestCancels, e.ID)
-			}
 		case core.Notification:
-			if n.cfg.Application != nil {
+			if n.cfg.Notify != nil {
 				select {
 				case n.notices <- e:
 				default:
@@ -431,18 +396,6 @@ func (n *Node) Update(ctx context.Context, meta []byte) error {
 }
 func (n *Node) Leave(ctx context.Context) error {
 	_, err := n.call(ctx, func(id uint64) core.Event { return core.Leave{Command: id} })
-	return err
-}
-func (n *Node) Send(ctx context.Context, peer wire.Identity, data []byte, reliable bool) error {
-	msg := slices.Clone(data)
-	_, err := n.call(ctx, func(id uint64) core.Event {
-		return core.Send{Command: id, Peer: peer.Clone(), Data: msg, Reliable: reliable}
-	})
-	return err
-}
-func (n *Node) Broadcast(ctx context.Context, data []byte) error {
-	msg := slices.Clone(data)
-	_, err := n.call(ctx, func(id uint64) core.Event { return core.Send{Command: id, Data: msg, Broadcast: true} })
 	return err
 }
 
@@ -523,27 +476,11 @@ func (n *Node) Shutdown() error {
 	}
 	return nil
 }
-func (n *Node) applicationWorker() {
-	for {
-		select {
-		case work := <-n.requests:
-			if work.ctx.Err() != nil {
-				continue
-			}
-			response, err := n.cfg.Application.Request(work.ctx, work.request)
-			response.ID = work.request.ID
-			response.Reject = response.Reject || err != nil
-			n.post(response)
-		case <-n.ctx.Done():
-			return
-		}
-	}
-}
 func (n *Node) notificationWorker() {
 	for {
 		select {
 		case e := <-n.notices:
-			n.cfg.Application.Notify(n.ctx, e)
+			n.cfg.Notify(n.ctx, e)
 		case <-n.ctx.Done():
 			return
 		}

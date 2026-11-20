@@ -74,6 +74,49 @@ func members(r Result, node string) map[string]wire.State {
 	}
 	return out
 }
+
+// results returns the command results emitted at or after from.
+func results(r Result, from core.Instant) []core.Result {
+	var out []core.Result
+	for _, tr := range r.Trace {
+		if tr.Time < from {
+			continue
+		}
+		for _, raw := range tr.Effects {
+			var e tagged
+			_ = json.Unmarshal(raw, &e)
+			if e.Kind == "core.Result" {
+				var result core.Result
+				_ = json.Unmarshal(e.Effect, &result)
+				out = append(out, result)
+			}
+		}
+	}
+	return out
+}
+
+// steps counts one node's traced events of one kind in [from, until).
+func steps(r Result, node, kind string, from, until core.Instant) int {
+	n := 0
+	for _, tr := range r.Trace {
+		if tr.Node == node && tr.Kind == kind && tr.Time >= from && tr.Time < until {
+			n++
+		}
+	}
+	return n
+}
+
+// chunked sizes stream capacity so a one-member exchange frame takes about
+// parts chunks, whatever the body encoding costs.
+func chunked(t testing.TB, s *Scenario, parts int) {
+	t.Helper()
+	n := wire.Member{Identity: s.Nodes[0].Identity, Incarnation: 1}
+	b, err := wire.Encode([]wire.Message{{Exchange: &wire.Exchange{Members: []wire.Member{n}}}}, wire.Options{Label: s.Protocol.Label})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.StreamCapacity = len(b)/parts + 1
+}
 func TestHealthyJoinAndEncodedTraffic(t *testing.T) {
 	r := run(t, fixture())
 	for _, name := range []string{"a", "b", "c"} {
@@ -171,26 +214,11 @@ func TestCrashPartitionHealingAndRejoin(t *testing.T) {
 func TestPauseBuffersAndBackpressure(t *testing.T) {
 	s := fixture()
 	s.Horizon = core.Instant(2 * time.Second)
-	s.Actions = append(s.Actions, Action{At: core.Instant(500 * time.Millisecond), Node: "b", Kind: "pause", Duration: 300 * time.Millisecond}, Action{At: core.Instant(510 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: bytes.Repeat([]byte{'x'}, 10000)}, Action{At: core.Instant(550 * time.Millisecond), Node: "a", Kind: "probe", Peer: "b"})
+	chunked(t, &s, 8)
+	s.Actions = append(s.Actions, Action{At: core.Instant(500 * time.Millisecond), Node: "b", Kind: "pause", Duration: 300 * time.Millisecond}, Action{At: core.Instant(510 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"}, Action{At: core.Instant(550 * time.Millisecond), Node: "a", Kind: "probe", Peer: "b"})
 	r := run(t, s)
-	user := false
-	timeout := false
-	for _, raw := range effects(r, "core.Notification") {
-		var n core.Notification
-		_ = json.Unmarshal(raw, &n)
-		if n.Kind == "user" && len(n.Data) == 10000 {
-			user = true
-		}
-	}
-	for _, raw := range effects(r, "core.Result") {
-		var n core.Result
-		_ = json.Unmarshal(raw, &n)
-		if n.Failure == core.Timeout {
-			timeout = true
-		}
-	}
-	if user || !timeout {
-		t.Fatal("blocked large write did not time out", user, timeout)
+	if rs := results(r, core.Instant(500*time.Millisecond)); len(rs) != 1 || rs[0].Failure != core.Timeout {
+		t.Fatal("blocked exchange did not time out", rs)
 	}
 	for _, trace := range r.Trace {
 		if trace.Node == "b" && strings.HasPrefix(trace.Kind, "core.") && trace.Time >= core.Instant(500*time.Millisecond) && trace.Time < core.Instant(800*time.Millisecond) {
@@ -199,18 +227,14 @@ func TestPauseBuffersAndBackpressure(t *testing.T) {
 	}
 	// A frame larger than transport capacity progresses by draining credits.
 	healthy := fixture()
-	healthy.Actions = append(healthy.Actions, Action{At: core.Instant(500 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: bytes.Repeat([]byte{'x'}, 300)})
+	chunked(t, &healthy, 8)
+	healthy.Actions = append(healthy.Actions, Action{At: core.Instant(500 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"})
 	r = run(t, healthy)
-	user = false
-	for _, raw := range effects(r, "core.Notification") {
-		var n core.Notification
-		_ = json.Unmarshal(raw, &n)
-		if n.Kind == "user" && len(n.Data) == 300 {
-			user = true
-		}
+	if rs := results(r, core.Instant(500*time.Millisecond)); len(rs) != 1 || rs[0].Failure != core.Success {
+		t.Fatal("frame larger than capacity stalled", rs)
 	}
-	if !user {
-		t.Fatal("frame larger than capacity stalled")
+	if steps(r, "", "chunk", core.Instant(500*time.Millisecond), r.Manifest.Scenario.Horizon) < 2 {
+		t.Fatal("exchange did not span several chunks")
 	}
 }
 
@@ -226,55 +250,56 @@ func TestTransportDeadlineDuringBothEndpointPauses(t *testing.T) {
 			s.Protocol.StreamTimeout = 100 * time.Millisecond
 			s.Seeds = Seeds{1, 2, 7}
 			s.Latency = 0
+			chunked(t, &s, 8)
 			s.Horizon = core.Instant(1200 * time.Millisecond)
-			s.Actions = []Action{{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: bytes.Repeat([]byte{'x'}, 200)}}
+			s.Actions = []Action{{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"}}
 			if paused {
 				for _, name := range []string{"a", "b"} {
 					s.Actions = append(s.Actions, Action{At: core.Instant(13 * time.Millisecond), Node: name, Kind: "pause", Duration: time.Second})
 				}
 			}
 			r := run(t, s)
-			users := 0
-			for _, raw := range effects(r, "core.Notification") {
-				var n core.Notification
-				_ = json.Unmarshal(raw, &n)
-				if n.Kind == "user" {
-					users++
-				}
+			delivered := steps(r, "b", "core.StreamMessage", 0, s.Horizon)
+			rs := results(r, 0)
+			if len(rs) != 1 {
+				t.Fatalf("terminal results: %+v", rs)
 			}
-			results := effects(r, "core.Result")
-			if len(results) != 1 {
-				t.Fatalf("terminal results: %s", results)
-			}
-			var result core.Result
-			_ = json.Unmarshal(results[0], &result)
 			if paused {
-				if users != 0 || result.Failure != core.Timeout {
-					t.Fatalf("expired transfer delivered: users=%d result=%+v", users, result)
+				if delivered != 0 || rs[0].Failure != core.Timeout {
+					t.Fatalf("expired transfer delivered: delivered=%d result=%+v", delivered, rs[0])
 				}
 				for _, tr := range r.Trace {
 					if tr.Kind == "chunk" && tr.Time > core.Instant(111*time.Millisecond) {
 						t.Fatalf("transfer progressed after deadline: %+v", tr)
 					}
 				}
-			} else if users != 1 || result.Failure != core.Success {
-				t.Fatalf("healthy transfer: users=%d result=%+v", users, result)
+			} else if delivered != 1 || rs[0].Failure != core.Success {
+				t.Fatalf("healthy transfer: delivered=%d result=%+v", delivered, rs[0])
 			}
 		})
 	}
 }
 
-// A delayed application response starts the writer's deadline later than the
-// reader's. Only independent read expiry can stop this partial frame on pause.
+// A paused initiator or receiver starts one side's write deadline later than
+// the other side's read deadline. Only independent read expiry can stop the
+// partial frame while its reader is paused.
 func TestReadDeadlineDuringReceiverPause(t *testing.T) {
+	type pause struct {
+		node     string
+		at, span time.Duration
+	}
 	for _, tc := range []struct {
 		name, reader string
-		pauseAt      core.Instant
-		readDeadline core.Instant
+		pauses       []pause
+		readDeadline time.Duration
 	}{
 		{name: "unpaused"},
-		{name: "accepted-reader", reader: "b", pauseAt: core.Instant(52 * time.Millisecond), readDeadline: core.Instant(110 * time.Millisecond)},
-		{name: "dialed-reader", reader: "a", pauseAt: core.Instant(96 * time.Millisecond), readDeadline: core.Instant(151 * time.Millisecond)},
+		// a opens at 10ms but writes its request only at 50.5ms, so b's read
+		// deadline (accept + 100ms) precedes a's write deadline.
+		{name: "accepted-reader", reader: "b", pauses: []pause{{"a", 10500 * time.Microsecond, 40 * time.Millisecond}, {"b", 52 * time.Millisecond, 73 * time.Millisecond}}, readDeadline: 110 * time.Millisecond},
+		// b reads the request late, so its response write deadline follows a's
+		// read deadline (a's request write + 100ms).
+		{name: "dialed-reader", reader: "a", pauses: []pause{{"b", 12 * time.Millisecond, 48 * time.Millisecond}, {"a", 66 * time.Millisecond, 73 * time.Millisecond}}, readDeadline: 111 * time.Millisecond},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := fixture()
@@ -284,66 +309,37 @@ func TestReadDeadlineDuringReceiverPause(t *testing.T) {
 			}
 			s.Protocol.ProbeInterval, s.Protocol.GossipInterval, s.Protocol.PushPullInterval = 0, 0, 0
 			s.Protocol.StreamTimeout = 100 * time.Millisecond
-			s.Protocol.Application = true
-			s.Fixtures = []Fixture{{Kind: core.LocalState, Delay: 40 * time.Millisecond, Data: bytes.Repeat([]byte{'x'}, 500)}}
 			s.Seeds = Seeds{1, 2, 5}
 			s.Latency = 0
-			s.StreamCapacity = 256
+			chunked(t, &s, 12)
 			s.Horizon = core.Instant(400 * time.Millisecond)
 			s.Actions = []Action{
 				{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"},
 				{At: core.Instant(180 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"},
 			}
-			if tc.reader != "" {
-				s.Actions = append(s.Actions, Action{At: tc.pauseAt, Node: tc.reader, Kind: "pause", Duration: 73 * time.Millisecond})
+			for _, p := range tc.pauses {
+				s.Actions = append(s.Actions, Action{At: core.Instant(p.at), Node: p.node, Kind: "pause", Duration: p.span})
 			}
 			r := run(t, s)
-			chunks, receiverRequests := 0, 0
+			chunks, late := 0, 0
 			for _, tr := range r.Trace {
-				if tr.Time >= core.Instant(180*time.Millisecond) {
+				if tr.Time >= core.Instant(180*time.Millisecond) || tr.Kind != "chunk" {
 					continue
 				}
-				if tr.Kind == "chunk" {
-					chunks++
-					if tc.reader != "" && tr.Time > tc.readDeadline {
-						t.Errorf("partial frame transferred after read deadline %v: %+v", time.Duration(tc.readDeadline), tr)
-					}
-				}
-				for _, raw := range tr.Effects {
-					var e tagged
-					if err := json.Unmarshal(raw, &e); err != nil {
-						t.Fatal(err)
-					}
-					if e.Kind == "core.Request" && tr.Node == "b" {
-						var request core.Request
-						if err := json.Unmarshal(e.Effect, &request); err != nil {
-							t.Fatal(err)
-						}
-						if request.Kind == core.LocalState {
-							receiverRequests++
-						}
-					}
+				chunks++
+				if tc.reader != "" && tr.Time > core.Instant(tc.readDeadline) {
+					late++
+					t.Errorf("partial frame transferred after read deadline %v: %+v", tc.readDeadline, tr)
 				}
 			}
 			if chunks < 2 {
 				t.Fatal("partial-frame transport path absent", chunks)
 			}
-			wantRequests := 1
-			if tc.reader == "b" {
-				wantRequests = 0
+			rs := results(r, 0)
+			if len(rs) != 2 {
+				t.Fatalf("initial join and retry results: %+v", rs)
 			}
-			if receiverRequests != wantRequests {
-				t.Errorf("receiver LocalState requests before retry: %d", receiverRequests)
-			}
-			results := effects(r, "core.Result")
-			if len(results) != 2 {
-				t.Fatalf("initial join and retry results: %s", results)
-			}
-			for i, raw := range results {
-				var result core.Result
-				if err := json.Unmarshal(raw, &result); err != nil {
-					t.Fatal(err)
-				}
+			for i, result := range rs {
 				want := core.Success
 				if tc.reader != "" && i == 0 {
 					want = core.Timeout
@@ -357,7 +353,7 @@ func TestReadDeadlineDuringReceiverPause(t *testing.T) {
 					t.Fatal("retry did not recover", m)
 				}
 			}
-			t.Logf("paused reader=%q: initial chunks=%d, receiver requests=%d; retry converged with zero pending streams", tc.reader, chunks, receiverRequests)
+			t.Logf("paused reader=%q: initial chunks=%d; retry converged with zero pending streams", tc.reader, chunks)
 		})
 	}
 }
@@ -370,7 +366,7 @@ func TestConnectDeadlineDuringInitiatorPause(t *testing.T) {
 	s.Latency = 200 * time.Millisecond
 	s.Horizon = core.Instant(1200 * time.Millisecond)
 	s.Actions = []Action{
-		{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: []byte("late")},
+		{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"},
 		{At: core.Instant(13 * time.Millisecond), Node: "a", Kind: "pause", Duration: time.Second},
 	}
 	r := run(t, s)
@@ -401,13 +397,16 @@ func TestStreamWriteRenewsReadDeadline(t *testing.T) {
 	}
 	s.Protocol.ProbeInterval, s.Protocol.GossipInterval, s.Protocol.PushPullInterval = 0, 0, 0
 	s.Protocol.StreamTimeout = 100 * time.Millisecond
-	s.Protocol.Application = true
-	s.Fixtures = []Fixture{{Kind: core.LocalState, Delay: 30 * time.Millisecond, Data: bytes.Repeat([]byte{'x'}, 100)}}
 	s.Seeds = Seeds{1, 2, 5}
 	s.Latency = 10 * time.Millisecond
-	s.StreamCapacity = 256
+	chunked(t, &s, 4)
 	s.Horizon = core.Instant(300 * time.Millisecond)
-	s.Actions = []Action{{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"}}
+	// The initiator's open deadline is 110ms; pausing it delays its request
+	// write to 40.5ms, which must move its read deadline to 140.5ms.
+	s.Actions = []Action{
+		{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"},
+		{At: core.Instant(10500 * time.Microsecond), Node: "a", Kind: "pause", Duration: 30 * time.Millisecond},
+	}
 	r := run(t, s)
 	results := 0
 	for _, tr := range r.Trace {
@@ -441,7 +440,7 @@ func TestShutdownInvalidatesPendingConnect(t *testing.T) {
 	s.Protocol.StreamTimeout = time.Second
 	s.Latency = 200 * time.Millisecond
 	s.Actions = []Action{
-		{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: []byte("canceled")},
+		{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"},
 		{At: core.Instant(20 * time.Millisecond), Node: "a", Kind: "shutdown"},
 	}
 	r := run(t, s)
@@ -462,55 +461,19 @@ func TestAcceptedFrameSurvivesTransportExpiry(t *testing.T) {
 	s.Protocol.StreamTimeout = 100 * time.Millisecond
 	s.Seeds = Seeds{1, 2, 7}
 	s.Latency = 0
+	s.StreamCapacity = 4096
 	s.Horizon = core.Instant(1200 * time.Millisecond)
 	s.Actions = []Action{
-		{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: []byte("x")},
+		{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"},
 		{At: core.Instant(9500 * time.Microsecond), Node: "b", Kind: "pause", Duration: time.Second},
 		{At: core.Instant(11500 * time.Microsecond), Node: "a", Kind: "pause", Duration: time.Second},
 	}
 	r := run(t, s)
-	users := 0
-	for _, raw := range effects(r, "core.Notification") {
-		var n core.Notification
-		_ = json.Unmarshal(raw, &n)
-		if n.Kind == "user" && bytes.Equal(n.Data, []byte("x")) {
-			users++
-		}
-	}
-	if users != 1 {
-		t.Fatal("transport expiry discarded a frame already fully accepted", users)
+	if n := steps(r, "b", "core.StreamMessage", 0, s.Horizon); n != 1 {
+		t.Fatal("transport expiry discarded a frame already fully accepted", n)
 	}
 }
 
-func TestUserPayloadBoundariesInSimulation(t *testing.T) {
-	for _, mode := range []string{"send", "reliable", "broadcast"} {
-		for _, data := range [][]byte{nil, {}, {1}} {
-			t.Run(fmt.Sprintf("%s/%#v", mode, data), func(t *testing.T) {
-				s := fixture()
-				s.Nodes = s.Nodes[:2]
-				s.Actions = []Action{
-					{At: core.Instant(10 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"},
-					{At: core.Instant(100 * time.Millisecond), Node: "a", Kind: mode, Peer: "b", Data: data},
-				}
-				r := run(t, s)
-				users := 0
-				for _, raw := range effects(r, "core.Notification") {
-					var n core.Notification
-					_ = json.Unmarshal(raw, &n)
-					if n.Kind == "user" {
-						users++
-						if !bytes.Equal(n.Data, data) {
-							t.Fatalf("payload changed: %x", n.Data)
-						}
-					}
-				}
-				if users == 0 {
-					t.Fatal("accepted user payload was not delivered")
-				}
-			})
-		}
-	}
-}
 func TestFaultsDuplicateDelayAndIncomplete(t *testing.T) {
 	s := fixture()
 	s.Faults = []Fault{{From: "a", To: "b", Start: 0, End: s.Horizon, Delay: time.Millisecond, Jitter: time.Millisecond, Duplicate: true}}
@@ -527,11 +490,6 @@ func TestFaultsDuplicateDelayAndIncomplete(t *testing.T) {
 	s.Protocol.Protected = true
 	if _, err = Run(s); err == nil {
 		t.Fatal("encryption silently ignored")
-	}
-	s = fixture()
-	s.Protocol.Application = true
-	if _, err = Run(s); err == nil {
-		t.Fatal("arbitrary application scenario accepted")
 	}
 }
 func raceScenario(seed uint64) Scenario {
@@ -615,8 +573,16 @@ func TestFreshProcessReplay(t *testing.T) {
 
 func TestPausedReceiveBufferOverflow(t *testing.T) {
 	s := fixture()
-	s.DatagramCapacity = 1000
-	s.Actions = append(s.Actions, Action{At: core.Instant(500 * time.Millisecond), Node: "b", Kind: "pause", Duration: 200 * time.Millisecond}, Action{At: core.Instant(510 * time.Millisecond), Node: "a", Kind: "send", Peer: "b", Data: bytes.Repeat([]byte{'q'}, 700)}, Action{At: core.Instant(520 * time.Millisecond), Node: "a", Kind: "send", Peer: "b", Data: bytes.Repeat([]byte{'q'}, 700)})
+	ping := wire.Message{Ping: &wire.Ping{Sequence: 1 << 62, Target: "b", Source: s.Nodes[0].Identity}}
+	b, err := wire.Encode([]wire.Message{ping}, wire.Options{Label: s.Protocol.Label})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.DatagramCapacity = len(b) * 3 / 2
+	s.Actions = append(s.Actions, Action{At: core.Instant(500 * time.Millisecond), Node: "b", Kind: "pause", Duration: 200 * time.Millisecond})
+	for at := 510 * time.Millisecond; at <= 530*time.Millisecond; at += 10 * time.Millisecond {
+		s.Actions = append(s.Actions, Action{At: core.Instant(at), Node: "a", Kind: "ping", Peer: "b"})
+	}
 	r := run(t, s)
 	found := false
 	for _, m := range r.Measurements {
@@ -627,39 +593,20 @@ func TestPausedReceiveBufferOverflow(t *testing.T) {
 	if !found {
 		t.Fatal("finite receive buffer never overflowed")
 	}
-	users := 0
-	for _, raw := range effects(r, "core.Notification") {
-		var n core.Notification
-		_ = json.Unmarshal(raw, &n)
-		if n.Kind == "user" && len(n.Data) == 700 {
-			users++
-		}
-	}
-	if users != 1 {
-		t.Fatal("expected exactly one buffered user message", users)
+	if steps(r, "b", "core.Datagram", core.Instant(700*time.Millisecond), core.Instant(701*time.Millisecond)) == 0 {
+		t.Fatal("buffered datagram was not delivered on resume")
 	}
 }
 func TestStreamClosesMidFrame(t *testing.T) {
 	s := fixture()
-	s.Actions = append(s.Actions, Action{At: core.Instant(500 * time.Millisecond), Node: "a", Kind: "reliable", Peer: "b", Data: bytes.Repeat([]byte{'z'}, 10000)}, Action{At: core.Instant(510 * time.Millisecond), Node: "b", Kind: "crash"})
+	chunked(t, &s, 8)
+	s.Actions = append(s.Actions, Action{At: core.Instant(500 * time.Millisecond), Node: "a", Kind: "join", Peer: "b"}, Action{At: core.Instant(505 * time.Millisecond), Node: "b", Kind: "crash"})
 	r := run(t, s)
-	failed := false
-	for _, raw := range effects(r, "core.Result") {
-		var result core.Result
-		_ = json.Unmarshal(raw, &result)
-		if result.Failure == core.RemoteFailure {
-			failed = true
-		}
+	if rs := results(r, core.Instant(500*time.Millisecond)); len(rs) != 1 || rs[0].Failure != core.RemoteFailure {
+		t.Fatal("mid-frame close not surfaced", rs)
 	}
-	for _, raw := range effects(r, "core.Notification") {
-		var n core.Notification
-		_ = json.Unmarshal(raw, &n)
-		if n.Kind == "user" && len(n.Data) == 10000 {
-			t.Fatal("partial frame delivered")
-		}
-	}
-	if !failed {
-		t.Fatal("mid-frame close not surfaced")
+	if steps(r, "b", "core.StreamMessage", core.Instant(500*time.Millisecond), s.Horizon) != 0 {
+		t.Fatal("partial frame delivered")
 	}
 }
 

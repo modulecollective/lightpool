@@ -24,7 +24,9 @@ subtracting an exact origin. Arrays preserve producer order.
 Change `kind` is member.upsert, member.remove, process, summary, probe,
 suspicion, refutation or timer. `node` is the observer/actor; `subject` is
 optional. member.upsert carries `member` (name, address, incarnation, state,
-optional base64 metadata and application); state is alive/suspect/dead/left.
+optional base64 metadata); state is alive/suspect/dead/left. Older
+producers also wrote an `application` string and the `user` message kind;
+readers still accept both.
 member.remove carries subject. Absence means unknown. `process` carries
 `process` (node, lifetime, running, pausedUntil); a process change phase is start, pause or crash; start/restart clears that
 observer's members, probes and timers. `summary` carries health, backlog,
