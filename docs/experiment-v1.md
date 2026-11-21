@@ -438,8 +438,10 @@ core inputs, effects and inspection for one node in sequence.
 
 `experiments/2026-11-20-ordinary-witness-current` freezes this study before any
 causal result is opened. `base` names the commit whose harness, reducer and
-classifier produced and read every attempt. `run.sh NEW_DIRECTORY` runs, in
-order:
+classifier produced and read every attempt. Its protocol code (`core`, `wire`,
+`sim` and the ordinary driver) is unchanged from the inspected baseline
+`4b45bcd720f0b79f42b4fefcdfbb380482bba0f1`; the commits between the two add
+only the harness and offline tools. `run.sh NEW_DIRECTORY` runs, in order:
 
 1. Socket controls. These send real UDP and TCP through the campaign's own
    router, veth, netem and nft code, on separate endpoints.
