@@ -380,3 +380,24 @@ func TestOrdinaryClassifierUnanchoredStep(t *testing.T) {
 		t.Fatalf("%s %+v", ep.Status, ep.Shortenings[0])
 	}
 }
+
+func TestOrdinaryClassifierExchangeOrigin(t *testing.T) {
+	f := ordPositive()
+	f.nodes["o"].steps[0][1].Outcome = "started:"
+	// First attribution replaces the timer at its unchanged absolute deadline.
+	f.nodes["o"].steps = slices.Insert(f.nodes["o"].steps, 1, []core.Inspection{ordSuspicion("confirmation:a1"), ordTimer("cancel", 5, 30*sec), ordArm(7, 30*sec)})
+	f.nodes["o"].at = slices.Insert(f.nodes["o"].at, 1, 22*sec+sec/2)
+	f.nodes["o"].steps[2][1] = ordTimer("cancel", 7, 30*sec)
+	ep := ordClassify(t, f)
+	if ep.Status == "acceleration" || ep.Origin.Sender != "" || ep.Origin.Fact != nil || len(ep.Shortenings) != 2 || !strings.Contains(strings.Join(ep.Reasons, ";"), "exchange supplied no accusation origin") {
+		t.Fatalf("exchange episode lost or qualified: %+v", ep)
+	}
+	if *ep.Shortenings[0].DeadlineNS != *ep.Shortenings[0].PreviousDeadlineNS || ep.Shortenings[0].Status == "qualifying" || ep.Shortenings[1].Status == "qualifying" {
+		t.Fatal("first attribution shortened or later attribution repaired unknown origin", ep.Shortenings)
+	}
+	// Missing evidence for an actual named sender remains an error.
+	f.nodes["o"].steps[0][1].Outcome = "started:missing"
+	if _, err := ClassifyOrdinary(f.input()); err == nil || !strings.Contains(err.Error(), "has no journal") {
+		t.Fatal("missing named sender journal accepted", err)
+	}
+}

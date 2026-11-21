@@ -136,17 +136,23 @@ func (c *Core) refute(inc uint64) {
 	c.notify("refute", n.Member)
 }
 
+// An empty From is internal to exchange merges: state without a known origin.
+// It can start suspicion, but cannot confirm it or enter the broadcast queue.
 func (c *Core) suspect(a wire.Accusation) {
 	n := c.nodes[a.Node]
 	if n == nil || a.Incarnation < n.Incarnation {
 		return
 	}
 	if s := c.susp[a.Node]; s != nil {
-		if s.n >= s.k || s.confirmations[a.From] {
+		if a.From == "" || s.confirmations[a.From] || len(s.confirmations) > 0 && s.n >= s.k {
 			return
 		}
+		// The first known origin seeds an exchange-only suspicion; it is not
+		// additional evidence and must not shorten the original deadline.
+		if len(s.confirmations) > 0 {
+			s.n++
+		}
 		s.confirmations[a.From] = true
-		s.n++
 		c.record(Inspection{Kind: "suspicion", Subject: a.Node, Outcome: "confirmation:" + a.From})
 		c.queue(wire.Message{Suspect: &a}, a.Node, 0)
 		// arm clamps an already shortened deadline to now; no recursive transition.
@@ -164,7 +170,11 @@ func (c *Core) suspect(a wire.Accusation) {
 	n.Incarnation = a.Incarnation
 	n.changed = c.now
 	c.recordMember(n.Member)
-	c.queue(wire.Message{Suspect: &a}, a.Node, 0)
+	if a.From != "" {
+		c.queue(wire.Message{Suspect: &a}, a.Node, 0)
+	} else {
+		c.invalidateBroadcast(a.Node)
+	}
 	c.notify("suspect", n.Member)
 	k := c.config.SuspicionMult - 2
 	if len(c.nodes)-2 < k {
@@ -172,7 +182,10 @@ func (c *Core) suspect(a wire.Accusation) {
 	}
 	interval := c.config.ProbeInterval
 	min := suspicionTimeout(c.config.SuspicionMult, len(c.nodes), interval)
-	s := &suspicion{start: c.now, min: min, max: time.Duration(c.config.SuspicionMaxMult) * min, k: k, confirmations: map[string]bool{a.From: true}}
+	s := &suspicion{start: c.now, min: min, max: time.Duration(c.config.SuspicionMaxMult) * min, k: k, confirmations: make(map[string]bool)}
+	if a.From != "" {
+		s.confirmations[a.From] = true
+	}
 	c.susp[a.Node] = s
 	c.record(Inspection{Kind: "suspicion", Subject: a.Node, Outcome: "started:" + a.From})
 	c.arm("suspect:"+a.Node, "suspicion", c.now.Add(s.duration()), 0, a.Node)

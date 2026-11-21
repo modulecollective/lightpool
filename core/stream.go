@@ -245,7 +245,8 @@ func (c *Core) merge(s *stream) {
 		case wire.Left:
 			c.dead(wire.Accusation{Node: n.Name, From: n.Name, Incarnation: n.Incarnation})
 		case wire.Dead, wire.Suspect:
-			c.suspect(wire.Accusation{Node: n.Name, From: c.self, Incarnation: n.Incarnation})
+			// Exchange carries state, not the origin of an accusation.
+			c.suspect(wire.Accusation{Node: n.Name, Incarnation: n.Incarnation})
 		}
 	}
 	c.endStream(s.id.ID, Success)

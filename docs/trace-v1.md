@@ -33,6 +33,13 @@ observer's members, probes and timers. `summary` carries health, backlog,
 pendingStreams, stopped, left and decimal-string stats. `probe` carries id,
 phase (direct/indirect/relay/finished), target, helpers and outcome.
 `suspicion` and `refutation` carry subject and optional outcome.
+Suspicion outcomes are `started:<origin>` and `confirmation:<origin>`.
+`started:` with an empty suffix means exchange supplied no accusation origin;
+it does not name an empty participant. The first subsequent named report is a
+confirmation event with an unchanged absolute deadline (clamped to now if
+overdue), not additional evidence for shortening. Later distinct origins can
+shorten the timer. Offline witness admission retains these episodes but cannot
+establish failed-probe provenance for their unknown initiating origin.
 `timer` carries id, generation, phase (arm/cancel/fire), deadline, purpose,
 subject and operation. A stale core.Fired event is not a timer.fire change.
 
