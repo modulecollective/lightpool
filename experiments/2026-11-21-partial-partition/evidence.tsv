@@ -1,0 +1,7 @@
+attempt	directory	provenance	exitCode	status	rawBytes	storedBytes
+partial-partition-r1	evidence/partial-partition-r1	original	0	complete	40792708	3163989
+partial-partition-r2	evidence/partial-partition-r2	original	0	complete	40843687	3162967
+partial-partition-r3	evidence/partial-partition-r3	original	0	complete	40788957	3146273
+partial-partition-healthy-r1	evidence/partial-partition-healthy-r1	original	0	complete	40657452	3148105
+partial-partition-healthy-r2	evidence/partial-partition-healthy-r2	original	0	complete	40731675	3146690
+partial-partition-healthy-r3	evidence/partial-partition-healthy-r3	original	0	complete	40683198	3131946
