@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner.jpg" alt="A red street lamp casting a pool of light onto a teal wall at night" width="100%">
+  <img src="docs/assets/stipple.png" alt="A black-and-white stippled illustration of a street lamp illuminating a building" width="100%">
 </p>
 
 # Lightpool
