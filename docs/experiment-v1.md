@@ -479,6 +479,16 @@ The classifier orders cross-process facts only by disjoint whole-step
 coordinator intervals. Overlap stays inconclusive and is never retuned. Off
 attempts report sampled outcomes only.
 
+Current ordinary classification accepts a sender's exact self-attributed
+suspicion start or confirmation only after its own failed probe of T in the
+same local step. A self-confirmation can establish provenance even when the
+sender first suspected T from gossip or unattributed exchange; it uses the
+latest recorded target membership, which must still be suspect at the matching
+address and incarnation. Sender provenance alone does not establish
+acceleration: O must still replace a live deadline with a strictly earlier one.
+This classifier correction does not revise frozen records or their pinned
+tools; future records must pin the corrected tool revision.
+
 `verify.sh NEW_DIRECTORY` restores every attempt, reduces each ordinary and
 virtual attempt twice, compares the outputs byte for byte, and checks the
 committed `controls`, `timing`, `ordinary-cells`, `ordinary-timing` and
