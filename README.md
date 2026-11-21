@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/banner.jpg" alt="A red street lamp casting a pool of light onto a teal wall at night" width="100%">
+</p>
+
 # Lightpool
 
 Lightpool is a Go 1.25 library for gossip membership and failure detection,
@@ -173,3 +177,4 @@ go test ./wire -run '^$' -fuzz FuzzBody -fuzztime 10s
 ```
 
 Inherited copyright notices and the MPL-2.0 license remain in the repository.
+The banner and logo images are © James Phillips, licensed under CC BY 4.0.
