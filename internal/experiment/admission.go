@@ -248,7 +248,11 @@ func (x *admissionScan) activeAt(name string, at int64) bool {
 
 func (x *admissionScan) sender(c OrderedEvidence) SenderEvidence {
 	_, sender, _ := strings.Cut(c.Fact.Outcome, ":")
-	out := SenderEvidence{Sender: sender, Lifetime: x.node(sender).life, Fact: c}
+	out := SenderEvidence{Sender: sender, Fact: c}
+	if sender == "" {
+		return out
+	}
+	out.Lifetime = x.node(sender).life
 	// Only a locally emitted suspicion in the same failed-probe step establishes
 	// provenance. A sender name in a forwarded rumor establishes none.
 	for _, p := range slices.Backward(x.out.Probes) {

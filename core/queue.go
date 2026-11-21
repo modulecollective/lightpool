@@ -26,11 +26,16 @@ func (c *Core) finishBroadcast(b *broadcast, f Failure) {
 	}
 }
 
-func (c *Core) queue(m wire.Message, name string, command uint64) {
+func (c *Core) invalidateBroadcast(name string) {
 	if old := c.broadcastKeys[name]; old != nil {
 		c.finishBroadcast(old, Success)
 		c.broadcasts = slices.DeleteFunc(c.broadcasts, func(b *broadcast) bool { return b == old })
+		delete(c.broadcastKeys, name)
 	}
+}
+
+func (c *Core) queue(m wire.Message, name string, command uint64) {
+	c.invalidateBroadcast(name)
 	if command != 0 && !c.hasPeers() {
 		c.emit(Result{Command: command})
 		command = 0

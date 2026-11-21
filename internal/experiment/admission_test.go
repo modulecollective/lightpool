@@ -290,3 +290,48 @@ func TestHealthyPairLabelsForNewEmptyOutcomeCases(t *testing.T) {
 		}
 	}
 }
+
+func TestAdmissionExchangeOrigin(t *testing.T) {
+	b := admissionPositive(t)
+	mutateChanges(b, func(c *trace.Change) {
+		if c.Node == "n002" && c.Outcome == "started:n000" {
+			c.Outcome = "started:"
+		}
+	})
+	// Insert first attribution before the real second-origin shortening.
+	idx := slices.IndexFunc(b.events, func(e trace.Event) bool { return e.Time == "30" })
+	b.events = slices.Insert(b.events, idx, trace.Event{Type: "event", Time: "25", Lifetime: "1", Kind: "core.datagram", Changes: []trace.Change{admissionSuspicion("n002", "confirmation:n000"), admissionTimer("cancel", "21", "90"), admissionTimer("arm", "23", "90")}, Traffic: []trace.Traffic{}})
+	for i := range b.events {
+		if b.events[i].Time == "30" {
+			b.events[i].Changes[1] = admissionTimer("cancel", "23", "90")
+		}
+	}
+	resequence(b)
+	summary := b.measure(t, true)
+	found := false
+	for _, m := range summary.Mechanisms {
+		if m.Observer == "n002" {
+			found = true
+			if m.Origin.Fact.Outcome != "started:" || len(m.Confirmations) != 2 {
+				t.Fatal("measurement lost unknown-origin episode", m)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("measurement dropped exchange-only episode")
+	}
+	out := classifyEvidence(t, b, true)
+	ep := observerEpisode(t, out)
+	if out.EligibleEpisodes != 1 || out.Witnesses != 0 || ep.Acceleration || ep.Origin.Sender != "" || ep.Origin.Lifetime != "" || ep.Origin.Probe != nil || len(ep.Shortenings) != 2 {
+		t.Fatalf("exchange origin admitted or dropped: %+v", ep)
+	}
+	if ep.Shortenings[0].Previous.Fact.Deadline != ep.Shortenings[0].Arm.Fact.Deadline || ep.Shortenings[0].Qualifies || ep.Shortenings[1].Qualifies {
+		t.Fatal("unknown initiating origin recovered provenance", ep.Shortenings)
+	}
+	// The sender lookup itself must not create a participant for the empty name.
+	scan := &admissionScan{nodes: map[string]*admissionNode{}}
+	scan.sender(OrderedEvidence{Fact: trace.Change{Outcome: "started:"}})
+	if len(scan.nodes) != 0 {
+		t.Fatal("empty sender created a participant")
+	}
+}

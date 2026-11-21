@@ -364,6 +364,9 @@ func targetRefutations(t *ordinaryNodeView) []ordinaryFact {
 // A later matching suspicion cannot provide provenance for an earlier receipt.
 func origin(nodes map[string]*ordinaryNodeView, t *ordinaryNodeView, sender string, incarnation uint64, receipt OrdinaryRef) (OrdinaryOrigin, []string, []string, error) {
 	o := OrdinaryOrigin{Sender: sender, Order: "missing"}
+	if sender == "" {
+		return o, []string{"exchange supplied no accusation origin or failed-probe provenance"}, nil, nil
+	}
 	a := nodes[sender]
 	if a == nil {
 		return o, nil, nil, fmt.Errorf("sender %s has no journal", sender)
