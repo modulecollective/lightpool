@@ -42,9 +42,8 @@ termination/restart/leave interrupts it explicitly; stopped/left observers
 cannot keep an active observation. A declaration about an already stopped/left
 target core records a target_inactive recovery row, despite its process flag.
 Explicit join actions involving the target during the episode are listed
-without assigning causality. Older v1
-traces lacking the optional action peer carry a coverage notice; no peer is
-inferred from scenario timing.
+without assigning causality. Traces lacking the optional action peer carry a
+coverage notice; no peer is inferred from scenario timing.
 
 Ordering is exact `(time, sequence)` with recorded change order inside an
 event. Completed horizon-limited traces observe through the configured

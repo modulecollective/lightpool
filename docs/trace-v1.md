@@ -13,7 +13,7 @@ subtracting an exact origin. Arrays preserve producer order.
   per-node seeds and prepared faults), `nodes` (name, address), `initial`
   (per-node process state; running false, lifetime "0", empty membership).
 * `event`: `seq` (consecutive from "1"), `time`, `id` (scheduler event ID),
-  `peer` (optional action peer, added for join evidence),
+  `peer` (optional action peer),
   `kind` (action.*, core.*, datagram, chunk, drain, connect and transport
   expiry kinds), `actor` (optional for transport-only events), `lifetime`,
   `changes`, `traffic`. All arrays are present, even when empty. All changes
@@ -24,9 +24,7 @@ subtracting an exact origin. Arrays preserve producer order.
 Change `kind` is member.upsert, member.remove, process, summary, probe,
 suspicion, refutation or timer. `node` is the observer/actor; `subject` is
 optional. member.upsert carries `member` (name, address, incarnation, state,
-optional base64 metadata); state is alive/suspect/dead/left. Older
-producers also wrote an `application` string and the `user` message kind;
-readers still accept both.
+optional base64 metadata); state is alive/suspect/dead/left.
 member.remove carries subject. Absence means unknown. `process` carries
 `process` (node, lifetime, running, pausedUntil); a process change phase is start, pause or crash; start/restart clears that
 observer's members, probes and timers. `summary` carries health, backlog,

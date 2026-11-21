@@ -9,10 +9,9 @@ derived from HashiCorp memberlist (MPL-2.0). One serial protocol core runs
 under an ordinary UDP/TCP driver or a deterministic message simulator.
 Production code, simulation, reporting and tests use only the Go standard library.
 
-This is a new Lightpool baseline. Its API, framing costs and event ordering
-semantics differ from memberlist. The comparison reference is fork commit
-`bbb14559d09f347c2563d3a3885e05df8fd36fa4`; mixed-version interoperability
-and the old `memberlist` package are removed.
+Lightpool's API, framing costs and event ordering semantics differ from
+memberlist. The comparison reference is fork commit
+`bbb14559d09f347c2563d3a3885e05df8fd36fa4`.
 
 ## Ordinary execution
 
@@ -94,8 +93,8 @@ exhaustion writes an incomplete end and exits with an error. An I/O failure
 leaves an inspectable prefix and stops execution.
 
 `sim.Export(scenario, writer, options)` uses the same event loop as
-`sim.Run`, without retaining the legacy trace or final membership matrix.
-The caller owns and closes the writer; errors propagate. The opt-in
+`sim.Run`, without retaining the in-memory semantic trace or final membership
+matrix. The caller owns and closes the writer; errors propagate. The opt-in
 `(*core.Core).EnableInspection` journal records authoritative membership changes,
 probe facts and timer lifecycle separately from protocol effects.
 See the [trace format](docs/trace-v1.md) and [report definitions](docs/report-v1.md).
@@ -107,7 +106,7 @@ new directory. See the [pilot contract](docs/experiment-v1.md) for implemented
 cases, exact populations, independent datagram loss and the opt-in Linux process
 probe. Resource limits and invalid warm-up remain explicit failed results.
 
-## Frame contract (wire version 2)
+## Frame contract
 
 One envelope carries one bounded binary message batch. UDP requires exactly
 one envelope; stream readers consume a header followed by its declared body.
@@ -116,7 +115,7 @@ All fixed-width integers use network byte order.
 | Offset | Size | Meaning |
 | --- | --- | --- |
 | 0 | 4 | ASCII `LPL!` |
-| 4 | 1 | Version `2`; version 1 (JSON bodies) is rejected |
+| 4 | 1 | Version: must be `2` |
 | 5 | 1 | Flags: bit 1 AES-GCM; other bits rejected |
 | 6 | 2 | Label byte length, at most 64 |
 | 8 | 4 | Protected body length, at most 8 MiB + 28 |

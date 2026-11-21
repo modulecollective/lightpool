@@ -1,12 +1,12 @@
 # Fixed Lightpool baseline pilot v1
 
-The baseline with the exchange-attribution fix treats suspect/dead exchange
-entries as unattributed suspicion. Exchange alone cannot confirm an existing
-timer or gossip a new accusation; the first known origin seeds attribution
-without shortening. Finite expiry, direct buddy notification and ordinary
-distinct-origin shortening remain. This deliberately changes the inherited
-merge behavior. Historical records below retain their pinned protocol and
-tools; their results are not measurements of this corrected baseline.
+Lightpool treats suspect/dead exchange entries as unattributed suspicion.
+Exchange alone cannot confirm an existing timer or gossip a new accusation;
+the first known origin seeds attribution without shortening. Finite expiry,
+direct buddy notification and ordinary distinct-origin shortening remain.
+This deliberately changes the inherited merge behavior. Each experiment record
+measures its pinned protocol and tools; results from different baselines are
+not interchangeable.
 
 `lightpool-experiment` records one fixed case and paired replicate at a time.
 These are workload and measurement analogues on current Lightpool, not

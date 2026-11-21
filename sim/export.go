@@ -30,7 +30,7 @@ type exporter struct {
 }
 
 // Export runs the same event loop as Run, writing incrementally without retaining
-// the legacy semantic trace or final membership snapshots. The caller owns w.
+// the in-memory semantic trace or final membership snapshots. The caller owns w.
 func Export(s Scenario, w io.Writer, options ExportOptions) (Result, error) {
 	x := &exporter{writer: trace.NewWriter(w), options: options, last: time.Now()}
 	result, err := execute(s, x)

@@ -10,8 +10,8 @@ but does not authenticate senders.
 The primary key encrypts. All installed keys can decrypt. Rotate by adding
 the new key everywhere (`Add`), selecting it (`Use`), then removing the old
 key everywhere (`Remove`). The primary key cannot be removed. Key buffers
-are copied at the API boundary. Encryption cannot be disabled through a
-migration flag; encrypted nodes reject plaintext.
+are copied at the API boundary. A configured keyring requires encrypted
+input and output.
 
 `Protocol.Label` is public but authenticated by AES-GCM. A different label
 is rejected. Headers, lengths and flags are also authenticated. Nonces come
