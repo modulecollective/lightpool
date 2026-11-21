@@ -359,8 +359,9 @@ func targetRefutations(t *ordinaryNodeView) []ordinaryFact {
 	return out
 }
 
-// origin finds the sender's first local suspicion of the same target lifetime
-// and incarnation, preceded in its step by that sender's own failed probe.
+// origin finds the sender's first self-attributed suspicion start or confirmation
+// of the same target lifetime and incarnation, preceded in its step by its own
+// failed probe. Confirmations reuse membership recorded in earlier steps.
 // A later matching suspicion cannot provide provenance for an earlier receipt.
 func origin(nodes map[string]*ordinaryNodeView, t *ordinaryNodeView, sender string, incarnation uint64, receipt OrdinaryRef) (OrdinaryOrigin, []string, []string, error) {
 	o := OrdinaryOrigin{Sender: sender, Order: "missing"}
@@ -374,9 +375,9 @@ func origin(nodes map[string]*ordinaryNodeView, t *ordinaryNodeView, sender stri
 	if a.Role != "A" {
 		return o, []string{"sender " + sender + " outside A"}, nil, nil
 	}
+	var upsert *wire.Member
 	for si := range a.Steps {
 		s := &a.Steps[si]
-		var upsert *wire.Member
 		failed := false
 		for i, j := range s.Journal {
 			switch {
@@ -385,7 +386,9 @@ func origin(nodes map[string]*ordinaryNodeView, t *ordinaryNodeView, sender stri
 			case j.Kind == "member.upsert" && j.Member != nil && j.Member.Name == t.Name:
 				m := *j.Member
 				upsert = &m
-			case j.Kind == "suspicion" && j.Subject == t.Name && j.Outcome == "started:"+sender:
+			case j.Kind == "member.remove" && j.Subject == t.Name:
+				upsert = nil
+			case j.Kind == "suspicion" && j.Subject == t.Name && (j.Outcome == "started:"+sender || j.Outcome == "confirmation:"+sender):
 				if !failed || upsert == nil || upsert.State != wire.Suspect || upsert.Incarnation != incarnation || upsert.Address != t.Address {
 					continue
 				}

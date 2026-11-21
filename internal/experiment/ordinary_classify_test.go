@@ -141,6 +141,161 @@ func TestOrdinaryClassifierPositive(t *testing.T) {
 	}
 }
 
+// The core does not upsert membership when a failed probe confirms an existing
+// suspicion. An exchange-only suspicion also keeps its deadline unchanged when
+// the first named origin arrives.
+func ordSelfConfirmation(f *ordFixture, sender, priorOrigin string, failure core.Failure) {
+	n := f.nodes[sender]
+	at := n.at[0]
+	n.steps[0] = []core.Inspection{ordMember(24, 1, wire.Suspect), ordSuspicion("started:" + priorOrigin), ordArm(1, 99*sec)}
+	n.at[0] = at - sec
+	deadline := 90 * sec
+	if priorOrigin == "" {
+		deadline = 99 * sec
+	}
+	f.step(sender, at,
+		core.Inspection{Kind: "probe", Subject: "t", Phase: "finished", Outcome: failure.String()},
+		ordSuspicion("confirmation:"+sender), ordTimer("cancel", 1, 99*sec), ordArm(2, deadline))
+}
+
+func TestOrdinaryClassifierSelfConfirmation(t *testing.T) {
+	for _, sender := range []string{"a1", "a2"} {
+		for _, failure := range []core.Failure{core.Timeout, core.RemoteFailure} {
+			for _, priorOrigin := range []string{"x", ""} {
+				t.Run(sender+"/"+failure.String()+"/prior="+priorOrigin, func(t *testing.T) {
+					f := ordPositive()
+					ordSelfConfirmation(f, sender, priorOrigin, failure)
+					out, err := ClassifyOrdinary(f.input())
+					if err != nil {
+						t.Fatal(err)
+					}
+					if out.Accelerations != 1 || out.Harmful != 0 || out.Inconclusive != 0 || len(out.Episodes) != 1 {
+						t.Fatalf("counts: %+v", out)
+					}
+					ep := out.Episodes[0]
+					sh := ep.Shortenings[0]
+					if ep.Status != "acceleration" || sh.Status != "qualifying" || ep.TargetLifetime != 1003 || *sh.PreviousDeadlineNS != 30*sec || *sh.DeadlineNS != 27*sec {
+						t.Fatalf("episode: %+v shortening: %+v", ep, sh)
+					}
+					got := ep.Origin
+					if sender == "a2" {
+						got = sh.Origin
+					}
+					at := f.nodes[sender].at[1]
+					want := OrdinaryRef{Node: sender, Step: 3, Inspection: 1, FileSHA256: "sha-" + sender, Coordinator: ordinary.Interval{LoNS: at, HiNS: at + width + rtt}}
+					if got.Sender != sender || got.Order != "before" || got.Fact == nil || *got.Fact != want {
+						t.Fatalf("origin: %+v, want fact: %+v", got, want)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestOrdinaryClassifierSelfConfirmationRejections(t *testing.T) {
+	for name, mutate := range map[string]func(*ordFixtureNode){
+		"missing probe":    func(n *ordFixtureNode) { n.steps[1] = n.steps[1][1:] },
+		"successful probe": func(n *ordFixtureNode) { n.steps[1][0].Outcome = core.Success.String() },
+		"unfinished probe": func(n *ordFixtureNode) { n.steps[1][0].Phase = "started" },
+		"prior step failure": func(n *ordFixtureNode) {
+			n.steps[0] = append(n.steps[0], n.steps[1][0])
+			n.steps[1] = n.steps[1][1:]
+		},
+		"later failure":        func(n *ordFixtureNode) { n.steps[1][0], n.steps[1][1] = n.steps[1][1], n.steps[1][0] },
+		"other target failure": func(n *ordFixtureNode) { n.steps[1][0].Subject = "x" },
+		"other origin":         func(n *ordFixtureNode) { n.steps[1][1].Outcome = "confirmation:x" },
+		"origin suffix":        func(n *ordFixtureNode) { n.steps[1][1].Outcome = "confirmation:a2-extra" },
+		"unknown origin":       func(n *ordFixtureNode) { n.steps[1][1].Outcome = "confirmation:" },
+		"unknown member":       func(n *ordFixtureNode) { n.steps[0] = n.steps[0][1:] },
+		"wrong incarnation":    func(n *ordFixtureNode) { n.steps[0][0] = ordMember(24, 0, wire.Suspect) },
+		"wrong address":        func(n *ordFixtureNode) { n.steps[0][0] = ordMember(99, 1, wire.Suspect) },
+		"latest incarnation":   func(n *ordFixtureNode) { n.steps[0] = append(n.steps[0], ordMember(24, 2, wire.Suspect)) },
+		"latest address":       func(n *ordFixtureNode) { n.steps[0] = append(n.steps[0], ordMember(99, 1, wire.Suspect)) },
+		"latest alive":         func(n *ordFixtureNode) { n.steps[0] = append(n.steps[0], ordMember(24, 1, wire.Alive)) },
+		"latest dead":          func(n *ordFixtureNode) { n.steps[0] = append(n.steps[0], ordMember(24, 1, wire.Dead)) },
+		"latest left":          func(n *ordFixtureNode) { n.steps[0] = append(n.steps[0], ordMember(24, 1, wire.Left)) },
+		"removed member": func(n *ordFixtureNode) {
+			n.steps[0] = append(n.steps[0], core.Inspection{Kind: "member.remove", Subject: "t"})
+		},
+		"later matching upsert": func(n *ordFixtureNode) {
+			n.steps[0][0] = ordMember(99, 1, wire.Suspect)
+			n.steps[1] = append(n.steps[1], ordMember(24, 1, wire.Suspect))
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := ordPositive()
+			ordSelfConfirmation(f, "a2", "x", core.Timeout)
+			mutate(f.nodes["a2"])
+			out, err := ClassifyOrdinary(f.input())
+			if err != nil {
+				t.Fatal(err)
+			}
+			ep := out.Episodes[0]
+			sh := ep.Shortenings[0]
+			if out.Accelerations != 0 || out.Harmful != 0 || out.Inconclusive != 0 || ep.Status != "no-acceleration" || sh.Status != "rejected" || sh.Origin.Fact != nil || !slices.Contains(sh.Reasons, "sender a2 lacks a same-incarnation failed-probe origin") {
+				t.Fatalf("counts: %+v, shortening: %+v", out, sh)
+			}
+		})
+	}
+}
+
+func TestOrdinaryClassifierSelfConfirmationOrder(t *testing.T) {
+	for _, sender := range []string{"a1", "a2"} {
+		for _, overlap := range []bool{false, true} {
+			name := "late"
+			if overlap {
+				name = "overlap"
+			}
+			t.Run(sender+"/"+name, func(t *testing.T) {
+				f := ordPositive()
+				ordSelfConfirmation(f, sender, "x", core.Timeout)
+				receipt := f.nodes["o"].at[0]
+				if sender == "a2" {
+					receipt = f.nodes["o"].at[1]
+				}
+				f.nodes[sender].at[1] = receipt + sec/2
+				status, reason := "no-acceleration", "sender "+sender+" origin does not precede receipt"
+				if overlap {
+					f.nodes[sender].at[1] = receipt + width + rtt
+					status, reason = "inconclusive", "sender "+sender+" origin overlaps receipt"
+				}
+				out, err := ClassifyOrdinary(f.input())
+				if err != nil {
+					t.Fatal(err)
+				}
+				ep := out.Episodes[0]
+				sh := ep.Shortenings[0]
+				reasons := sh.Reasons
+				if overlap {
+					reasons = sh.Ambiguities
+				}
+				wantInconclusive := 0
+				if overlap {
+					wantInconclusive = 1
+				}
+				if ep.Status != status || out.Accelerations != 0 || out.Harmful != 0 || out.Inconclusive != wantInconclusive || !slices.Contains(reasons, reason) {
+					t.Fatalf("counts: %+v, shortening: %+v", out, sh)
+				}
+			})
+		}
+	}
+}
+
+func TestOrdinaryClassifierSelfConfirmationStillRequiresShortening(t *testing.T) {
+	f := ordPositive()
+	ordSelfConfirmation(f, "a2", "", core.Timeout)
+	f.nodes["o"].steps[1][2] = ordArm(6, 30*sec)
+	out, err := ClassifyOrdinary(f.input())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ep := out.Episodes[0]
+	sh := ep.Shortenings[0]
+	if out.Accelerations != 0 || out.Harmful != 0 || out.Inconclusive != 0 || ep.Status != "no-acceleration" || sh.Status != "rejected" || sh.Origin.Fact == nil || sh.Origin.Order != "before" || !slices.Contains(sh.Reasons, "deadline did not strictly shorten") {
+		t.Fatalf("counts: %+v, shortening: %+v", out, sh)
+	}
+}
+
 func slicesEqualShared(a, b []SharedOrigin) bool {
 	return slices.EqualFunc(a, b, func(x, y SharedOrigin) bool {
 		return x.Target == y.Target && x.Incarnation == y.Incarnation && slices.Equal(x.Senders, y.Senders) && slices.Equal(x.Observers, y.Observers)
