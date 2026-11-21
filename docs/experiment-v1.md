@@ -38,7 +38,7 @@ using the packaging workflow below.
 
 ## Cases and boundaries
 
-The six cases use 32 nodes, default `core.Config`, 1 ms one-way latency,
+The basic cases use 32 nodes, default `core.Config`, 1 ms one-way latency,
 zero node service duration and 1 MiB datagram/stream capacities. TCP probing
 and periodic push/pull remain enabled. Nodes join node 0 at 10 ms spacing;
 identities are fixed and encryption is disabled.
@@ -55,6 +55,8 @@ repaired by changing the measurement window or selecting another replicate.
 | `interval` | Pause the same four nodes for 2.048 seconds, run for 1.024 seconds, repeat through the horizon. |
 | `loss` | 100,000 PPM independent datagram loss on all directed pairs through the horizon. Streams retain their message model. |
 | `correlated` | For 16.384 seconds, drop datagrams and fail streams from four fixed impaired nodes A to a healthy target T. All other paths stay healthy. |
+| `partial-partition` | The same four A and target T as `correlated`, with both A→T and T→A blocked for 16.384 seconds. All processes keep running and all other links stay healthy. |
+| `partial-partition-healthy` | No faults; retains the paired A/T grouping and the same 27 O→T healthy pairs. |
 
 `threshold-128` changes size to 128 and anomaly count to 16. The companions
 `ordinary-healthy`, `ordinary-pause`, and `ordinary-crash` use eight nodes and
@@ -73,6 +75,36 @@ output. A partial final line is permitted by the existing reader. A failure
 before a complete header is a recording failure with no reducible trace.
 The runner never fabricates a successful end record. `-reduce` also exits
 nonzero for incomplete or invalid evidence, retaining its new summary file.
+
+The partial-partition cases select A at fault ranks 0–3 and T at rank 4;
+the other 27 nodes are O. Eight directed faults, in sorted A order with
+A→T then T→A, drop datagrams and fail streams over [15 s,31.384 s).
+A↔O, O↔T, A↔A and O↔O remain healthy. Indirect probes through O remain
+enabled. Datagram faults apply at send time, so traffic admitted before
+the cut can arrive during it. Streams check faults at open, progress and
+arrival. Healing permits new traffic but does not restore closed streams
+or guarantee membership recovery.
+
+Only the 27 predeclared O→T pairs enter `healthy-pair-exclusions` in these
+two cases: 2,835 pair-seconds over [15 s,120 s] per complete run, regardless
+of membership beliefs. `running-target-exclusions` retains all 992 ordered
+pairs (104,160 pair-seconds), including partition exclusions on A↔T.
+Neither case has pause `FP-analogue` labels. Zero exclusions are valid;
+invalid warm-up and unresolved recovery remain explicit. These virtual
+fixtures do not qualify for the fixed correlated `-admission` screen.
+
+```sh
+./lightpool-experiment -case partial-partition -replicate 1 -out partial-r1
+./lightpool-experiment -reduce partial-r1 -out partial-r1-reduced.json
+cmp partial-r1/summary.json partial-r1-reduced.json
+./lightpool-experiment -case partial-partition-healthy -replicate 1 -out partial-healthy-r1
+experiments/2026-11-21-partial-partition/run.sh new-partial-baseline
+```
+
+The baseline record contains both cases at paired indices 1, 2 and 3, with
+original evidence and separate host resources. Its recipe rebuilds the
+pinned source and checks deterministic rows; it makes no candidate or
+ordinary-networking claim.
 
 ## Protocol overlay
 

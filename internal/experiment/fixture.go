@@ -57,6 +57,8 @@ func Fixture(name string, replicate uint64, code string) (Spec, sim.Scenario, er
 	n, count, shape := 32, 4, name
 	switch name {
 	case "healthy", "crash", "threshold", "interval", "loss", "correlated":
+	case "partial-partition", "partial-partition-healthy":
+		shape = "correlated"
 	case "correlated-dense", "correlated-dense-healthy", "correlated-dense-latency-100us", "correlated-dense-latency-10ms", "correlated-dense-service-100us", "correlated-dense-service-1ms", "correlated-dense-buffer-64k", "correlated-dense-buffer-16m":
 		count, shape = 24, "correlated"
 	case "threshold-128":
@@ -142,10 +144,13 @@ func Fixture(name string, replicate uint64, code string) (Spec, sim.Scenario, er
 		if shape == "correlated" {
 			spec.Target = ranked[4].Identity.Name
 			for _, a := range spec.Anomaly {
-				if name == "correlated-dense-healthy" {
+				if name == "correlated-dense-healthy" || name == "partial-partition-healthy" {
 					continue
 				}
 				s.Faults = append(s.Faults, sim.Fault{From: a, To: spec.Target, Start: start, End: start.Add(16384 * time.Millisecond), Drop: true, StreamFailure: true})
+				if name == "partial-partition" {
+					s.Faults = append(s.Faults, sim.Fault{From: spec.Target, To: a, Start: start, End: start.Add(16384 * time.Millisecond), Drop: true, StreamFailure: true})
+				}
 			}
 			for _, o := range s.Nodes {
 				if o.Identity.Name != spec.Target && !slices.Contains(spec.Anomaly, o.Identity.Name) {

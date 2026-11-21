@@ -165,7 +165,7 @@ func TestRecordingPropagatesWriteAndCloseFailures(t *testing.T) {
 }
 
 func TestFixtureShapesAndSeedNamespaces(t *testing.T) {
-	for _, name := range []string{"healthy", "crash", "threshold", "interval", "loss", "correlated", "threshold-128", "ordinary-healthy", "ordinary-pause", "ordinary-crash"} {
+	for _, name := range []string{"healthy", "crash", "threshold", "interval", "loss", "correlated", "partial-partition", "partial-partition-healthy", "threshold-128", "ordinary-healthy", "ordinary-pause", "ordinary-crash"} {
 		spec, s, err := Fixture(name, 1, "source")
 		if err != nil {
 			t.Fatal(name, err)

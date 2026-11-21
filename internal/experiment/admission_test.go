@@ -272,7 +272,7 @@ func TestAdmissionInvalidWarmupCannotQualify(t *testing.T) {
 }
 
 func TestHealthyPairLabelsForNewEmptyOutcomeCases(t *testing.T) {
-	for _, name := range []string{"correlated-dense", "correlated-dense-healthy", "correlated-dense-service-1ms"} {
+	for _, name := range []string{"correlated-dense", "correlated-dense-healthy", "correlated-dense-service-1ms", "partial-partition", "partial-partition-healthy"} {
 		b := newEvidence(t)
 		b.spec.Case = name
 		b.spec.Target = "n003"
