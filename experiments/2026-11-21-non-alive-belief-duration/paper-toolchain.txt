@@ -1,0 +1,11 @@
+Renderer: Tectonic 0.15.0, Linux x86_64 musl release
+Archive: tectonic-0.15.0-x86_64-unknown-linux-musl.tar.gz
+SHA256: dfb82876f2986862996e564fa507a9e576e0c1e3bee63c2c1bd677c2543e6407
+TeX bundle: https://data1b.fullyjustified.net/tlextras-2022.0r0.tar
+Bundle identity (SHA256SUM member): 6ffe055852f8faf66c0acbe1a7fb27f87b869a90bad1204f3bf4d9683f597c7c
+SOURCE_DATE_EPOCH=1795305600
+Render: experiments/2026-11-21-non-alive-belief-duration/render.sh NEW_DIRECTORY
+Table input: cells.tsv; table.sh regenerates paper-table.tex (exact integer nanoseconds).
+Visual inspection: MuPDF.js 1.26.4, Node.js, page rasters at 1.5x scale.
+MuPDF archive SHA256: ab1c2b9fad116f917d88cc3d5f6433eaf4c8d3a98591fa8d04683777c8ba4c40
+v26.13.0

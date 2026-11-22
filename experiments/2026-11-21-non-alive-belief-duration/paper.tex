@@ -1,0 +1,127 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.7in]{geometry}
+\usepackage{booktabs}
+\usepackage{url}
+\title{Time without an accepted alive state:\\a bounded offline Lightpool remeasurement}
+\author{Codex (AI-assisted draft)}
+\date{22 November 2026 --- unreviewed; not approved for publication}
+\begin{document}
+\maketitle
+\begin{abstract}
+Dead-declaration recovery omits suspicions that resolve before death. We add
+lifetime-bound accounting of time without an accepted alive membership state,
+then remeasure a frozen set of 24 saved virtual attempts without executing the
+protocol. The two source baselines remain separate. The six attempts containing
+the exchange-origin correction are null; the older dense workload has
+suspect-only burden. These measurements establish an outcome capability and
+bounded descriptive observations, not candidate benefit or ordinary-network
+fidelity.
+\end{abstract}
+
+\section{Question and outcome}
+How much time do fixed healthy observer--target pairs spend without an accepted
+alive state in the retained baselines? SWIM distinguishes suspicion from final
+failure dissemination~\cite{swim}; Lifeguard changes suspicion and refutation
+timing~\cite{lifeguard}. These motivate observing the interval before a dead
+declaration, but neither paper supplies the outcome contract used here.
+We make no historical numerical replication or novelty claim.
+
+An episode starts at the first departure from alive, continuing across suspect,
+dead, left and absent membership states until accepted alive in the same two
+process lifetimes. Removal means absence, not recovery. We retain those four
+components separately; time without alive is their sum. It is an operational
+membership outcome, not an exact duration of detector mistakes. Packet receipt,
+incarnation changes and confirmations do not constitute recovery or restart an
+episode. The primary descriptive quantity is healthy-pair time without alive
+divided by eligible pair-time, with completion and censor counts alongside it.
+
+\section{Frozen evidence and method}
+\texttt{inputs.json} fixes exactly six attempts from the partial-partition record
+(two cases, indices 1--3) and 18 virtual companions from the ordinary-witness
+record (six cases, indices 1--3). It retains original identities, toolchains,
+statuses, exits and all raw payload hashes. No ordinary process, simulation,
+seed expansion or replacement attempt runs. The evidence snapshot is pinned by
+\texttt{evidence-base}; the measurement implementation is pinned by
+\texttt{reducer-base} (\texttt{5dbbca8}), built with Go 1.26.3. Original specs
+continue to identify their original producer, not the new reducer.
+
+The partial-partition producer is \texttt{54ddfd4}, including the exchange-origin
+correction. Its four A nodes and target T lose both directions for 16.384 s;
+27 O-to-T pairs are predeclared healthy. The older producer/tool is
+\texttt{62c746a}; its core/wire match \texttt{4b45bcd}, before the correction.
+It has 24 A nodes with A-to-T impairment and seven healthy O-to-T pairs. Dense
+sensitivity cases vary only the named latency or modeled service duration.
+The corresponding healthy controls preserve their respective pair sets.
+
+At W=15 s, immediately before boundary events, all-members-alive warm-up fixes
+process lifetimes. Elapsed time covers [15 s,120 s); events at both endpoints
+are processed in sequence/change order. Eligible exposure includes pauses and
+all beliefs, ending permanently at endpoint crash, restart, shutdown or leave.
+Healthy pairs must have no configured direct impairment in either direction or
+an overlapping endpoint pause. Pre-window non-alive beliefs invalidate warm-up;
+carry-in diagnostic time is clipped and excluded from duration quantiles.
+Incomplete prefixes end at their last valid event and remain incomplete.
+
+The reducer streams the trace without invoking protocol code. State-time and
+segment conservation, zero-time episodes, removal, carry-in, lifetime ordering,
+population selection and censoring have independent synthetic regression tests.
+Two separate scratch mutations (admit every healthy pair; reset onset on a
+confirmation) each fail its intended test. The recipe validates saved reports,
+compares all old summary fields after normalizing only the output format,
+checks raw inputs before and after reduction, and reproduces all retained
+outputs from the committed record. Summary v2 adds the duration family while
+saved input v1 and trace v1 remain unchanged.
+
+\section{Results}
+\input{paper-table.tex}
+All 24 original attempts are complete and valid; there are no exclusions,
+carry-ins, lifecycle interruptions or censored healthy-pair episodes. Every
+healthy non-alive interval is suspect-only: dead, left and absent components
+are each zero in every attempt. The six corrected partial-partition attempts
+have zero burden over 2,835 healthy pair-seconds each. The three older healthy
+controls also have zero burden over 735 pair-seconds each. Empty duration samples
+remain null rather than zero-duration recoveries. Positive older dense cells
+have no healthy dead declarations, so dead-only recovery omits their entire
+healthy non-alive burden. Table~1 preserves per-attempt denominators and
+conditional duration summaries; full p50/p95/max, every pair and ordered
+segments are retained in the derived JSON and \texttt{cells.tsv}.
+
+\section{Costs, limitations and reproduction}
+This is an offline outcome remeasurement on two distinct virtual baselines.
+Older dense positives cannot establish headroom on the corrected baseline;
+the corrected null does not authorize a larger search. Three indices per case
+support no inferential or tail claim. Observer pairs share protocol histories
+and are not independent samples. No survival estimator is fitted. Quantiles
+condition on completion and are not censor-adjusted estimates. The modeled
+network/service assumptions and the ordinary/virtual mechanism mismatch remain
+unresolved; this work neither calibrates ordinary execution nor admits a
+candidate campaign.
+
+The record stores losslessly compressed derived JSON, deterministic logs,
+checksums, table inputs and this unreviewed paper; original raw evidence is
+referenced rather than duplicated. No new resource study was performed.
+Runtime and storage for offline reduction are implementation costs, not protocol
+traffic or benefit measurements. The implementation keeps per-pair state and
+output episodes/segments, never the whole trace.
+
+From a checkout containing the record, run
+\path{experiments/2026-11-21-non-alive-belief-duration/run.sh}
+with a new output directory.
+It restores originals with the pinned evidence utility, reduces one at a time,
+inventories all attempts even after a reduction failure, and returns nonzero
+for unexpected failures or reproduction differences. \texttt{render.sh NEW\_DIRECTORY}
+downloads a checksum-pinned Tectonic 0.15.0 and verifies its fixed TeX bundle
+identity before rendering. The rendering toolchain and exact commands are
+recorded in \texttt{paper-toolchain.txt}. The operator owns final wording and
+any external release.
+
+\begin{thebibliography}{2}
+\bibitem{swim} A. Das, I. Gupta, and A. Motivala.
+SWIM: Scalable Weakly-consistent Infection-style Process Group Membership
+Protocol. DSN, 2002.
+\url{https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf}.
+\bibitem{lifeguard} A. Dadgar, J. Phillips, and J. Currey.
+Lifeguard: Local Health Awareness for More Accurate Failure Detection.
+arXiv:1707.00788v2, 2018. \url{https://arxiv.org/abs/1707.00788v2}.
+\end{thebibliography}
+\end{document}

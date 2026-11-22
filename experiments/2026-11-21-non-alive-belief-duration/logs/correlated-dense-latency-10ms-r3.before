@@ -1,0 +1,12 @@
+binary.sha256: OK
+exit.txt: OK
+host.txt: OK
+report.json: OK
+resources.json: OK
+scenario.json: OK
+spec.json: OK
+status.json: OK
+stderr.txt: OK
+stdout.txt: OK
+summary.json: OK
+trace.ndjson: OK

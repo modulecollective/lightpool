@@ -1,0 +1,31 @@
+\begin{table}[ht]\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llrrrrr}\toprule
+Case & Index & Pair-s & Without alive (ns) & Completed & p95 (ns) & Max (ns) \\ \midrule
+PP (new) & 1 & 2835 & 0 & 0 & -- & -- \\
+PP (new) & 2 & 2835 & 0 & 0 & -- & -- \\
+PP (new) & 3 & 2835 & 0 & 0 & -- & -- \\
+PP healthy (new) & 1 & 2835 & 0 & 0 & -- & -- \\
+PP healthy (new) & 2 & 2835 & 0 & 0 & -- & -- \\
+PP healthy (new) & 3 & 2835 & 0 & 0 & -- & -- \\
+Dense (old) & 1 & 735 & 12893499711 & 28 & 655637735 & 667846924 \\
+Dense (old) & 2 & 735 & 6583778400 & 27 & 410940862 & 544555961 \\
+Dense (old) & 3 & 735 & 9149864678 & 21 & 930121281 & 972587432 \\
+Dense healthy (old) & 1 & 735 & 0 & 0 & -- & -- \\
+Dense healthy (old) & 2 & 735 & 0 & 0 & -- & -- \\
+Dense healthy (old) & 3 & 735 & 0 & 0 & -- & -- \\
+Latency 100us (old) & 1 & 735 & 8759888660 & 28 & 555657762 & 637226129 \\
+Latency 100us (old) & 2 & 735 & 7402252627 & 28 & 483877971 & 539858255 \\
+Latency 100us (old) & 3 & 735 & 9148964678 & 21 & 930121281 & 972587432 \\
+Latency 10ms (old) & 1 & 735 & 11309396624 & 28 & 703889275 & 719332316 \\
+Latency 10ms (old) & 2 & 735 & 28507056002 & 13 & 4099736802 & 4099736802 \\
+Latency 10ms (old) & 3 & 735 & 9123456976 & 21 & 676248645 & 716740375 \\
+Service 100us (old) & 1 & 735 & 12764280877 & 28 & 655537735 & 667546924 \\
+Service 100us (old) & 2 & 735 & 7769384511 & 25 & 520692714 & 527196228 \\
+Service 100us (old) & 3 & 735 & 14521135751 & 27 & 1087191724 & 1100279989 \\
+Service 1ms (old) & 1 & 735 & 10575901343 & 26 & 653648927 & 716999110 \\
+Service 1ms (old) & 2 & 735 & 7809163172 & 32 & 400000000 & 496309350 \\
+Service 1ms (old) & 3 & 735 & 14523496119 & 28 & 761538564 & 796635571 \\
+\bottomrule\end{tabular}
+\caption{Fixed healthy-pair outcomes, kept separate by source baseline and case. All without-alive time is suspect time. All censor counts are zero; -- denotes an empty completion sample, not a zero quantile.}
+\end{table}

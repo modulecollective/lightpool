@@ -1,0 +1,9 @@
+command.stderr: OK
+command.stdout: OK
+report.json: OK
+resources.json: OK
+scenario.json: OK
+spec.json: OK
+status.json: OK
+summary.json: OK
+trace.ndjson: OK
