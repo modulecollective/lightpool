@@ -127,7 +127,7 @@ fixed fixture.
 
 ## Measurement semantics
 
-`summary.json` uses `lightpool-pilot/v1`; integer counters, times, lifetimes,
+`summary.json` uses `lightpool-pilot-summary/v2`; integer counters, times, lifetimes,
 replicate indices and seeds use decimal strings. All `NS` fields are
 nanoseconds. The measured interval is [15s,120s], with trace sequence and
 change order resolving equal-time events. Incomplete prefixes end at their
@@ -526,3 +526,90 @@ virtual attempt twice, compares the outputs byte for byte, and checks the
 committed `controls`, `timing`, `ordinary-cells`, `ordinary-timing` and
 `virtual-cells` tables. A valid null ends this search. A tooling repair must
 rerun the same inputs into a new directory, and both attempts are kept.
+
+## Time without an accepted alive state (summary v2)
+
+New summaries use `lightpool-pilot-summary/v2`. Saved specifications still use
+`lightpool-pilot/v1`, and trace v1 and `report.json` are unchanged. All previous
+summary fields retain their definitions. An older summary without `nonAlive`
+has no duration measurement; its absence never means zero. Strict readers
+must accept the new output schema. Pinned historical tools keep their original
+output; reduce saved evidence to a **new** file to obtain v2.
+
+`nonAlive` contains `pairs`, `populations`, and `episodes`. Enrollment freezes
+all non-self observer/target process lifetimes immediately before the first
+event at or after W (`spec.warmupNS`). The all-members-alive warm-up check still
+invalidates the entire attempt, without selecting successful pairs. The
+intended pairs remain in output with zero exposure even if recording ends
+before W. Such lifetime fields describe the last observed prefix, not a claim
+that enrollment was reached. H is `spec.horizonNS`; elapsed time covers [W,H).
+Events at W and H are processed in time, sequence, then change-index order.
+An alive at H completes an episode; a departure at H is zero-time censored.
+A quiet suffix in complete evidence contributes through H; an incomplete
+prefix contributes only through its last valid event, with incomplete status.
+
+Each `pairs` row has the existing pair identity (`observer`,
+`observerLifetime`, `subject`, `targetLifetime`), fixed `labels`,
+`interruptions`, and the totals below. `populations` rows have `label` and
+the same totals summed over those fixed pairs. Labels retain the existing
+join keys: `running-target-exclusions`, the two pause-case `FP` analogues,
+and exactly the predeclared `healthy-pair-exclusions`. Duration fields measure
+more than dead exclusions. Healthy declarations must have neither a configured
+path impairment in either direction nor an overlapping configured endpoint
+pause. Empty healthy populations remain explicit. Populations overlap: never
+sum them or treat pairs as independent statistical replicates. Raw running
+populations under partition/loss are descriptive, not all false diagnoses.
+
+| Totals field | Meaning |
+| --- | --- |
+| `enrolledPairs`, `nominalPairNS` | Intended count and count × (H−W), independent of beliefs and recording completion. |
+| `observedPairNS`, `observedNS` | Equal: eligible time with both original endpoint lifetimes running, not stopped/left. Pauses retain time; lifecycle interruptions end it permanently. |
+| `aliveNS`, `suspectNS`, `deadNS`, `leftNS`, `absentNS` | Five mutually exclusive state times summing to observed exposure. Absence is unknown membership, never imputed suspect/dead. Membership left is distinct from process leave. |
+| `notAliveNS`, `suspectDeadNS` | Suspect + dead + left + absent; and suspect + dead, respectively. |
+| `notAliveFraction`, `suspectDeadFraction` | Numerator / observed exposure, deterministic nine-decimal strings; null for zero exposure. |
+| `starts`, `carryIns`, `completed` | In-window episode starts (including zero-time), pre-W open rows, and accepted-alive completions, respectively. |
+| `censored`, `interrupted` | Sorted `{reason,count}` arrays: episode censoring and lifetime interruption counts by endpoint role/reason. An episode retains its first censoring cause; a pair can eventually record both endpoint interruptions. |
+| `pairsEverNonAlive`, `pairsEverDead` | Pair counts, including zero-time transitions. |
+| `durations` | Existing nearest-rank `p50NS`/`p95NS`/`maxNS`, `eligible` = starts, `completed` = completed non-carry-in sample size. Empty samples have null quantiles and an explicit reason. Censor counts and carry-ins remain adjacent. |
+
+`interruptions` lists `{role,reason,at}`. Roles are `observer` and `target`;
+reasons are `crash`, `restart`, `shutdown`, `leave`, or
+`inactive-at-enrollment`. A later lifetime cannot resume exposure or complete
+an old episode. No membership belief removes exposure. Counts are per frozen
+pair lifetime and role, so later interruptions of the same role add no count.
+
+Each episode has the pair identity and labels, `onset`, `cause`, `carryIn`,
+`observationStart`, nullable `firstDead`, ordered `segments`, `end`, `status`,
+`censorReason`, nullable `durationNS`, and the eight state/observed-time fields.
+A departure from alive starts an episode at suspect, dead, left, or removal
+(`cause: removed`). A missing warm-up membership has synthetic cause
+`missing-warmup-membership`. Repeated state upserts, confirmations and higher
+incarnations do not reset onset. Non-alive transitions split segments, and
+removal preserves the episode as absent. Only accepted alive in the enrolled
+lifetimes completes it. Carry-in rows retain pre-W onset/first-dead references
+but start observed segments at W; they invalidate warm-up and never contribute
+to duration quantiles. A missing-membership carry-in has a window onset when
+no transition was recorded. An inactive pair at enrollment retains a zero-time diagnostic carry-in
+when non-alive and records its interruption.
+
+A segment is `{state,start,end,observedNS}`. Segment times sum to episode
+`observedNS`, and episode totals sum to pair `notAliveNS`. `durationNS` is
+accepted-alive minus onset only for completed, non-carry-in episodes; a genuine
+zero duration is `"0"`. Censored or carry-in duration is null, never the horizon.
+Censor reasons are `observer-`/`target-` plus lifecycle reason, `horizon`, or
+`prefix`. A completed episode stays completed after a later interruption.
+These are conditional completion summaries, not survival estimates.
+
+Bounds are `{kind,timeNS,event,changeIndex}`. `kind: change` cites the existing
+`event` reference (time and sequence) plus the zero-based decimal-string index
+in that event's `changes`. `window`, `horizon` and `prefix` are synthetic and
+have null `changeIndex`; their event is the preceding/last valid event (or
+null when none exists). They do not fabricate membership changes or extend
+existing report references with a new meaning. All integer times, counts and
+indices are exact decimal strings; booleans remain JSON booleans.
+
+The primary descriptive result is healthy-pair `notAliveNS / observedPairNS`,
+with all four components and completion/censor counts. It is operational time
+without an accepted alive state, not an exact detector-mistake duration. It
+does not change dead recovery, crash detection, mechanism admission or protocol
+behavior, and it does not by itself admit a candidate experiment.

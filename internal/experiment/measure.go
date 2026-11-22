@@ -90,6 +90,7 @@ type Traffic struct {
 }
 
 type Summary struct {
+	NonAlive          NonAlive            `json:"nonAlive"`
 	Format            string              `json:"format"`
 	Status            string              `json:"status"`
 	Reason            string              `json:"reason"`
@@ -137,6 +138,7 @@ type streamWrite struct {
 
 type measurements struct {
 	spec          Spec
+	nonAlive      *nonAliveMeasurements
 	result        *Summary
 	nodes         []string
 	state         map[string]*nodeState
@@ -188,13 +190,18 @@ func Measure(spec Spec, scenario sim.Scenario, base *report.Report, input io.Rea
 		if p.Observer == p.Subject {
 			return nil, fmt.Errorf("self pair in healthy cohort")
 		}
+		for _, action := range scenario.Actions {
+			if action.Kind == "pause" && (action.Node == p.Observer || action.Node == p.Subject) && int64(action.At) < spec.HorizonNS && int64(action.At)+int64(action.Duration) > spec.WarmupNS {
+				return nil, fmt.Errorf("healthy pair has a configured processing pause")
+			}
+		}
 		for _, f := range scenario.Faults {
 			if f.Start < scenario.Horizon && int64(f.End) > spec.WarmupNS && ((f.From == p.Observer && f.To == p.Subject) || (f.From == p.Subject && f.To == p.Observer)) && (f.Drop || f.StreamFailure || f.Delay > 0 || f.Jitter > 0 || f.LossPPM > 0) {
 				return nil, fmt.Errorf("healthy pair has a configured path impairment")
 			}
 		}
 	}
-	out := &Summary{Format: Version, Status: "incomplete", Reason: base.EndReason, SpecSHA256: HashJSON(spec), ScenarioSHA256: HashJSON(scenario), TraceSHA256: base.TraceSHA256, Spec: spec, WarmupFailures: []EligiblePair{}, LastEvent: base.LastEvent, ObservedThroughNS: base.ObservedThroughNS, Events: base.LastEvent.Seq, Populations: []Population{}, Episodes: []Episode{}, Crashes: []Crash{}, Recoveries: []report.Recovery{}, Mechanisms: []Mechanism{}, Limits: []string{
+	out := &Summary{Format: SummaryVersion, Status: "incomplete", Reason: base.EndReason, SpecSHA256: HashJSON(spec), ScenarioSHA256: HashJSON(scenario), TraceSHA256: base.TraceSHA256, Spec: spec, WarmupFailures: []EligiblePair{}, LastEvent: base.LastEvent, ObservedThroughNS: base.ObservedThroughNS, Events: base.LastEvent.Seq, Populations: []Population{}, Episodes: []Episode{}, Crashes: []Crash{}, Recoveries: []report.Recovery{}, Mechanisms: []Mechanism{}, Limits: []string{
 		"Current Lightpool baseline; workload and metric analogues, not historical SWIM or Lifeguard reproduction.",
 		"Warm-up is checked immediately before the first event at or after its boundary; equal-time outcomes follow trace sequence and change order.",
 		"Paused live processes remain in exposure and active node-seconds. Excluded beliefs never reduce exposure. Lifetimes must enter through the warm-up check.",
@@ -203,7 +210,7 @@ func Measure(spec Spec, scenario sim.Scenario, base *report.Report, input io.Rea
 		"Quantiles describe observed completions with explicit eligible counts; three pilot replicates support no inferential or extreme-tail claim.",
 		"Service time is uncalibrated; shared queues, CPU exhaustion, encryption, DNS and clock skew are outside this model.",
 	}}
-	x := &measurements{spec: spec, result: out, state: map[string]*nodeState{}, cohort: map[string]string{}, exposures: map[Pair]int64{}, suspect: map[Pair][]Reference{}, preexisting: map[Reference]map[Pair]Reference{}, mechanisms: map[pairKey]int{}, refutations: map[string][]Evidence{}, causes: map[Reference]map[pairKey]string{}, streams: map[string]streamWrite{}, drops: map[[2]string]uint64{}}
+	x := &measurements{spec: spec, nonAlive: newNonAlive(), result: out, state: map[string]*nodeState{}, cohort: map[string]string{}, exposures: map[Pair]int64{}, suspect: map[Pair][]Reference{}, preexisting: map[Reference]map[Pair]Reference{}, mechanisms: map[pairKey]int{}, refutations: map[string][]Evidence{}, causes: map[Reference]map[pairKey]string{}, streams: map[string]streamWrite{}, drops: map[[2]string]uint64{}}
 	for _, n := range scenario.Nodes {
 		x.nodes = append(x.nodes, n.Identity.Name)
 		x.state[n.Identity.Name] = &nodeState{members: map[string]memberState{}}
@@ -329,6 +336,7 @@ func Measure(spec Spec, scenario sim.Scenario, base *report.Report, input io.Rea
 	slices.SortFunc(out.Traffic.Drops, func(a, b report.Drop) int {
 		return strings.Compare(a.Transport+"\x00"+a.Reason, b.Transport+"\x00"+b.Reason)
 	})
+	out.NonAlive = x.nonAlive.finish(x, base.Complete, base.ObservedThroughNS)
 	out.Traffic.SentBytesPerNodeSecond = scaledRatio(int64(out.Traffic.Datagram.SentBytes+out.Traffic.Stream.SentBytes), 1e9, out.Traffic.ActiveNodeNS)
 	return out, nil
 }
@@ -399,6 +407,7 @@ func (x *measurements) checkWarmup() {
 			}
 		}
 	}
+	x.nonAlive.enroll(x, true)
 }
 
 func (x *measurements) advance(at int64) {
@@ -476,6 +485,7 @@ func (x *measurements) record(raw json.RawMessage) error {
 		return err
 	}
 	at := eventRef(e)
+	defer func() { x.nonAlive.lastEvent = &at }()
 	if at.TimeNS >= x.spec.WarmupNS && !x.warm {
 		x.checkWarmup()
 	}
@@ -489,7 +499,8 @@ func (x *measurements) record(raw json.RawMessage) error {
 		}
 	}
 	fired := map[pairKey]bool{}
-	for _, c := range e.Changes {
+	for index, c := range e.Changes {
+		x.nonAlive.change(x, c, changeBound(at, index))
 		p := x.state[c.Node]
 		k := pairKey{c.Node, c.Subject}
 		switch c.Kind {

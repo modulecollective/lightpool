@@ -327,3 +327,22 @@ func TestProtocolOverlayIsStrictAndReplays(t *testing.T) {
 		t.Fatal("overlay run did not reduce byte for byte", err)
 	}
 }
+
+func TestReducerRetainsRecordingFailureWithCompleteTrace(t *testing.T) {
+	spec, s := smallFixture(t)
+	directory := filepath.Join(t.TempDir(), "run")
+	if err := Run(spec, s, directory, nil); err != nil {
+		t.Fatal(err)
+	}
+	status := filepath.Join(directory, "status.json")
+	if err := os.Remove(status); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeJSON(status, Status{Status: "incomplete", Reason: "recording close failed"}); err != nil {
+		t.Fatal(err)
+	}
+	out, err := Reduce(directory)
+	if err != nil || out.Status != "incomplete" || out.Reason != "recording close failed" || out.Format != SummaryVersion {
+		t.Fatal("recording failure became success", out, err)
+	}
+}
