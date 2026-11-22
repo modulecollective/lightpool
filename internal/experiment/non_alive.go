@@ -386,7 +386,7 @@ func (n *nonAliveMeasurements) finish(x *measurements, complete bool, through in
 	if !x.warm {
 		n.enroll(x, false)
 	}
-	end := n.boundary("prefix", through)
+	end := n.boundary("prefix", min(through, x.spec.HorizonNS))
 	if complete {
 		end = n.boundary("horizon", x.spec.HorizonNS)
 	}

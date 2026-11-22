@@ -546,7 +546,9 @@ that enrollment was reached. H is `spec.horizonNS`; elapsed time covers [W,H).
 Events at W and H are processed in time, sequence, then change-index order.
 An alive at H completes an episode; a departure at H is zero-time censored.
 A quiet suffix in complete evidence contributes through H; an incomplete
-prefix contributes only through its last valid event, with incomplete status.
+prefix contributes through the earlier of its last valid event and H, with
+incomplete status and `prefix` censoring even when it reaches H. Changes after
+H cannot complete an episode or interrupt its measured exposure.
 
 Each `pairs` row has the existing pair identity (`observer`,
 `observerLifetime`, `subject`, `targetLifetime`), fixed `labels`,

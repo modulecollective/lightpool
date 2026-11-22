@@ -203,6 +203,42 @@ func TestNonAlivePrefixAndWindowBoundaries(t *testing.T) {
 	assertBeliefConservation(t, s)
 }
 
+func TestNonAliveIncompletePastHorizon(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		changes []trace.Change
+	}{
+		{name: "empty-event"},
+		{name: "alive", changes: []trace.Change{member("n001", "n003", "alive")}},
+		{name: "dead", changes: []trace.Change{member("n001", "n003", "dead")}},
+		{name: "observer-crash", changes: []trace.Change{processChange("n001", "crash", false, "1")}},
+		{name: "target-crash", changes: []trace.Change{processChange("n003", "crash", false, "1")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b := newEvidence(t)
+			b.add(20, member("n001", "n003", "suspect"))
+			last := b.add(110, tc.changes...)
+			s := b.measure(t, false) // Decode and reduce the actual incomplete trace.
+			p, e := beliefPair(t, s), s.NonAlive.Episodes[0]
+			if s.Status != "incomplete" || s.LastEvent != last {
+				t.Fatal("lost incomplete evidence status/reference", s.Status, s.LastEvent)
+			}
+			if p.ObservedPairNS != 90 || p.NominalPairNS != 90 || p.AliveNS != 10 || p.SuspectNS != 80 || p.DeadNS != 0 || len(p.Interruptions) != 0 {
+				t.Fatal("prefix accounting exceeded [W,H)", p)
+			}
+			if e.Status != "censored" || e.CensorReason != "prefix" || e.DurationNS != nil || e.ObservedNS != 80 || e.End.Kind != "prefix" || e.End.TimeNS != 100 || *e.End.Event != last {
+				t.Fatal("prefix episode exceeded H or used a post-H change", e)
+			}
+			for _, pop := range s.NonAlive.Populations {
+				if pop.ObservedPairNS > pop.NominalPairNS {
+					t.Fatal("population exceeded nominal exposure", pop)
+				}
+			}
+			assertBeliefConservation(t, s)
+		})
+	}
+}
+
 func TestNonAliveWarmupDiagnosticsAndNulls(t *testing.T) {
 	b := newEvidence(t)
 	onset := b.add(5, member("n001", "n003", "suspect"))
