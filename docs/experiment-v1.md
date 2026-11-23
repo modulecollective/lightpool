@@ -349,7 +349,7 @@ Missing output stays missing; empty and partial traces stay unchanged.
 `experiments/evidence.sh unpack SOURCE NEW_DEST` validates the manifest and
 exact payload file set, restores original names and verifies every raw-byte
 checksum. It runs no simulation or reduction. Both commands require Bash
-(tested with 5.2), coreutils and gzip, an existing destination parent and a new
+(tested with 5.2), GNU coreutils and gzip, an existing destination parent and a new
 destination outside the source. Inputs must be flat regular files, with basenames starting
 with an ASCII letter/digit followed by letters, digits, dots, underscores or
 hyphens. Symlinks, nested directories, reserved `SHA256SUMS`, duplicate manifest
@@ -357,6 +357,18 @@ names and compressed-name collisions (such as `trace.ndjson` alongside
 `trace.ndjson.gz`) are refused. Neither command changes its source or overwrites
 an existing destination. On an I/O or checksum failure the command exits
 nonzero; a partial destination remains inspectable. Retry into a new directory.
+
+Before creating an unpack destination, the helper counts every expanded byte
+with a checked streaming decompression (including concatenated gzip members)
+and measures sidecars. It checks free space on the physical destination parent
+with `stat -f`, rounding each payload to the filesystem allocation unit and
+adding a fixed 256 MiB reserve. Insufficient space, failed sizing or invalid
+space results refuse before destination creation. The diagnostic names the
+destination, available bytes, allocated payload requirement and reserve.
+Success is silent. This is an early refusal, not a reservation: concurrent
+writers, quotas, inode exhaustion and later I/O failures can still stop a
+restore. Keep failed working copies for inspection; never scavenge unrelated
+scratch or caches to make room.
 
 The campaign workflow owns `evidence.tsv`: packaging cannot infer a command's
 exit code. Use these tab-separated columns:
@@ -420,12 +432,19 @@ that commit, using a fresh checkout or `git archive` and with the producing
 directory unavailable. For example, after committing, from the repository root:
 
 ```sh
-saved=/absolute/path/to/new-restoration-check
-mkdir "$saved"
-git archive HEAD | tar -x -C "$saved"
-"$saved/experiments/evidence.sh" unpack \
+# Choose an existing writable disk-backed parent; check this filesystem.
+set -euo pipefail
+scratch_parent=/absolute/path/on/writable-disk
+df -h "$scratch_parent"
+saved=$(mktemp -d "$scratch_parent/evidence-check.XXXXXX")
+evidence_revision=$(git rev-parse HEAD)
+reducer_revision=$evidence_revision # Use the actual pinned reducer revision.
+git archive "$evidence_revision" -- "$record/evidence/$attempt" | tar -x -C "$saved"
+printf 'evidence=%s\nreducer=%s\n' "$evidence_revision" "$reducer_revision" > "$saved/verification.txt"
+cp "$saved/$record/evidence/$attempt/SHA256SUMS" "$saved/input-hashes.sha256"
+experiments/evidence.sh unpack \
   "$saved/$record/evidence/$attempt" "$saved/restored"
-(cd "$saved/restored" && sha256sum -c "$saved/$record/evidence/$attempt/SHA256SUMS")
+(cd "$saved/restored" && sha256sum -c "$saved/input-hashes.sha256")
 ```
 
 Only successful restoration from the committed record, followed by pushing
@@ -434,12 +453,50 @@ alone does not. With the producing source/toolchain pinned, virtual recordings
 can then be remeasured offline without simulation:
 
 ```sh
+set -e
 ./lightpool-experiment -reduce "$saved/restored" -out "$saved/summary.json"
 cmp "$saved/restored/summary.json" "$saved/summary.json"
 # For fixed correlated evidence with a saved admission.json:
 ./lightpool-experiment -admission "$saved/restored" -out "$saved/admission.json"
 cmp "$saved/restored/admission.json" "$saved/admission.json"
+# After every required check succeeds, remove only this owned working copy.
+# Retain verification.txt, input-hashes.sha256, outputs and diagnostic logs.
+(cd "$saved/restored" && sha256sum -c "$saved/input-hashes.sha256")
+rm -r -- "$saved/restored" "$saved/$record/evidence/$attempt"
 ```
+
+For optional checks, restore one attempt at a time with the checked-out helper,
+retain the revision/input-hash manifest and capture command diagnostics. Build
+the reducer from its recorded revision. A failed reduction or comparison keeps
+the raw copy and partial outputs. Do not run cleanup after a failed check;
+original committed evidence is never disposable. Older pinned recipes still
+invoke their historical helper and do not acquire this guard retroactively.
+
+The fixed non-alive remeasurement recipe uses the helper from its own checkout,
+`evidence-base` only for original payloads, and `reducer-base` for the rebuilt
+research tool. Its interface remains `run.sh NEW_DIRECTORY`. For example:
+
+```sh
+scratch_parent=/absolute/path/on/writable-disk
+df -h "$scratch_parent"
+verification=$(mktemp -d "$scratch_parent/non-alive-check.XXXXXX")
+bash experiments/2026-11-21-non-alive-belief-duration/run.sh "$verification/result"
+```
+
+The recipe puts source, executable, Go build temporary files and the current
+attempt under `result/work/`. It releases that attempt's archived source, raw
+restoration and plain summary only after restoration, exact input-set/hash and
+saved-status checks, the expected reducer exit (including recorded nonzero
+exits), old-field compatibility, compressed-summary reproduction and unchanged
+post-reduction inputs all pass. Summaries, inventory, input hashes and logs
+remain. Build scratch is removed only after all 24 attempts and the final
+committed manifest reproduce. The first verification failure retains its
+scratch and partial summary, stops further archive/restore/reduction work and
+marks later entries unmeasured. Build, I/O, cleanup and interruption failures
+return nonzero with a retained-path diagnostic. Shared caches remain under
+their existing owner. The explicit output filesystem stays in control; the
+recipe does not fall back to another disk. Host-specific scratch diagnostics
+live outside the deterministic `SHA256SUMS` contract.
 
 Ordinary samples have no virtual reducer. Incomplete virtual evidence must
 still fail reduction; packaging success asserts byte preservation, not a

@@ -269,3 +269,154 @@ func TestEvidenceToolFailures(t *testing.T) {
 		})
 	}
 }
+
+func toolShim(t *testing.T, bin, name, body string) {
+	t.Helper()
+	path := filepath.Join(bin, name)
+	writeFile(t, path, []byte("#!/usr/bin/env bash\nset -eu\n"+body+"\n"))
+	if err := os.Chmod(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEvidenceHeadroom(t *testing.T) {
+	for _, tc := range []struct {
+		name, space string
+		fail        bool
+	}{
+		{"low", "65538 4096", true}, // Both gzip members together need two blocks, plus the sidecar.
+		{"equal", "65539 4096", false},
+		{"ample", "99999 4096", false},
+		{"malformed", "no space", true},
+		{"negative", "-1 4096", true},
+		{"zero-unit", "10 0", true},
+		{"overflow", "9223372036854775808 4096", true},
+		{"product-overflow", "9223372036854775807 4096", true},
+		{"query-failure", "fail", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source, parent, bin := t.TempDir(), t.TempDir(), t.TempDir()
+			want := map[string][]byte{"trace.ndjson": []byte(strings.Repeat("a", 4096) + "b"), "empty.ndjson": {}, "status.json": []byte("x")}
+			for name, data := range want {
+				writeFile(t, filepath.Join(source, name), data)
+			}
+			archive := filepath.Join(parent, "archive")
+			evidence(t, "pack", source, archive, false)
+			// A concatenated gzip stream must be counted in full, including both members.
+			var members []byte
+			for _, data := range []string{strings.Repeat("a", 4096), "b"} {
+				cmd := exec.Command("gzip", "-n", "-c")
+				cmd.Stdin = strings.NewReader(data)
+				out, err := cmd.Output()
+				if err != nil {
+					t.Fatal(err)
+				}
+				members = append(members, out...)
+			}
+			writeFile(t, filepath.Join(archive, "trace.ndjson.gz"), members)
+			stat, err := exec.LookPath("stat")
+			if err != nil {
+				t.Fatal(err)
+			}
+			gzip, err := exec.LookPath("gzip")
+			if err != nil {
+				t.Fatal(err)
+			}
+			toolShim(t, bin, "stat", `if [[ $1 == -f ]]; then
+  [[ ${@: -1} == "$SPACE_PARENT" ]] || exit 71
+  [[ $SPACE != fail ]] || exit 72
+  echo "$SPACE"
+else
+  exec "$REAL_STAT" "$@"
+fi`)
+			toolShim(t, bin, "gzip", `if [[ -d $RESTORED ]]; then echo write; else echo size; fi >> "$GZIP_CALLS"
+exec "$REAL_GZIP" "$@"`)
+			restored := filepath.Join(parent, "restored")
+			t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+			t.Setenv("SPACE_PARENT", parent)
+			t.Setenv("SPACE", tc.space)
+			t.Setenv("REAL_STAT", stat)
+			t.Setenv("REAL_GZIP", gzip)
+			t.Setenv("RESTORED", restored)
+			calls := filepath.Join(parent, "calls")
+			t.Setenv("GZIP_CALLS", calls)
+			alias := filepath.Join(t.TempDir(), "parent-link")
+			if err := os.Symlink(parent, alias); err != nil {
+				t.Fatal(err)
+			}
+			output := evidence(t, "unpack", archive, filepath.Join(alias, "restored"), tc.fail)
+			assertFiles(t, source, want)
+			data, err := os.ReadFile(calls)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.fail {
+				if _, err := os.Lstat(restored); !os.IsNotExist(err) || strings.Contains(string(data), "write") {
+					t.Fatalf("preflight wrote payloads: %v, calls=%s", err, data)
+				}
+				if tc.name == "low" && !strings.Contains(output, "available=268443648 payload=12288 reserve=268435456") {
+					t.Fatalf("missing sizing diagnostic: %s", output)
+				}
+			} else {
+				assertFiles(t, restored, want)
+				if output != "" || strings.Count(string(data), "size") != 2 || strings.Count(string(data), "write") != 2 {
+					t.Fatalf("unexpected successful restore: %q, calls=%s", output, data)
+				}
+			}
+			// Source compressed bytes also remain untouched.
+			got, err := os.ReadFile(filepath.Join(archive, "trace.ndjson.gz"))
+			if err != nil || !bytes.Equal(got, members) {
+				t.Fatalf("archive changed: %v", err)
+			}
+		})
+	}
+}
+
+func TestEvidenceSizingAndWriteFailures(t *testing.T) {
+	for _, kind := range []string{"sizing-gzip", "sizing-count", "count-malformed", "size-overflow", "writing-gzip", "writing-copy"} {
+		t.Run(kind, func(t *testing.T) {
+			source, parent, bin := t.TempDir(), t.TempDir(), t.TempDir()
+			want := map[string][]byte{"trace.ndjson": []byte("{}\n"), "status.json": []byte("{}\n")}
+			for name, data := range want {
+				writeFile(t, filepath.Join(source, name), data)
+			}
+			archive := filepath.Join(parent, "archive")
+			evidence(t, "pack", source, archive, false)
+			restored := filepath.Join(parent, "restored")
+			t.Setenv("RESTORED", restored)
+			name, body := "gzip", "exit 42"
+			switch kind {
+			case "sizing-count":
+				name = "wc"
+			case "count-malformed":
+				name, body = "wc", "cat >/dev/null; echo invalid"
+			case "size-overflow":
+				name, body = "wc", "cat >/dev/null; echo 9223372036854775808"
+			case "writing-gzip", "writing-copy":
+				if kind == "writing-copy" {
+					name = "cp"
+				}
+				real, err := exec.LookPath(name)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Setenv("REAL_TOOL", real)
+				body = `if [[ -d $RESTORED ]]; then echo partial; exit 42; fi
+exec "$REAL_TOOL" "$@"`
+			}
+			toolShim(t, bin, name, body)
+			t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+			evidence(t, "unpack", archive, restored, true)
+			_, err := os.Stat(restored)
+			if strings.HasPrefix(kind, "writing-") {
+				if err != nil {
+					t.Fatalf("lost partial destination: %v", err)
+				}
+				evidence(t, "unpack", archive, restored, true)
+			} else if !os.IsNotExist(err) {
+				t.Fatalf("sizing failure created destination: %v", err)
+			}
+			assertFiles(t, source, want)
+		})
+	}
+}

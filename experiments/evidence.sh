@@ -60,6 +60,45 @@ if [[ $mode == unpack ]]; then
 	done
 fi
 
+# Bash arithmetic is signed; reject invalid/overflowing tool output before using it.
+max_integer=9223372036854775807
+number() {
+	[[ $1 =~ ^(0|[1-9][0-9]*)$ && ${#1} -le 19 ]] || die "invalid size/space result: $1"
+	[[ ${#1} -lt 19 || $1 < $max_integer || $1 == "$max_integer" ]] || die "size/space overflow: $1"
+}
+
+if [[ $mode == unpack ]]; then
+	declare -a sizes=()
+	for stored in "${!expected[@]}"; do
+		if [[ ${expected[$stored]} == *.ndjson ]]; then
+			size=$(gzip -d -c -- "$source_dir/$stored" | wc -c) || die "cannot size payload: $stored"
+			[[ $size =~ ^[[:space:]]*([0-9]+)[[:space:]]*$ ]] || die "invalid byte count: $stored"
+			size=${BASH_REMATCH[1]}
+		else
+			size=$(stat --format='%s' -- "$source_dir/$stored") || die "cannot size payload: $stored"
+		fi
+		number "$size"
+		sizes+=("$size")
+	done
+	space=$(stat -f --format='%a %S' -- "$parent") || die "cannot query destination space: $destination"
+	[[ $space =~ ^([0-9]+)\ ([0-9]+)$ ]] || die "invalid destination space: $destination: $space"
+	blocks=${BASH_REMATCH[1]}
+	unit=${BASH_REMATCH[2]}
+	number "$blocks"
+	number "$unit"
+	[[ $unit -gt 0 && $blocks -le $((max_integer / unit)) ]] || die "destination space overflow or zero allocation unit: $destination"
+	available=$((blocks * unit))
+	payload=0
+	for size in "${sizes[@]}"; do
+		allocated=$((size / unit + (size % unit != 0)))
+		[[ $allocated -le $(((max_integer - payload) / unit)) ]] || die "payload allocation overflow: $destination"
+		payload=$((payload + allocated * unit))
+	done
+	reserve=$((256 * 1024 * 1024))
+	[[ $payload -le $((max_integer - reserve)) ]] || die "payload plus reserve overflow: $destination"
+	[[ $available -ge $((payload + reserve)) ]] || die "insufficient space: destination=$destination available=$available payload=$payload reserve=$reserve bytes"
+fi
+
 # Leave a failed destination inspectable; never remove evidence on an error.
 mkdir -- "$destination"
 trap 'echo "evidence.sh: failed; partial destination retained: $destination" >&2' ERR
