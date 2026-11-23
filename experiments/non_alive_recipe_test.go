@@ -15,7 +15,7 @@ import (
 // Exercise the checked-in recipe with real Git archives and packaging, replacing
 // only the expensive Go build/reducer and the particular failing I/O boundary.
 func TestNonAliveRecipe(t *testing.T) {
-	for _, fault := range []string{"success", "low", "partial", "reducer", "bytes", "set", "symlink", "status", "summary", "compression", "final", "interrupt", "build", "archive", "cleanup"} {
+	for _, fault := range []string{"success", "low", "partial", "reducer", "bytes", "set", "symlink", "status", "compatibility", "summary", "compression", "final", "interrupt", "build", "archive", "cleanup"} {
 		t.Run(fault, func(t *testing.T) {
 			repo, bin := t.TempDir(), t.TempDir()
 			write := func(path, data string) {
@@ -84,6 +84,9 @@ func TestNonAliveRecipe(t *testing.T) {
 					t.Fatal(err)
 				}
 				write(filepath.Join(record, "summaries", id+".json.gz"), string(compressed))
+				if fault == "status" && i == 2 {
+					status = "expected-other-status"
+				}
 				entries = append(entries, map[string]any{
 					"id": id, "record": "original", "directory": "evidence/" + id, "case": "fixture", "replicate": fmt.Sprint(i),
 					"producer": "producer", "originalStatus": status, "originalExit": exit, "rawHashes": hashes,
@@ -131,6 +134,9 @@ if [[ $id == a02 ]]; then
   esac
 fi
 jq '.format="lightpool-pilot-summary/v2" | .nonAlive={populations:[{label:"healthy"}]}' "$2/summary.json" > "$4"
+if [[ $id == a02 && $FAULT == compatibility ]]; then
+  jq '.status="changed"' "$4" > "$4.tmp"; mv "$4.tmp" "$4"
+fi
 if [[ $id == a02 && $FAULT == summary ]]; then echo ' ' >> "$4"; fi
 exit "$(jq -r .exit "$2/status.json")"`)
 			t.Setenv("STUB_REDUCER", reducer)
@@ -163,13 +169,6 @@ fi
 exec "$REAL_GIT" "$@"`)
 			toolShim(t, bin, "rm", `[[ $FAULT != cleanup || $* != *a01.json* ]] || exit 86
 exec "$REAL_RM" "$@"`)
-			// Corrupting the pinned status is detected before reduction, after a
-			// successful unpack; mutate through a narrowly scoped helper wrapper.
-			if fault == "status" {
-				write(filepath.Join(repo, "experiments", "evidence.sh"), string(helper)+`
-if [[ -e "$RECIPE_OUT/logs/a02.inputs.sha256" ]]; then echo '{}' > "$3/status.json"; fi
-`)
-			}
 			t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
 			cmd := exec.Command("bash", filepath.Join(record, "run.sh"), out)
 			output, runErr := cmd.CombinedOutput()
@@ -229,6 +228,9 @@ if [[ -e "$RECIPE_OUT/logs/a02.inputs.sha256" ]]; then echo '{}' > "$3/status.js
 			if err != nil || strings.Contains(string(calls), "a03") {
 				t.Fatalf("work continued after failure: %s %v", calls, err)
 			}
+			if (fault == "low" || fault == "partial" || fault == "archive" || fault == "status") && strings.Contains(string(calls), "reduce a02") {
+				t.Fatalf("reducer reached invalid restoration: %s", calls)
+			}
 			if fault != "low" && fault != "archive" {
 				if _, err := os.Stat(filepath.Join(work, "restored")); err != nil {
 					t.Fatalf("failed restoration lost: %v", err)
@@ -238,6 +240,12 @@ if [[ -e "$RECIPE_OUT/logs/a02.inputs.sha256" ]]; then echo '{}' > "$3/status.js
 				data, err := os.ReadFile(filepath.Join(out, "a02.json"))
 				if err != nil || string(data) != "partial\n" {
 					t.Fatalf("partial summary lost: %s %v", data, err)
+				}
+			}
+			if fault == "compatibility" {
+				data, err := os.ReadFile(filepath.Join(out, "logs/a02.compatibility"))
+				if err != nil || len(data) == 0 {
+					t.Fatalf("old-field mismatch not diagnosed: %s %v", data, err)
 				}
 			}
 		})

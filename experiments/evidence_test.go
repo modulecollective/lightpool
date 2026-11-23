@@ -373,7 +373,7 @@ exec "$REAL_GZIP" "$@"`)
 }
 
 func TestEvidenceSizingAndWriteFailures(t *testing.T) {
-	for _, kind := range []string{"sizing-gzip", "sizing-count", "count-malformed", "size-overflow", "writing-gzip", "writing-copy"} {
+	for _, kind := range []string{"sizing-gzip", "sizing-count", "count-malformed", "size-overflow", "allocation-overflow", "reserve-overflow", "writing-gzip", "writing-copy"} {
 		t.Run(kind, func(t *testing.T) {
 			source, parent, bin := t.TempDir(), t.TempDir(), t.TempDir()
 			want := map[string][]byte{"trace.ndjson": []byte("{}\n"), "status.json": []byte("{}\n")}
@@ -392,6 +392,10 @@ func TestEvidenceSizingAndWriteFailures(t *testing.T) {
 				name, body = "wc", "cat >/dev/null; echo invalid"
 			case "size-overflow":
 				name, body = "wc", "cat >/dev/null; echo 9223372036854775808"
+			case "allocation-overflow":
+				name, body = "wc", "cat >/dev/null; echo 9223372036854775807"
+			case "reserve-overflow":
+				name, body = "wc", "cat >/dev/null; echo 9223372036854771712"
 			case "writing-gzip", "writing-copy":
 				if kind == "writing-copy" {
 					name = "cp"
