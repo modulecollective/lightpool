@@ -87,6 +87,15 @@ class SelectionTest(unittest.TestCase):
         self.assertFalse(self.result()['advance'])
         self.assertEqual(self.result()['disposition'], 'screen-rejection')
 
+    def test_mean_only_dominance_with_reversed_pair_order_is_inconclusive(self):
+        self.replace(self.summary(90, 190, 7, 90), replicate=2)
+        self.replace(self.summary(90, 190, 3, 90), replicate=3)
+        result=self.result()
+        self.assertFalse(result['advance'])
+        self.assertEqual(result['disposition'], 'inconclusive')
+        self.assertEqual(result['strata'][-1]['pointDominators'], ['r4-g3'])
+        self.assertEqual(result['strata'][-1]['replicateConsistentDominators'], [])
+
     def test_equal_cost_point_qualifies_on_both_sides(self):
         for replicate in [2, 3]:
             self.replace(self.summary(100, 200, 6, 100), 'r4-g4', replicate)

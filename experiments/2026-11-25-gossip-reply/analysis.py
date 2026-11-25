@@ -63,9 +63,24 @@ def select(root, declaration):
     primary = next(s for s in selections if s['loss'] == 30 and s['exchange'] == 'off')
     advance = (primary['status'] == 'bracketed' and primary['threshold1'] and primary['threshold2']
                and not primary['pointDominators'])
+    # A mean-only dominator does not establish equivalence if paired
+    # replicate order reverses. Keep that uncertainty explicit at the screen.
+    consistent = []
+    for arm in primary.get('pointDominators', []):
+        ordered = []
+        for replicate in [2, 3]:
+            baseline_path = root / 'evidence' / f'dev-32-loss-30-exchange-off-r{replicate}-{arm}' / 'summary.json'
+            candidate_path = root / 'evidence' / f'dev-32-loss-30-exchange-off-r{replicate}-reply' / 'summary.json'
+            baseline = metrics(json.loads(baseline_path.read_text()))
+            candidate = metrics(json.loads(candidate_path.read_text()))
+            ordered.append(all(baseline[k] <= candidate[k] for k in ['F', 'U', 'M', 'T']))
+        if all(ordered):
+            consistent.append(arm)
+    primary['replicateConsistentDominators'] = consistent
+    uncertain_dominance = bool(primary.get('pointDominators')) and not consistent
     return dict(advance=advance, stage='development-screen', strata=selections,
                 disposition='advance-to-frozen-holdout' if advance else
-                ('inconclusive' if primary['status'] != 'bracketed' else 'screen-rejection'))
+                ('inconclusive' if primary['status'] != 'bracketed' or uncertain_dominance else 'screen-rejection'))
 
 
 def encoded(value):
