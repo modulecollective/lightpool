@@ -672,3 +672,103 @@ with all four components and completion/censor counts. It is operational time
 without an accepted alive state, not an exact detector-mistake duration. It
 does not change dead recovery, crash detection, mechanism admission or protocol
 behavior, and it does not by itself admit a candidate experiment.
+
+## Fixed metadata-update delivery (summary v3)
+
+`lightpool-experiment -case delivery-{32,128}-loss-{0,10,30}-exchange-{on,off}
+-replicate INDEX -out NEW_DIRECTORY` selects one of twelve finite workloads.
+Expand the braces to one case name. These cases start n000 onward with empty
+metadata, join to n000 at 10 ms intervals, use 1 ms latency, zero service time,
+1 MiB transport buffers and the existing event/trace caps. The protocol is
+`core.DefaultConfig()`; `exchange-off` changes only `PushPullInterval=0`.
+Join exchanges still run. `-protocol` overlays remain available for retuning.
+
+The warm-up check requires full alive membership (self included) immediately
+before the first event at or after 50 s. It freezes all lifetimes. Twenty
+sources n000 through n019 update once each at 50,54,...,126 s, carrying the
+unique eight-byte ASCII tokens `upd-0000` through `upd-0019`. Exact actions
+are saved in `scenario.json`, not duplicated in the v1 spec. The horizon is
+130 s. Every directed non-self datagram link has the named independent loss
+from 0 through 130 s inclusive (fault end 130 s + 1 ns); streams have no
+independent datagram loss. Protocol, fault and schedule seeds use the existing
+separate derivation. Equal directed send ordinals pair draws, not necessarily
+realized losses when traffic differs.
+
+`updateDelivery` in `lightpool-pilot-summary/v3` freezes 20*(N-1) scheduled
+source/receiver pairs: 620 or 2540. Suspect, dead, removed or left membership
+beliefs never shrink that population. This bounded reducer requires unique
+single-source eight-byte ASCII updates, no initial token collisions, zero
+service time, pre-warm-up joins and no pauses, crashes, restarts or departures.
+Unsupported delivery workloads fail explicitly; old cases retain their rules.
+
+For each update, `action` cites its scheduled `action.update` event. Generation
+is a matching authoritative self `member.upsert` in the subsequent source
+`core.update` at the scheduled time and frozen lifetime. `generation` cites
+event time, sequence and zero-based change index; `incarnation` is numeric.
+Ambiguous origins fail reduction. An observed core update without its matching
+self upsert fails generation. Missing execution is incomplete until its time
+is closed by a later event or complete trace; complete missing generation is
+failure. All scheduled updates stay in the denominator.
+
+A pair completes on the first authoritative upsert at its frozen receiver
+whose member name and metadata match the source/token and whose incarnation
+is at least the generated incarnation. Gossip, probe piggybacking and stream
+exchange all count; higher-incarnation refutations retaining the token count.
+Alive state is not required. Receipt or queue completion is insufficient.
+Acceptance must follow generation in sequence/change order and lie in the
+closed [generation,generation+4 s] interval. Duplicates count once. Retained
+references and integer-nanosecond latency identify the selected change.
+Acceptance after four seconds cannot rewrite a miss.
+
+A miss requires evidence covering the entire deadline: a complete horizon
+covering it or a prefix reaching a strictly later event time. A prefix ending
+exactly at a deadline leaves unresolved pairs incomplete because another
+same-time event could still accept. Observed completions remain visible in
+incomplete attempts. Generation failures have separate pair statuses and
+never count as delivery misses. For valid warm-up, delivered, missed,
+generation-failed and incomplete counts partition the fixed eligible pairs.
+Invalid/unreached warm-up reports nominal counts with invalid/unavailable
+status, zero eligible observations and null rates. Other cases explicitly say
+`not-applicable`; absent fields in historical v1/v2 summaries are unavailable,
+never measured zeros.
+
+Per-update rows and receiver rows use stable schedule/name order and frozen
+lifetime identities. Time to all receivers is the maximum pair latency only
+when every eligible receiver completes; otherwise it is null with an explicit
+non-completion status. Pair latency and all-receiver distributions use
+nearest-rank p50/p95/max with eligible/completed counts, conditional on
+completion within four seconds. Empty completion sets have null quantiles.
+A four-second miss does not mean never delivered. Pairs in a replicate are
+not independent statistical samples; six smoke attempts support no tail or
+improvement inference.
+
+`traffic` retains its existing measured-window sent-byte meanings and drop
+diagnostics. The additional `trafficCost` envelope covers both the closed
+[50 s,130 s] interval (`measured`) and [0,observed-through] (`wholeRun`). Each
+interval labels its nominal bounds, observed-through time and coverage
+(`complete`, `observed-prefix`, or `unreached`). Other cases use their own
+warm-up/horizon for the measured interval. Incomplete costs describe only
+observed records, never silently a full window.
+
+Each interval separates `attempted` from `sent`: datagram counts and encoded
+frame bytes, plus encoded stream-write bytes at `attempt`, versus actual
+framed datagrams and stream chunks at `sent`. Zero-byte stream opens add no
+bytes. Failed/partial writes may make offered and sent costs differ. Encoding
+and budget rejections remain diagnostics, not claimed network bytes. Lost
+sends still cost bytes; drop and duplicate-arrival records add no send cost.
+`ipv4UDPBytes` is datagram frame bytes + 28*datagram count separately for
+attempted and sent stages. Stream framed bytes remain alongside, never a TCP
+wire-cost estimate. Whole-run sent bytes are checked against complete trace
+end totals (`endTotalsMatch`); no end-total assertion is made for prefixes.
+All traffic is included, not only packets carrying updates.
+
+Saved specs and traces stay v1 with unchanged canonical serialization. Use
+`lightpool-experiment -reduce SAVED_DIRECTORY -out NEW_SUMMARY.json` to write
+v3 measurements without simulating or rewriting saved evidence, summaries or
+digests. Existing exclusive output and incomplete/nonzero behavior apply.
+The baseline smoke record is `experiments/2026-11-24-update-delivery/`; its
+`run.sh NEW_DIRECTORY` rebuilds the pinned tooling, runs exactly the six
+32-node replicate-1 cases, checks offline replay and refuses changed rows.
+Its `verify.sh NEW_DIRECTORY` restores every original from committed evidence
+and checks exact payload checksums, reductions, exit/status and table rows.
+The record also includes an unreviewed draft report and pinned render command.

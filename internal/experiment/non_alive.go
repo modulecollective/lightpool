@@ -8,7 +8,7 @@ import (
 	"github.com/modulecollective/lightpool/sim/trace"
 )
 
-const SummaryVersion = "lightpool-pilot-summary/v2"
+const SummaryVersion = "lightpool-pilot-summary/v3"
 
 // BeliefBound locates a change without changing the meaning of report.Reference.
 // Synthetic bounds cite the adjacent/last event, never an invented change.

@@ -55,6 +55,7 @@ func DeriveSeed(replicate uint64, namespace string) uint64 {
 
 func Fixture(name string, replicate uint64, code string) (Spec, sim.Scenario, error) {
 	n, count, shape := 32, 4, name
+	deliveryN, loss, exchange := deliveryCase(name)
 	switch name {
 	case "healthy", "crash", "threshold", "interval", "loss", "correlated":
 	case "partial-partition", "partial-partition-healthy":
@@ -70,12 +71,18 @@ func Fixture(name string, replicate uint64, code string) (Spec, sim.Scenario, er
 	case "ordinary-crash":
 		n, count, shape = 8, 1, "crash"
 	default:
-		return Spec{}, sim.Scenario{}, fmt.Errorf("unknown fixed case %q", name)
+		if deliveryN == 0 {
+			return Spec{}, sim.Scenario{}, fmt.Errorf("unknown fixed case %q", name)
+		}
+		n, shape = deliveryN, "delivery"
 	}
 	if replicate == 0 || code == "" {
 		return Spec{}, sim.Scenario{}, fmt.Errorf("positive replicate and source identity required")
 	}
 	spec := Spec{Format: Version, Case: name, Replicate: replicate, Code: code, Toolchain: runtime.Version(), Platform: runtime.GOOS + "/" + runtime.GOARCH, SeedDerivation: SeedVersion, LossDraw: sim.LossDrawVersion, LossBoundary: "after successful encoded in-budget datagram send, before delivery; not receiver loss", Pairing: "same fault tape at matching directed-link send ordinals; different traffic can realize different losses", WarmupNS: int64(15 * time.Second), HorizonNS: int64(120 * time.Second), TraceCap: TraceCap, Anomaly: []string{}, HealthyPairs: []EligiblePair{}}
+	if shape == "delivery" {
+		spec.WarmupNS, spec.HorizonNS = int64(50*time.Second), int64(130*time.Second)
+	}
 	s := sim.Scenario{Code: code, Protocol: core.DefaultConfig(), Seeds: sim.Seeds{Protocol: DeriveSeed(replicate, "protocol"), Fault: DeriveSeed(replicate, "fault"), Schedule: DeriveSeed(replicate, "schedule")}, Horizon: core.Instant(spec.HorizonNS), EventBudget: EventBudget, DatagramCapacity: 1 << 20, StreamCapacity: 1 << 20, Latency: time.Millisecond}
 	for i := 0; i < n; i++ {
 		node := sim.Node{Identity: wire.Identity{Name: fmt.Sprintf("n%03d", i), Address: netip.AddrPortFrom(netip.AddrFrom4([4]byte{192, 0, 2, byte(i + 1)}), 7946)}}
@@ -83,6 +90,22 @@ func Fixture(name string, replicate uint64, code string) (Spec, sim.Scenario, er
 		if i > 0 {
 			s.Actions = append(s.Actions, sim.Action{At: core.Instant(time.Duration(i) * 10 * time.Millisecond), Kind: "join", Node: node.Identity.Name, Peer: "n000"})
 		}
+	}
+	if shape == "delivery" {
+		if !exchange {
+			s.Protocol.PushPullInterval = 0
+		}
+		for i := range 20 {
+			s.Actions = append(s.Actions, sim.Action{At: core.Instant(time.Duration(50+4*i) * time.Second), Kind: "update", Node: s.Nodes[i].Identity.Name, Data: []byte(fmt.Sprintf("upd-%04d", i))})
+		}
+		for _, a := range s.Nodes {
+			for _, b := range s.Nodes {
+				if a.Identity.Name != b.Identity.Name {
+					s.Faults = append(s.Faults, sim.Fault{From: a.Identity.Name, To: b.Identity.Name, End: s.Horizon + 1, LossPPM: loss})
+				}
+			}
+		}
+		return spec, s, sim.Validate(s)
 	}
 	// Rank by a per-identity hash of the fault seed, avoiding shared RNG state and
 	// architecture-dependent shuffles. Only crash selection excludes bootstrap.
@@ -194,3 +217,17 @@ func OverlayProtocol(scenario *sim.Scenario, path string) error {
 // Use the report's lifetime, recovery and crash-cohort rules unchanged.
 type Reference = report.Reference
 type Pair = report.Pair
+
+// Exact finite names; malformed near-matches never select a delivery workload.
+func deliveryCase(name string) (nodes, loss int, exchange bool) {
+	for _, n := range []int{32, 128} {
+		for _, percent := range []int{0, 10, 30} {
+			for _, mode := range []string{"on", "off"} {
+				if name == fmt.Sprintf("delivery-%d-loss-%d-exchange-%s", n, percent, mode) {
+					return n, percent * 10000, mode == "on"
+				}
+			}
+		}
+	}
+	return 0, 0, false
+}

@@ -88,6 +88,9 @@ func Run(spec Spec, scenario sim.Scenario, directory string, progress func(sim.P
 		if recordErr != nil {
 			summary.Status = "incomplete"
 			summary.Reason = recordErr.Error()
+			if summary.UpdateDelivery.Status == "complete" {
+				summary.UpdateDelivery.Status, summary.UpdateDelivery.Reason = "incomplete", summary.Reason
+			}
 		}
 		status = Status{Status: summary.Status, Reason: summary.Reason}
 		reduceErr = writeJSON(filepath.Join(directory, "summary.json"), summary)
@@ -179,6 +182,9 @@ func reduce(directory string, recording bool) (*Summary, error) {
 		}
 		if status.Status == "incomplete" {
 			out.Status, out.Reason = status.Status, status.Reason
+			if out.UpdateDelivery.Status == "complete" {
+				out.UpdateDelivery.Status, out.UpdateDelivery.Reason = "incomplete", status.Reason
+			}
 		}
 	}
 	return out, nil
@@ -192,7 +198,12 @@ func validateSpec(spec Spec, scenario sim.Scenario) error {
 	case "partial-partition", "partial-partition-healthy":
 	case "healthy", "crash", "threshold", "interval", "loss", "correlated", "threshold-128", "ordinary-healthy", "ordinary-pause", "ordinary-crash", "correlated-dense", "correlated-dense-healthy", "correlated-dense-latency-100us", "correlated-dense-latency-10ms", "correlated-dense-service-100us", "correlated-dense-service-1ms", "correlated-dense-buffer-64k", "correlated-dense-buffer-16m":
 	default:
-		return fmt.Errorf("unknown experiment case %q", spec.Case)
+		if n, _, _ := deliveryCase(spec.Case); n == 0 {
+			return fmt.Errorf("unknown experiment case %q", spec.Case)
+		}
+		if err := validateDelivery(spec, scenario); err != nil {
+			return err
+		}
 	}
 	names := map[string]bool{}
 	for _, n := range scenario.Nodes {

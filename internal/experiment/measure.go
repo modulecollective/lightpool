@@ -90,6 +90,8 @@ type Traffic struct {
 }
 
 type Summary struct {
+	UpdateDelivery    UpdateDelivery      `json:"updateDelivery"`
+	TrafficCost       TrafficCost         `json:"trafficCost"`
 	NonAlive          NonAlive            `json:"nonAlive"`
 	Format            string              `json:"format"`
 	Status            string              `json:"status"`
@@ -138,6 +140,7 @@ type streamWrite struct {
 
 type measurements struct {
 	spec          Spec
+	delivery      *deliveryMeasurements
 	nonAlive      *nonAliveMeasurements
 	result        *Summary
 	nodes         []string
@@ -210,7 +213,7 @@ func Measure(spec Spec, scenario sim.Scenario, base *report.Report, input io.Rea
 		"Quantiles describe observed completions with explicit eligible counts; three pilot replicates support no inferential or extreme-tail claim.",
 		"Service time is uncalibrated; shared queues, CPU exhaustion, encryption, DNS and clock skew are outside this model.",
 	}}
-	x := &measurements{spec: spec, nonAlive: newNonAlive(), result: out, state: map[string]*nodeState{}, cohort: map[string]string{}, exposures: map[Pair]int64{}, suspect: map[Pair][]Reference{}, preexisting: map[Reference]map[Pair]Reference{}, mechanisms: map[pairKey]int{}, refutations: map[string][]Evidence{}, causes: map[Reference]map[pairKey]string{}, streams: map[string]streamWrite{}, drops: map[[2]string]uint64{}}
+	x := &measurements{spec: spec, nonAlive: newNonAlive(), delivery: newDelivery(spec, scenario), result: out, state: map[string]*nodeState{}, cohort: map[string]string{}, exposures: map[Pair]int64{}, suspect: map[Pair][]Reference{}, preexisting: map[Reference]map[Pair]Reference{}, mechanisms: map[pairKey]int{}, refutations: map[string][]Evidence{}, causes: map[Reference]map[pairKey]string{}, streams: map[string]streamWrite{}, drops: map[[2]string]uint64{}}
 	for _, n := range scenario.Nodes {
 		x.nodes = append(x.nodes, n.Identity.Name)
 		x.state[n.Identity.Name] = &nodeState{members: map[string]memberState{}}
@@ -337,6 +340,10 @@ func Measure(spec Spec, scenario sim.Scenario, base *report.Report, input io.Rea
 		return strings.Compare(a.Transport+"\x00"+a.Reason, b.Transport+"\x00"+b.Reason)
 	})
 	out.NonAlive = x.nonAlive.finish(x, base.Complete, base.ObservedThroughNS)
+	out.UpdateDelivery = x.delivery.finish(x, base.Complete, base.ObservedThroughNS)
+	if err := out.TrafficCost.finish(spec, base); err != nil {
+		return nil, err
+	}
 	out.Traffic.SentBytesPerNodeSecond = scaledRatio(int64(out.Traffic.Datagram.SentBytes+out.Traffic.Stream.SentBytes), 1e9, out.Traffic.ActiveNodeNS)
 	return out, nil
 }
@@ -408,6 +415,7 @@ func (x *measurements) checkWarmup() {
 		}
 	}
 	x.nonAlive.enroll(x, true)
+	x.delivery.enroll(x)
 }
 
 func (x *measurements) advance(at int64) {
@@ -488,6 +496,9 @@ func (x *measurements) record(raw json.RawMessage) error {
 	defer func() { x.nonAlive.lastEvent = &at }()
 	if at.TimeNS >= x.spec.WarmupNS && !x.warm {
 		x.checkWarmup()
+	}
+	if err := x.delivery.event(x, e, at); err != nil {
+		return err
 	}
 	// Exposure changes only at lifecycle boundaries. Pauses and beliefs do not
 	// change it. Integrating N² pairs at every packet would dominate the pilot.
@@ -582,6 +593,7 @@ func (x *measurements) record(raw json.RawMessage) error {
 		}
 	}
 	for _, t := range e.Traffic {
+		x.result.TrafficCost.record(at.TimeNS, x.spec, t)
 		n, _ := strconv.ParseUint(t.Bytes, 10, 64)
 		measured := at.TimeNS >= x.spec.WarmupNS && at.TimeNS <= x.spec.HorizonNS
 		total := &x.result.Traffic.Datagram

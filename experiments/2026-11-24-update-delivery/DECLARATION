@@ -1,0 +1,9 @@
+Declared before recording: exactly six attempts, baseline only, replicate 1.
+delivery-32-loss-0-exchange-on-r1
+delivery-32-loss-0-exchange-off-r1
+delivery-32-loss-10-exchange-on-r1
+delivery-32-loss-10-exchange-off-r1
+delivery-32-loss-30-exchange-on-r1
+delivery-32-loss-30-exchange-off-r1
+No protocol overlay. All originals, including failed attempts, are retained.
+128-node fixtures are construction-tested, not part of this smoke campaign.
