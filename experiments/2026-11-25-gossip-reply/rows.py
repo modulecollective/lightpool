@@ -21,9 +21,10 @@ for interval in ['measured', 'wholeRun']:
 def row(directory):
     d = Path(directory)
     spec = json.loads((d / 'spec.json').read_text())
-    status = json.loads((d / 'status.json').read_text())
+    status_path = d / 'status.json'
+    status = json.loads(status_path.read_text()) if status_path.exists() else {'status': 'missing-producer-status'}
     values = [d.name, spec['case'], spec['replicate'], spec['code'],
-              (d / 'exit-code').read_text().strip(), status['status']]
+              (d / 'exit-code').read_text().strip() if (d / 'exit-code').exists() else 'unobserved', status['status']]
     for name in ['spec.json', 'scenario.json', 'trace.ndjson', 'summary.json']:
         p = d / name
         h = hashlib.sha256()

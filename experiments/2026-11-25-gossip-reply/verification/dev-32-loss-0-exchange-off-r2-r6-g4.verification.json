@@ -1,0 +1,6 @@
+{
+  "cell": "dev-32-loss-0-exchange-off-r2-r6-g4",
+  "checksumRestoration": true,
+  "offlineSummaryMatch": null,
+  "reason": "Producer finalization absent; no completion inferred; original payload and absence retained."
+}

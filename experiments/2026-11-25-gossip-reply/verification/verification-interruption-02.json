@@ -1,0 +1,9 @@
+{
+  "identity": "verification-interruption-02",
+  "outerSessionExit": 143,
+  "stage": "offline reduction after complete recording and unpack",
+  "originalExit": 0,
+  "originalStatus": "complete",
+  "recordingRetried": false,
+  "reason": "External SIGTERM source unknown. Switching to one recording per tool invocation."
+}

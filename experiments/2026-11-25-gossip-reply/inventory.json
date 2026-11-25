@@ -379,5 +379,158 @@
     "replicate": 3,
     "storedBytes": 6000863,
     "totalWorkSeconds": 29.762739379002596
+  },
+  {
+    "arm": "r4-g3",
+    "cell": "dev-32-loss-0-exchange-off-r2-r4-g3",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "13985128083",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "19849216"
+    },
+    "phase": "dev",
+    "rawBytes": 53974142,
+    "replicate": 2,
+    "storedBytes": 5902245,
+    "totalWorkSeconds": 28.262784607999492
+  },
+  {
+    "arm": "r4-g4",
+    "cell": "dev-32-loss-0-exchange-off-r2-r4-g4",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "13759194447",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27013120"
+    },
+    "phase": "dev",
+    "rawBytes": 54312969,
+    "replicate": 2,
+    "storedBytes": 5915385,
+    "totalWorkSeconds": 28.976593245002732
+  },
+  {
+    "arm": "r4-g6",
+    "cell": "dev-32-loss-0-exchange-off-r2-r4-g6",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "14319399373",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "28172288"
+    },
+    "phase": "dev",
+    "rawBytes": 54401251,
+    "replicate": 2,
+    "storedBytes": 5911263,
+    "totalWorkSeconds": 29.8004833360028
+  },
+  {
+    "arm": "r5-g3",
+    "cell": "dev-32-loss-0-exchange-off-r2-r5-g3",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "17029570518",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "28237824"
+    },
+    "phase": "dev",
+    "rawBytes": 57127533,
+    "replicate": 2,
+    "storedBytes": 6055347,
+    "totalWorkSeconds": 34.0149519100014
+  },
+  {
+    "arm": "r5-g4",
+    "cell": "dev-32-loss-0-exchange-off-r2-r5-g4",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "16792410563",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "28585984"
+    },
+    "phase": "dev",
+    "rawBytes": 57350926,
+    "replicate": 2,
+    "storedBytes": 6066171,
+    "totalWorkSeconds": 33.30407630500122
+  },
+  {
+    "arm": "r5-g6",
+    "cell": "dev-32-loss-0-exchange-off-r2-r5-g6",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "16384070829",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "19324928"
+    },
+    "phase": "dev",
+    "rawBytes": 57757881,
+    "replicate": 2,
+    "storedBytes": 6070863,
+    "totalWorkSeconds": 33.20362110800488
+  },
+  {
+    "arm": "r6-g3",
+    "cell": "dev-32-loss-0-exchange-off-r2-r6-g3",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "15635131194",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "25923584"
+    },
+    "phase": "dev",
+    "rawBytes": 60277229,
+    "replicate": 2,
+    "storedBytes": 6207989,
+    "totalWorkSeconds": null,
+    "verificationRecovery": "verification-interruption-02"
+  },
+  {
+    "arm": "r6-g4",
+    "cell": "dev-32-loss-0-exchange-off-r2-r6-g4",
+    "exchange": "off",
+    "exitCode": null,
+    "interruption": "producer-interruption-03",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {},
+    "phase": "dev",
+    "producerStatusAbsent": true,
+    "rawBytes": 59154791,
+    "replicate": 2,
+    "storedBytes": 4685911,
+    "summaryAbsent": true,
+    "supervisorExitCode": 143,
+    "totalWorkSeconds": null
   }
 ]

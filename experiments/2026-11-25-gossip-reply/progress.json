@@ -1,7 +1,9 @@
 {
-  "completed": 20,
-  "elapsedSeconds": 883.1697398155884,
-  "rawBytes": 1163642444,
-  "stop": null,
-  "storedBytes": 122540293
+  "completeOriginals": 27,
+  "completed": 28,
+  "elapsedSeconds": 1620.9637517237352,
+  "incompleteOriginals": 1,
+  "rawBytes": 1617999166,
+  "stop": "blocked: three external SIGTERM terminations, including a one-attempt invocation; producer finalization absent for original 28; cause unknown",
+  "storedBytes": 169355467
 }

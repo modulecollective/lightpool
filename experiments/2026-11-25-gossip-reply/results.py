@@ -37,13 +37,13 @@ def derive(record, out):
     selection_path = record / 'comparators.json'
     selection = json.loads(selection_path.read_text()) if selection_path.exists() else None
     result = dict(declaration=declaration, progress=progress, comparators=selection, attempts=attempts,
-                  originalCosts=dict(attempts=len(inventory), rawBytes=sum(i['rawBytes'] for i in inventory),
+                  originalCosts=dict(attempts=len(inventory), resourcesAvailable=sum(bool(i['originalResources']) for i in inventory), resourcesUnavailable=sum(not i['originalResources'] for i in inventory), rawBytes=sum(i['rawBytes'] for i in inventory),
                       storedBytes=sum(i['storedBytes'] for i in inventory),
                       summedOriginalElapsedNS=sum(int(i['originalResources'].get('elapsedNS', 0)) for i in inventory),
                       maximumOriginalPeakRSSBytes=max((int(i['originalResources'].get('peakRSSBytes') or 0) for i in inventory), default=0)))
     (out / 'results.json').write_text(json.dumps(result, default=analysis.encoded, indent=2, sort_keys=True)+'\n')
     costs = result['originalCosts']
-    disposition = selection['disposition'] if selection else 'resource-limited inconclusive'
+    disposition = selection['disposition'] if selection else 'incomplete build; no study conclusion'
     counts = defaultdict(int)
     for i in inventory:
         counts[i['phase']] += 1
@@ -63,11 +63,11 @@ def derive(record, out):
     elif selection and selection['advance']:
         text += ['Development admitted the frozen held-out plan. Held-out benefit inference must be reported separately; no positive conclusion follows from development.']
     else:
-        text += ['The resource stopping rule interrupted development. No development comparator set or held-out inference is available.']
+        text += ['Development is incomplete. No development comparator set or held-out inference is available; the build is blocked by external execution interruptions, not a scientific screen decision.']
     text += [f"Originals total {costs['rawBytes']:,} raw bytes and {costs['storedBytes']:,} stored bytes. "
              f"Summed original recording/initial-reduction time was {costs['summedOriginalElapsedNS']/1e9:.3f} seconds; "
              f"maximum original process RSS was {costs['maximumOriginalPeakRSSBytes']:,} bytes. "
-             'These host observations are separate from deterministic outcomes and exclude later verification and rendering.']
+             'Host costs are available only where the original producer wrote resources.json. These observations exclude later verification and rendering; missing host observations are unavailable, not zero.']
     # A frontier is shown only after both declared development replicates are
     # valid. Partial rows remain inspectable in results.json and the originals.
     for loss in [0, 10, 30]:
@@ -95,8 +95,10 @@ def derive(record, out):
     non_alive=sum(int(v['nonAlive']['notAliveNS']) for v in attempts if 'nonAlive' in v)
     exposure=sum(int(v['nonAlive']['nominalPairNS']) for v in attempts if 'nonAlive' in v)
     suspicions=sum(v.get('suspicionEpisodes',0) for v in attempts)
+    unavailable=sum('delivery' not in v for v in attempts)
     text += [r'\subsection*{Completeness and secondary outcomes}',
-             f"Across the recorded attempts, {generated} updates generated; {failed} generation failures and {incomplete} incomplete receiver pairs. "
+             f'Original attempts with unavailable final summary: {unavailable}. Their absent metrics are unavailable, never zero. ',
+             f"Across the attempts with available summaries, {generated} updates generated; {failed} generation failures and {incomplete} incomplete receiver pairs. "
              f"Running-target exclusions: {exclusions}; suspicion episodes: {suspicions}. "
              f"Non-alive exposure: {non_alive:,} of {exposure:,} fixed running-pair nanoseconds. "
              'These sums describe the retained record, not an inference pooling strata or receiver pairs. '
