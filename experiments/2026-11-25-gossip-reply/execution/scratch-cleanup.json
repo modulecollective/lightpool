@@ -10,5 +10,8 @@
     "delivery-32-loss-30-exchange-on-r1"
   ],
   "verifiedRawBytes": 450378582,
-  "originalsDeleted": false
+  "originalsDeleted": false,
+  "sizingProbeRawBytesReclaimed": 473912036,
+  "sizingProbePackedCopyRetained": "/tmp/gossip-design-20261125/resource-128-packed",
+  "sizingProbeExcludedFromCampaign": true
 }

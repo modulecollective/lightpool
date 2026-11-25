@@ -532,5 +532,233 @@
     "summaryAbsent": true,
     "supervisorExitCode": 143,
     "totalWorkSeconds": null
+  },
+  {
+    "arm": "r6-g6",
+    "cell": "dev-32-loss-0-exchange-off-r2-r6-g6",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "22431882880",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "19296256"
+    },
+    "phase": "dev",
+    "rawBytes": 61134282,
+    "replicate": 2,
+    "storedBytes": 6228176,
+    "totalWorkSeconds": 41.37369976499758
+  },
+  {
+    "arm": "reply",
+    "cell": "dev-32-loss-0-exchange-off-r2-reply",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "20683636519",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "26595328"
+    },
+    "phase": "dev",
+    "rawBytes": 54676698,
+    "replicate": 2,
+    "storedBytes": 5934924,
+    "totalWorkSeconds": 37.266560165000556
+  },
+  {
+    "arm": "r4-g3",
+    "cell": "dev-32-loss-0-exchange-off-r3-r4-g3",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "17066690405",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27357184"
+    },
+    "phase": "dev",
+    "rawBytes": 53770439,
+    "replicate": 3,
+    "storedBytes": 5881682,
+    "totalWorkSeconds": 33.90482163600245
+  },
+  {
+    "arm": "r4-g4",
+    "cell": "dev-32-loss-0-exchange-off-r3-r4-g4",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "15757387697",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27967488"
+    },
+    "phase": "dev",
+    "rawBytes": 54265728,
+    "replicate": 3,
+    "storedBytes": 5891431,
+    "totalWorkSeconds": 33.399217188001785
+  },
+  {
+    "arm": "r4-g6",
+    "cell": "dev-32-loss-0-exchange-off-r3-r4-g6",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "14047209629",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "28004352"
+    },
+    "phase": "dev",
+    "rawBytes": 54432477,
+    "replicate": 3,
+    "storedBytes": 5886472,
+    "totalWorkSeconds": 28.22330827100086
+  },
+  {
+    "arm": "r5-g3",
+    "cell": "dev-32-loss-0-exchange-off-r3-r5-g3",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "16372306830",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "28168192"
+    },
+    "phase": "dev",
+    "rawBytes": 56936520,
+    "replicate": 3,
+    "storedBytes": 6040278,
+    "totalWorkSeconds": 33.965569954001694
+  },
+  {
+    "arm": "r5-g4",
+    "cell": "dev-32-loss-0-exchange-off-r3-r5-g4",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "15185618580",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "28307456"
+    },
+    "phase": "dev",
+    "rawBytes": 57152521,
+    "replicate": 3,
+    "storedBytes": 6034299,
+    "totalWorkSeconds": 34.05945521799731
+  },
+  {
+    "arm": "r5-g6",
+    "cell": "dev-32-loss-0-exchange-off-r3-r5-g6",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "22152414617",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "28434432"
+    },
+    "phase": "dev",
+    "rawBytes": 57816248,
+    "replicate": 3,
+    "storedBytes": 6050955,
+    "totalWorkSeconds": 48.869265891000396
+  },
+  {
+    "arm": "r6-g3",
+    "cell": "dev-32-loss-0-exchange-off-r3-r6-g3",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "23483235419",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "28434432"
+    },
+    "phase": "dev",
+    "rawBytes": 60075749,
+    "replicate": 3,
+    "storedBytes": 6197107,
+    "totalWorkSeconds": 48.47013234399492
+  },
+  {
+    "arm": "r6-g4",
+    "cell": "dev-32-loss-0-exchange-off-r3-r6-g4",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "24039085075",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "28434432"
+    },
+    "phase": "dev",
+    "rawBytes": 60462526,
+    "replicate": 3,
+    "storedBytes": 6200910,
+    "totalWorkSeconds": 44.86041146500065
+  },
+  {
+    "arm": "r6-g6",
+    "cell": "dev-32-loss-0-exchange-off-r3-r6-g6",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "20782313132",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "28434432"
+    },
+    "phase": "dev",
+    "rawBytes": 61194370,
+    "replicate": 3,
+    "storedBytes": 6213207,
+    "totalWorkSeconds": 41.33760359900043
+  },
+  {
+    "arm": "reply",
+    "cell": "dev-32-loss-0-exchange-off-r3-reply",
+    "exchange": "off",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "20469866120",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "28434432"
+    },
+    "phase": "dev",
+    "rawBytes": 54619557,
+    "replicate": 3,
+    "storedBytes": 5916118,
+    "totalWorkSeconds": 40.21781350600213
   }
 ]
