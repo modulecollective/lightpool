@@ -1,0 +1,250 @@
+{
+  "activeBudgetSeconds": 86400,
+  "analysisToolchain": "Python 3.13.5",
+  "arms": [
+    {
+      "GossipNodes": 3,
+      "RetransmitMult": 4,
+      "id": "r4-g3"
+    },
+    {
+      "GossipNodes": 4,
+      "RetransmitMult": 4,
+      "id": "r4-g4"
+    },
+    {
+      "GossipNodes": 6,
+      "RetransmitMult": 4,
+      "id": "r4-g6"
+    },
+    {
+      "GossipNodes": 3,
+      "RetransmitMult": 5,
+      "id": "r5-g3"
+    },
+    {
+      "GossipNodes": 4,
+      "RetransmitMult": 5,
+      "id": "r5-g4"
+    },
+    {
+      "GossipNodes": 6,
+      "RetransmitMult": 5,
+      "id": "r5-g6"
+    },
+    {
+      "GossipNodes": 3,
+      "RetransmitMult": 6,
+      "id": "r6-g3"
+    },
+    {
+      "GossipNodes": 4,
+      "RetransmitMult": 6,
+      "id": "r6-g4"
+    },
+    {
+      "GossipNodes": 6,
+      "RetransmitMult": 6,
+      "id": "r6-g6"
+    },
+    {
+      "GossipNodes": 3,
+      "RetransmitMult": 4,
+      "id": "reply"
+    }
+  ],
+  "base": "f707a5e6f88f68c14ee38ede47fdda8294b00ce4",
+  "collapseIdenticalArms": true,
+  "comparatorSelection": {
+    "HOrder": [
+      "U",
+      "F",
+      "M",
+      "T",
+      "RetransmitMult",
+      "GossipNodes"
+    ],
+    "HQualification": "F>=candidate.F and U>=candidate.U",
+    "LOrder": [
+      "M",
+      "T",
+      "U",
+      "F",
+      "RetransmitMult",
+      "GossipNodes"
+    ],
+    "LQualification": "F<=candidate.F and U<=candidate.U",
+    "invalid": "any invalid/incomplete development attempt makes its stratum inconclusive; null T cannot win",
+    "means": "arithmetic, one observation per replicate; exact rationals",
+    "replicates": [
+      2,
+      3
+    ]
+  },
+  "development": {
+    "arms": [
+      "r4-g3",
+      "r4-g4",
+      "r4-g6",
+      "r5-g3",
+      "r5-g4",
+      "r5-g6",
+      "r6-g3",
+      "r6-g4",
+      "r6-g6",
+      "reply"
+    ],
+    "exchange": [
+      "on",
+      "off"
+    ],
+    "latencyMS": 1,
+    "loss": [
+      0,
+      10,
+      30
+    ],
+    "nodes": 32,
+    "replicates": [
+      2,
+      3
+    ]
+  },
+  "developmentAdvance": "primary32 bracketed, thresholds 1 and 2 pass, no no-more-expensive baseline dominates M and T; otherwise stop before holdout",
+  "dominanceUncertainty": "mean-only dominance with replicate order changes is inconclusive, not equivalence",
+  "eventBudget": 5000000,
+  "format": "lightpool-gossip-reply-study/v1",
+  "frozenOn": "2026-11-25",
+  "heldoutArms": [
+    "reply",
+    "L",
+    "H"
+  ],
+  "holdout": [
+    {
+      "id": "main",
+      "latencyMS": 1,
+      "loss": [
+        0,
+        10,
+        30
+      ],
+      "nodes": 32,
+      "replicates": [
+        101,
+        102,
+        103,
+        104,
+        105,
+        106
+      ]
+    },
+    {
+      "id": "high-loss",
+      "latencyMS": 1,
+      "loss": [
+        30
+      ],
+      "nodes": 128,
+      "replicates": [
+        101,
+        102,
+        103,
+        104,
+        105,
+        106
+      ]
+    },
+    {
+      "id": "controls",
+      "latencyMS": 1,
+      "loss": [
+        0,
+        10
+      ],
+      "nodes": 128,
+      "replicates": [
+        101,
+        102,
+        103
+      ]
+    },
+    {
+      "id": "timing",
+      "latencyMS": 10,
+      "loss": [
+        0,
+        10,
+        30
+      ],
+      "nodes": 32,
+      "replicates": [
+        201,
+        202,
+        203
+      ]
+    }
+  ],
+  "maximum128Recordings": 72,
+  "maximum32Recordings": 282,
+  "maximumOriginalRecordings": 354,
+  "measurement": {
+    "F": "attempted.datagramBytes + attempted.streamBytes",
+    "M": "missed / frozen eligible pairs",
+    "T": "conditional nearest-rank pair p95NS",
+    "U": "attempted.ipv4UDPBytes + attempted.streamBytes",
+    "deadlineSeconds": 4,
+    "horizonSeconds": 130,
+    "pairsPer128": 2540,
+    "pairsPer32": 620,
+    "serviceNS": 0,
+    "trafficInterval": "closed [50s,130s]",
+    "updates": 20,
+    "warmupSeconds": 50
+  },
+  "missingBracket": "stratum inconclusive; missing controls prevent a positive whole-study conclusion",
+  "ordinaryTestPatchSHA256": "c2a671468656f95ade9b61e57f5b01850bef3fbcbbf19fabe4c6848850473434",
+  "primary": [
+    {
+      "exchange": "off",
+      "latencyMS": 1,
+      "loss": 30,
+      "nodes": 32
+    },
+    {
+      "exchange": "off",
+      "latencyMS": 1,
+      "loss": 30,
+      "nodes": 128
+    }
+  ],
+  "replyPatchSHA256": "62ee865e6f8bdfa32359e08ca8969bb0c1f8bcc471791ab18a6771233f3856f7",
+  "retainedBudgetBytes": 8589934592,
+  "retention": "every declared attempt including failures, exact inputs, diagnostics and host costs; serial pack and restoration before deleting raw work copies",
+  "retries": "none; infrastructure recovery requires a separate retained identity",
+  "sizing": {
+    "excludedFromInference": true,
+    "packed128ProbeBytes": 65287874,
+    "packed32MeanBytes": 7514182.166666667,
+    "probeReplicate": 2,
+    "raw32MeanBytes": 75063097.0
+  },
+  "thresholds": {
+    "absoluteMissReduction": "0.001",
+    "allStrataExclusions": "no additional running-target exclusions when L records zero",
+    "allStrataMaxNonAliveFractionIncrease": "0.0001",
+    "bootstrapDraws": 20000,
+    "bootstrapSeed": 20261125,
+    "minimumBaselineReplicatesWithMisses": 2,
+    "primaryPercentileCI": "0.975 two-sided; gains versus L exclude zero; upper CIs candidate-H M,T,F,U <=0",
+    "regressionMaxAbsoluteMissIncrease": "0.001",
+    "regressionMaxRelativeP95Increase": "0.05",
+    "regressionPercentileCI": "0.95 paired descriptive; uncertainty crossing guardrail makes positive claim inconclusive",
+    "relativeMissReduction": "0.25",
+    "relativeP95Reduction": "0.10",
+    "upperComparator": "candidate M,T,F,U <= H; recheck L/candidate/H bracket on holdout"
+  },
+  "toolchain": "go1.26.3 linux/amd64",
+  "toolsBase": "acce830719b49da11bb7d4d3d71d4b5973012d08",
+  "traceCapBytes": 2147483648
+}

@@ -1,0 +1,80 @@
+diff --git a/gossip_reply_test.go b/gossip_reply_test.go
+new file mode 100644
+index 0000000..a1c6396
+--- /dev/null
++++ b/gossip_reply_test.go
+@@ -0,0 +1,74 @@
++package lightpool
++
++import (
++	"net"
++	"testing"
++	"time"
++
++	"github.com/modulecollective/lightpool/wire"
++)
++
++// Drive the real UDP codec/owner/write path with schedules disabled so a
++// reply loop or a replenished send budget is observable as an extra packet.
++func TestOrdinaryGossipReplyTermination(t *testing.T) {
++	cfg := testConfig("reply-node")
++	cfg.Protocol.ProbeInterval = 0
++	cfg.Protocol.PushPullInterval = 0
++	cfg.Protocol.GossipInterval = 0
++	n := newNode(t, cfg)
++	conn, err := net.ListenUDP("udp4", nil)
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer func() {
++		if err := conn.Close(); err != nil {
++			t.Error(err)
++		}
++	}()
++	self := n.Snapshot().Members[0].Clone()
++	request, err := wire.Encode([]wire.Message{{GossipRequest: &wire.GossipRequest{}}, {Alive: &self}}, wire.Options{})
++	if err != nil {
++		t.Fatal(err)
++	}
++	read := func(timeout time.Duration) ([]byte, error) {
++		t.Helper()
++		if err := conn.SetReadDeadline(time.Now().Add(timeout)); err != nil {
++			t.Fatal(err)
++		}
++		b := make([]byte, 65535)
++		count, _, err := conn.ReadFromUDPAddrPort(b)
++		return b[:count], err
++	}
++	send := func(b []byte) {
++		t.Helper()
++		if _, err := conn.WriteToUDPAddrPort(b, n.Identity().Address); err != nil {
++			t.Fatal(err)
++		}
++	}
++	for range cfg.Protocol.RetransmitMult {
++		send(request)
++		frame, err := read(2 * time.Second)
++		if err != nil {
++			t.Fatal("missing queued reply", err)
++		}
++		messages, err := wire.Decode(frame, wire.Options{})
++		if err != nil || len(messages) != 1 || messages[0].Alive == nil || messages[0].Alive.Name != self.Name {
++			t.Fatal("ordinary reply", messages, err)
++		}
++		send(frame)
++		if _, err = read(100 * time.Millisecond); err == nil {
++			t.Fatal("reply triggered another reply")
++		}
++	}
++	send(request)
++	if _, err = read(100 * time.Millisecond); err == nil {
++		t.Fatal("exhausted queue replied")
++	}
++	if n.Snapshot().Backlog != 0 {
++		t.Fatal("queue did not drain")
++	}
++	if err := n.Shutdown(); err != nil {
++		t.Fatal(err)
++	}
++	t.Log("real UDP: 4 requests -> 4 replies; replies and exhausted queue silent; shutdown reaped workers")
++}

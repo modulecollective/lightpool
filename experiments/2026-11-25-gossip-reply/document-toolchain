@@ -1,0 +1,7 @@
+tectonic 0.15.0 x86_64-unknown-linux-musl
+archive SHA256 dfb82876f2986862996e564fa507a9e576e0c1e3bee63c2c1bd677c2543e6407
+TeX bundle https://data1b.fullyjustified.net/tlextras-2022.0r0.tar
+bundle identity 6ffe055852f8faf66c0acbe1a7fb27f87b869a90bad1204f3bf4d9683f597c7c
+SOURCE_DATE_EPOCH=1795478400
+render.sh TOOL_CACHE_DIRECTORY
+PDF inspection: pypdfium2 4.30.0 (PDFium 126), Pillow 11.1.0; rendering only.

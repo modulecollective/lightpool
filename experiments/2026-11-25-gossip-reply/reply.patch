@@ -1,0 +1,1336 @@
+diff --git a/core/core.go b/core/core.go
+index f113897..dcb5347 100644
+--- a/core/core.go
++++ b/core/core.go
+@@ -140,10 +140,21 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
+ 		if !c.allowed(e.From.Addr()) {
+ 			break
+ 		}
+-		for _, m := range e.Messages {
++		request := len(e.Messages) > 0 && e.Messages[0].GossipRequest != nil
++		for i, m := range e.Messages {
+ 			if err := m.Validate(); err != nil {
+ 				return nil, err
+ 			}
++			if m.GossipRequest != nil && (i != 0 || len(e.Messages) < 2) {
++				return nil, errors.New("invalid gossip request marker")
++			}
++			if request && i > 0 && m.Alive == nil && m.Suspect == nil && m.Dead == nil {
++				return nil, errors.New("gossip request requires membership records")
++			}
++		}
++		// Select from the queue before admission can enqueue or defer new records.
++		if request {
++			c.datagram(e.From, nil, 0)
+ 		}
+ 		c.stats.Datagrams++
+ 		c.stats.Messages += uint64(len(e.Messages))
+@@ -185,6 +196,9 @@ func (c *Core) Step(now Instant, input Event) ([]Effect, error) {
+ 			return nil, errors.New("receive time exceeds processing time")
+ 		}
+ 		for _, m := range e.Messages {
++			if m.GossipRequest != nil {
++				return nil, errors.New("gossip request on stream")
++			}
+ 			if err := m.Validate(); err != nil {
+ 				return nil, err
+ 			}
+diff --git a/core/gossip_reply_test.go b/core/gossip_reply_test.go
+new file mode 100644
+index 0000000..cde552b
+--- /dev/null
++++ b/core/gossip_reply_test.go
+@@ -0,0 +1,234 @@
++package core
++
++import (
++	"fmt"
++	"strings"
++	"testing"
++
++	"github.com/modulecollective/lightpool/wire"
++)
++
++func gossipSends(es []Effect) []SendDatagram {
++	var out []SendDatagram
++	for _, e := range es {
++		if s, ok := e.(SendDatagram); ok {
++			out = append(out, s)
++		}
++	}
++	return out
++}
++
++func gossipQueue(t *testing.T) *Core {
++	t.Helper()
++	c := testCore(t)
++	c.broadcasts = nil
++	c.broadcastKeys = make(map[string]*broadcast)
++	c.queue(wire.Message{Alive: ptrMember(wire.Member{Identity: identity("queued", 3), Incarnation: 1})}, "queued", 0)
++	return c
++}
++
++func gossipPacket() []wire.Message {
++	return []wire.Message{{GossipRequest: &wire.GossipRequest{}}, {Alive: ptrMember(wire.Member{Identity: identity("new", 4), Incarnation: 1})}}
++}
++
++func TestGossipReplyBeforeAdmissionAndAccounting(t *testing.T) {
++	c := gossipQueue(t)
++	from := identity("sender", 9).Address
++	request := Datagram{From: from, Messages: gossipPacket()}
++	limit := retransmitLimit(c.config.RetransmitMult, len(c.nodes))
++	for i := range limit {
++		es := step(t, c, 0, request)
++		sends := gossipSends(es)
++		if len(sends) != 1 || sends[0].To != from || len(sends[0].Messages) != 1 || sends[0].Messages[0].Alive == nil || sends[0].Messages[0].Alive.Name != "queued" {
++			t.Fatal("reply must use pre-admission queue exactly once", sends)
++		}
++		if c.nodes["new"] != nil {
++			t.Fatal("membership skipped deferred path")
++		}
++		if i < limit-1 && (len(c.broadcasts) != 1 || c.broadcasts[0].transmits != i+1) {
++			t.Fatal("reply counters", c.broadcasts)
++		}
++	}
++	if len(c.broadcasts) != 0 {
++		t.Fatal("reply did not exhaust budget")
++	}
++	if sends := gossipSends(step(t, c, 0, request)); len(sends) != 0 {
++		t.Fatal("exhausted queue replied", sends)
++	}
++	// Existing deferred work must still make the incoming record reachable.
++	step(t, c, 0, Work{ID: c.work})
++	if c.nodes["new"] == nil {
++		t.Fatal("request record never admitted")
++	}
++}
++
++func TestGossipRepliesDoNotLoop(t *testing.T) {
++	for _, messages := range [][]wire.Message{
++		{{Alive: ptrMember(wire.Member{Identity: identity("b", 2), Incarnation: 1})}},
++		{{Ack: &wire.Ack{Sequence: 123}}},
++		{{Nack: &wire.Ack{Sequence: 123}}},
++	} {
++		c := gossipQueue(t)
++		es := step(t, c, 0, Datagram{From: identity("b", 2).Address, Messages: messages})
++		if sends := gossipSends(es); len(sends) != 0 {
++			t.Fatal("unmarked packet elicited a reply", sends)
++		}
++		if c.broadcasts[0].transmits != 0 {
++			t.Fatal("unmarked packet spent reply budget")
++		}
++	}
++	c := gossipQueue(t)
++	p := wire.Ping{Sequence: 7, Target: "a", Source: identity("b", 2)}
++	sends := gossipSends(step(t, c, 0, Datagram{From: p.Source.Address, Messages: []wire.Message{{Ping: &p}}}))
++	if len(sends) != 1 || sends[0].Messages[0].Ack == nil || sends[0].Messages[0].Ack.Sequence != 7 {
++		t.Fatal("ping behavior changed", sends)
++	}
++}
++
++func TestGossipRejectWholeMalformedRequest(t *testing.T) {
++	marker, record := gossipPacket()[0], gossipPacket()[1]
++	for _, messages := range [][]wire.Message{
++		{marker}, {record, marker}, {marker, marker, record},
++		{marker, record, {Ack: &wire.Ack{}}},
++		{marker, record, {Ping: &wire.Ping{Sequence: 1, Target: "a", Source: identity("b", 2)}}},
++		{marker, {Exchange: &wire.Exchange{}}},
++		{marker, record, {}},
++	} {
++		c := gossipQueue(t)
++		before := c.stats.Datagrams
++		_, err := c.Step(0, Datagram{From: identity("b", 2).Address, Messages: messages})
++		if err == nil {
++			t.Fatal("accepted malformed request", messages)
++		}
++		if len(c.effects) != 0 || len(c.high) != 0 || len(c.low) != 0 || c.broadcasts[0].transmits != 0 || c.stats.Datagrams != before {
++			t.Fatal("partial request admitted", c.effects)
++		}
++	}
++	c := gossipQueue(t)
++	if _, err := c.Step(0, StreamMessage{ID: c.token(), Messages: []wire.Message{record, marker}}); err == nil {
++		t.Fatal("stream marker accepted")
++	}
++	if len(c.effects) != 0 || c.broadcasts[0].transmits != 0 {
++		t.Fatal("stream caused reply")
++	}
++}
++
++func TestGossipMarkerBudgetAndBatch(t *testing.T) {
++	for _, protected := range []bool{false, true} {
++		c := gossipQueue(t)
++		c.config.Label = strings.Repeat("l", wire.MaxLabel)
++		c.config.Protected = protected
++		c.config.PacketBudget = 256
++		// This record exactly fits an unmarked packet, but not a request.
++		member := wire.Member{Identity: identity("queued", 3), Incarnation: 1}
++		for {
++			n, err := wire.Size([]wire.Message{{Alive: &member}}, c.config.Label, protected)
++			if err != nil {
++				t.Fatal(err)
++			}
++			if n == c.config.PacketBudget {
++				break
++			}
++			member.Meta = append(member.Meta, 0)
++		}
++		c.queue(wire.Message{Alive: &member}, "queued", 0)
++		c.effects = nil
++		c.gossip()
++		if len(gossipSends(c.effects)) != 0 || c.broadcasts[0].transmits != 0 {
++			t.Fatal("marker-only poll or budget spent")
++		}
++		c.datagram(identity("b", 2).Address, nil, 0)
++		sends := gossipSends(c.effects)
++		if len(sends) != 1 || sends[0].Messages[0].GossipRequest != nil {
++			t.Fatal("ordinary path lost fitting record")
++		}
++		n, err := wire.Size(sends[0].Messages, c.config.Label, protected)
++		if err != nil || n != c.config.PacketBudget {
++			t.Fatal(n, err)
++		}
++		c.effects = nil
++		member.Meta = member.Meta[:len(member.Meta)-1]
++		c.queue(wire.Message{Alive: &member}, "queued", 0)
++		c.gossip()
++		sends = gossipSends(c.effects)
++		if len(sends) != 1 || len(sends[0].Messages) != 2 || sends[0].Messages[0].GossipRequest == nil {
++			t.Fatal("request marker missing")
++		}
++		n, err = wire.Size(sends[0].Messages, c.config.Label, protected)
++		if err != nil || n != c.config.PacketBudget {
++			t.Fatal("marked packet boundary", n, err)
++		}
++	}
++	c := gossipQueue(t)
++	c.config.PacketBudget = 65507
++	for i := range wire.MaxBatch {
++		name := fmt.Sprintf("record-%03d", i)
++		c.queue(wire.Message{Alive: ptrMember(wire.Member{Identity: identity(name, uint16(i+10)), Incarnation: 1})}, name, 0)
++	}
++	c.effects = nil
++	c.gossip()
++	sends := gossipSends(c.effects)
++	if len(sends) != 1 || len(sends[0].Messages) != wire.MaxBatch || sends[0].Messages[0].GossipRequest == nil {
++		t.Fatal("batch slot not reserved")
++	}
++	total := 0
++	for _, b := range c.broadcasts {
++		total += b.transmits
++	}
++	if total != wire.MaxBatch-1 {
++		t.Fatal("pack spent counters twice", total)
++	}
++}
++
++func TestGossipDuplicateLossTermination(t *testing.T) {
++	a, b := gossipQueue(t), gossipQueue(t)
++	// Leave membership work deferred to isolate send-budget termination.
++	// Admission and replenishment by a new record are exercised separately.
++	requests, replies := 0, 0
++	for range 20 {
++		a.effects = nil
++		a.gossip()
++		for _, request := range gossipSends(a.effects) {
++			requests++
++			for duplicate := range 2 {
++				es := step(t, b, 0, Datagram{From: a.nodes[a.self].Address, Messages: request.Messages})
++				for _, reply := range gossipSends(es) {
++					replies++
++					if duplicate == 0 {
++						continue
++					} // lose one of the replies
++					if sends := gossipSends(step(t, a, 0, Datagram{From: b.nodes[b.self].Address, Messages: reply.Messages})); len(sends) != 0 {
++						t.Fatal("reply loop")
++					}
++				}
++			}
++		}
++	}
++	if requests != retransmitLimit(a.config.RetransmitMult, len(a.nodes)) || replies != retransmitLimit(b.config.RetransmitMult, len(b.nodes)) || len(a.broadcasts) != 0 || len(b.broadcasts) != 0 {
++		t.Fatal("finite-budget termination", requests, replies)
++	}
++	a.effects = nil
++	a.gossip()
++	if len(gossipSends(a.effects)) != 0 {
++		t.Fatal("empty queue solicited a reply")
++	}
++}
++
++func TestGossipRequestMembershipKindsAndNonfittingQueue(t *testing.T) {
++	c := gossipQueue(t)
++	record := gossipPacket()[1]
++	accusation := wire.Accusation{Node: "b", Incarnation: 1, From: "sender"}
++	messages := []wire.Message{gossipPacket()[0], record, {Suspect: &accusation}, {Dead: &accusation}}
++	sends := gossipSends(step(t, c, 0, Datagram{From: identity("sender", 9).Address, Messages: messages}))
++	if len(sends) != 1 || len(c.high) != 1 || len(c.low) != 2 {
++		t.Fatal("request membership dispatch", sends, len(c.high), len(c.low))
++	}
++	c = gossipQueue(t)
++	c.config.PacketBudget = 256
++	member := c.broadcasts[0].message.Alive.Clone()
++	member.Meta = make([]byte, wire.MaxMeta)
++	c.queue(wire.Message{Alive: &member}, member.Name, 0)
++	if sends := gossipSends(step(t, c, 0, Datagram{From: identity("sender", 9).Address, Messages: gossipPacket()})); len(sends) != 0 || c.broadcasts[0].transmits != 0 {
++		t.Fatal("nonfitting queue replied or spent budget", sends)
++	}
++}
+diff --git a/core/probe.go b/core/probe.go
+index b9aabe4..abfb349 100644
+--- a/core/probe.go
++++ b/core/probe.go
+@@ -260,7 +260,7 @@ func (c *Core) gossip() {
+ 		return n.Name == c.self || n.State == wire.Left || (n.State == wire.Dead && c.now-n.changed > Instant(c.config.GossipToDead))
+ 	})
+ 	for _, n := range peers {
+-		c.datagram(n.Address, nil, 0)
++		c.datagram(n.Address, []wire.Message{{GossipRequest: &wire.GossipRequest{}}}, 0)
+ 	}
+ }
+ 
+diff --git a/core/queue.go b/core/queue.go
+index 7121ed1..ebc08c3 100644
+--- a/core/queue.go
++++ b/core/queue.go
+@@ -108,7 +108,7 @@ func (c *Core) datagram(to netip.AddrPort, messages []wire.Message, probe uint64
+ 		return
+ 	}
+ 	messages = c.pack(messages)
+-	if len(messages) == 0 {
++	if len(messages) == 0 || (len(messages) == 1 && messages[0].GossipRequest != nil) {
+ 		return
+ 	}
+ 	id := c.token()
+diff --git a/sim/export.go b/sim/export.go
+index a4de0ab..208e2cb 100644
+--- a/sim/export.go
++++ b/sim/export.go
+@@ -190,6 +190,8 @@ func messageKinds(ms []wire.Message) []string {
+ 	out := make([]string, 0, len(ms))
+ 	for _, m := range ms {
+ 		switch {
++		case m.GossipRequest != nil:
++			out = append(out, "gossip-request")
+ 		case m.Ping != nil:
+ 			out = append(out, "ping")
+ 		case m.Indirect != nil:
+diff --git a/sim/gossip_reply_test.go b/sim/gossip_reply_test.go
+new file mode 100644
+index 0000000..7497281
+--- /dev/null
++++ b/sim/gossip_reply_test.go
+@@ -0,0 +1,42 @@
++package sim
++
++import (
++	"bytes"
++	"encoding/json"
++	"testing"
++
++	"github.com/modulecollective/lightpool/sim/trace"
++)
++
++func TestGossipRequestExport(t *testing.T) {
++	var output bytes.Buffer
++	result, err := Export(fixture(), &output, ExportOptions{})
++	if err != nil || !result.Complete {
++		t.Fatal(result.Reason, err)
++	}
++	requests := 0
++	complete, err := trace.Read(bytes.NewReader(output.Bytes()), func(raw json.RawMessage) error {
++		var event trace.Event
++		if err := json.Unmarshal(raw, &event); err != nil {
++			return err
++		}
++		for _, traffic := range event.Traffic {
++			if traffic.Stage != "attempt" || len(traffic.Messages) == 0 || traffic.Messages[0] != "gossip-request" {
++				continue
++			}
++			requests++
++			if len(traffic.Messages) < 2 {
++				t.Fatal("marker-only attempt")
++			}
++			for _, kind := range traffic.Messages[1:] {
++				if kind != "alive" && kind != "suspect" && kind != "dead" {
++					t.Fatal("invalid request", traffic.Messages)
++				}
++			}
++		}
++		return nil
++	})
++	if err != nil || !complete || requests == 0 {
++		t.Fatal("request labels lost from validated trace", requests, err)
++	}
++}
+diff --git a/sim/trace/testdata/pause-states.json b/sim/trace/testdata/pause-states.json
+index e8f6d6c..97d57ae 100644
+--- a/sim/trace/testdata/pause-states.json
++++ b/sim/trace/testdata/pause-states.json
+@@ -1,7 +1,7 @@
+ [
+   {
+     "horizon": "200000000",
+-    "seq": "441",
++    "seq": "557",
+     "nodes": [
+       {
+         "node": "a",
+@@ -59,17 +59,17 @@
+         ],
+         "summary": {
+           "health": "0",
+-          "backlog": "3",
++          "backlog": "1",
+           "pendingStreams": "0",
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "8",
++            "datagrams": "15",
+             "failedProbes": "0",
+-            "messages": "35",
++            "messages": "43",
+             "probes": "0",
+             "queueDrops": "0",
+-            "steps": "76",
++            "steps": "90",
+             "tcpOnly": "0"
+           }
+         }
+@@ -124,17 +124,17 @@
+         ],
+         "summary": {
+           "health": "0",
+-          "backlog": "2",
++          "backlog": "0",
+           "pendingStreams": "0",
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "8",
++            "datagrams": "14",
+             "failedProbes": "0",
+-            "messages": "26",
++            "messages": "51",
+             "probes": "0",
+             "queueDrops": "0",
+-            "steps": "50",
++            "steps": "80",
+             "tcpOnly": "0"
+           }
+         }
+@@ -189,17 +189,17 @@
+         ],
+         "summary": {
+           "health": "0",
+-          "backlog": "2",
++          "backlog": "0",
+           "pendingStreams": "0",
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "10",
++            "datagrams": "17",
+             "failedProbes": "0",
+-            "messages": "38",
++            "messages": "48",
+             "probes": "0",
+             "queueDrops": "0",
+-            "steps": "64",
++            "steps": "80",
+             "tcpOnly": "0"
+           }
+         }
+@@ -254,17 +254,17 @@
+         ],
+         "summary": {
+           "health": "0",
+-          "backlog": "3",
++          "backlog": "1",
+           "pendingStreams": "0",
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "6",
++            "datagrams": "12",
+             "failedProbes": "0",
+-            "messages": "33",
++            "messages": "41",
+             "probes": "0",
+             "queueDrops": "0",
+-            "steps": "53",
++            "steps": "66",
+             "tcpOnly": "0"
+           }
+         }
+@@ -324,12 +324,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "4",
++            "datagrams": "8",
+             "failedProbes": "0",
+-            "messages": "20",
++            "messages": "25",
+             "probes": "0",
+             "queueDrops": "0",
+-            "steps": "38",
++            "steps": "46",
+             "tcpOnly": "0"
+           }
+         }
+@@ -384,17 +384,17 @@
+         ],
+         "summary": {
+           "health": "0",
+-          "backlog": "1",
++          "backlog": "0",
+           "pendingStreams": "0",
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "4",
++            "datagrams": "7",
+             "failedProbes": "0",
+-            "messages": "15",
++            "messages": "16",
+             "probes": "0",
+             "queueDrops": "0",
+-            "steps": "33",
++            "steps": "35",
+             "tcpOnly": "0"
+           }
+         }
+@@ -449,14 +449,14 @@
+         ],
+         "summary": {
+           "health": "0",
+-          "backlog": "7",
++          "backlog": "0",
+           "pendingStreams": "0",
+           "stopped": false,
+           "left": false,
+           "stats": {
+             "datagrams": "5",
+             "failedProbes": "0",
+-            "messages": "8",
++            "messages": "12",
+             "probes": "0",
+             "queueDrops": "0",
+             "steps": "24",
+@@ -539,7 +539,7 @@
+   },
+   {
+     "horizon": "1600000000",
+-    "seq": "1425",
++    "seq": "1527",
+     "nodes": [
+       {
+         "node": "a",
+@@ -602,9 +602,9 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "28",
++            "datagrams": "33",
+             "failedProbes": "0",
+-            "messages": "72",
++            "messages": "71",
+             "probes": "7",
+             "queueDrops": "0",
+             "steps": "199",
+@@ -673,12 +673,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "27",
++            "datagrams": "33",
+             "failedProbes": "0",
+-            "messages": "53",
++            "messages": "74",
+             "probes": "7",
+             "queueDrops": "0",
+-            "steps": "151",
++            "steps": "172",
+             "tcpOnly": "0"
+           }
+         }
+@@ -744,12 +744,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "27",
++            "datagrams": "34",
+             "failedProbes": "0",
+-            "messages": "56",
++            "messages": "68",
+             "probes": "7",
+             "queueDrops": "0",
+-            "steps": "154",
++            "steps": "168",
+             "tcpOnly": "0"
+           }
+         }
+@@ -815,12 +815,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "23",
++            "datagrams": "30",
+             "failedProbes": "0",
+-            "messages": "54",
++            "messages": "61",
+             "probes": "7",
+             "queueDrops": "0",
+-            "steps": "147",
++            "steps": "158",
+             "tcpOnly": "0"
+           }
+         }
+@@ -886,12 +886,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "21",
++            "datagrams": "26",
+             "failedProbes": "0",
+-            "messages": "44",
++            "messages": "45",
+             "probes": "7",
+             "queueDrops": "0",
+-            "steps": "133",
++            "steps": "137",
+             "tcpOnly": "0"
+           }
+         }
+@@ -957,12 +957,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "22",
++            "datagrams": "25",
+             "failedProbes": "0",
+-            "messages": "42",
++            "messages": "51",
+             "probes": "7",
+             "queueDrops": "0",
+-            "steps": "132",
++            "steps": "141",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1030,10 +1030,10 @@
+           "stats": {
+             "datagrams": "25",
+             "failedProbes": "0",
+-            "messages": "29",
++            "messages": "43",
+             "probes": "7",
+             "queueDrops": "0",
+-            "steps": "120",
++            "steps": "126",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1099,12 +1099,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "18",
++            "datagrams": "19",
+             "failedProbes": "0",
+-            "messages": "18",
++            "messages": "23",
+             "probes": "7",
+             "queueDrops": "0",
+-            "steps": "98",
++            "steps": "101",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1113,7 +1113,7 @@
+   },
+   {
+     "horizon": "2085000000",
+-    "seq": "1658",
++    "seq": "1760",
+     "nodes": [
+       {
+         "node": "a",
+@@ -1176,9 +1176,9 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "32",
++            "datagrams": "37",
+             "failedProbes": "0",
+-            "messages": "76",
++            "messages": "75",
+             "probes": "9",
+             "queueDrops": "0",
+             "steps": "223",
+@@ -1247,12 +1247,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "27",
++            "datagrams": "33",
+             "failedProbes": "0",
+-            "messages": "53",
++            "messages": "74",
+             "probes": "7",
+             "queueDrops": "0",
+-            "steps": "151",
++            "steps": "172",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1318,12 +1318,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "32",
++            "datagrams": "39",
+             "failedProbes": "0",
+-            "messages": "62",
++            "messages": "74",
+             "probes": "9",
+             "queueDrops": "0",
+-            "steps": "181",
++            "steps": "195",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1389,12 +1389,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "29",
++            "datagrams": "36",
+             "failedProbes": "0",
+-            "messages": "60",
++            "messages": "67",
+             "probes": "9",
+             "queueDrops": "0",
+-            "steps": "176",
++            "steps": "187",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1460,12 +1460,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "26",
++            "datagrams": "31",
+             "failedProbes": "0",
+-            "messages": "49",
++            "messages": "50",
+             "probes": "9",
+             "queueDrops": "0",
+-            "steps": "161",
++            "steps": "165",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1531,12 +1531,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "27",
++            "datagrams": "30",
+             "failedProbes": "0",
+-            "messages": "47",
++            "messages": "56",
+             "probes": "10",
+             "queueDrops": "0",
+-            "steps": "161",
++            "steps": "170",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1604,10 +1604,10 @@
+           "stats": {
+             "datagrams": "30",
+             "failedProbes": "0",
+-            "messages": "34",
++            "messages": "48",
+             "probes": "9",
+             "queueDrops": "0",
+-            "steps": "148",
++            "steps": "154",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1673,12 +1673,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "23",
++            "datagrams": "24",
+             "failedProbes": "1",
+-            "messages": "23",
++            "messages": "28",
+             "probes": "10",
+             "queueDrops": "0",
+-            "steps": "127",
++            "steps": "130",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1687,7 +1687,7 @@
+   },
+   {
+     "horizon": "2102540000",
+-    "seq": "1722",
++    "seq": "1829",
+     "nodes": [
+       {
+         "node": "a",
+@@ -1750,12 +1750,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "33",
++            "datagrams": "39",
+             "failedProbes": "0",
+-            "messages": "77",
++            "messages": "78",
+             "probes": "10",
+             "queueDrops": "0",
+-            "steps": "228",
++            "steps": "230",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1821,12 +1821,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "33",
++            "datagrams": "39",
+             "failedProbes": "0",
+-            "messages": "61",
++            "messages": "83",
+             "probes": "8",
+             "queueDrops": "0",
+-            "steps": "168",
++            "steps": "190",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1892,12 +1892,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "33",
++            "datagrams": "40",
+             "failedProbes": "0",
+-            "messages": "63",
++            "messages": "75",
+             "probes": "9",
+             "queueDrops": "0",
+-            "steps": "187",
++            "steps": "201",
+             "tcpOnly": "0"
+           }
+         }
+@@ -1963,12 +1963,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "30",
++            "datagrams": "36",
+             "failedProbes": "0",
+-            "messages": "61",
++            "messages": "67",
+             "probes": "9",
+             "queueDrops": "0",
+-            "steps": "178",
++            "steps": "187",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2034,12 +2034,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "27",
++            "datagrams": "32",
+             "failedProbes": "0",
+-            "messages": "50",
++            "messages": "51",
+             "probes": "9",
+             "queueDrops": "0",
+-            "steps": "163",
++            "steps": "167",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2105,12 +2105,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "29",
++            "datagrams": "32",
+             "failedProbes": "0",
+-            "messages": "49",
++            "messages": "59",
+             "probes": "10",
+             "queueDrops": "0",
+-            "steps": "166",
++            "steps": "175",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2178,10 +2178,10 @@
+           "stats": {
+             "datagrams": "33",
+             "failedProbes": "0",
+-            "messages": "37",
++            "messages": "53",
+             "probes": "9",
+             "queueDrops": "0",
+-            "steps": "153",
++            "steps": "160",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2247,12 +2247,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "26",
++            "datagrams": "28",
+             "failedProbes": "1",
+-            "messages": "26",
++            "messages": "33",
+             "probes": "10",
+             "queueDrops": "0",
+-            "steps": "135",
++            "steps": "140",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2261,7 +2261,7 @@
+   },
+   {
+     "horizon": "2200000000",
+-    "seq": "1918",
++    "seq": "2045",
+     "nodes": [
+       {
+         "node": "a",
+@@ -2319,17 +2319,17 @@
+         ],
+         "summary": {
+           "health": "0",
+-          "backlog": "1",
++          "backlog": "0",
+           "pendingStreams": "0",
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "35",
++            "datagrams": "42",
+             "failedProbes": "0",
+-            "messages": "79",
++            "messages": "82",
+             "probes": "10",
+             "queueDrops": "0",
+-            "steps": "240",
++            "steps": "246",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2395,12 +2395,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "37",
++            "datagrams": "46",
+             "failedProbes": "0",
+-            "messages": "65",
++            "messages": "95",
+             "probes": "9",
+             "queueDrops": "0",
+-            "steps": "185",
++            "steps": "212",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2466,12 +2466,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "41",
++            "datagrams": "49",
+             "failedProbes": "0",
+-            "messages": "73",
++            "messages": "89",
+             "probes": "10",
+             "queueDrops": "0",
+-            "steps": "212",
++            "steps": "229",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2537,12 +2537,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "35",
++            "datagrams": "41",
+             "failedProbes": "0",
+-            "messages": "67",
++            "messages": "75",
+             "probes": "10",
+             "queueDrops": "0",
+-            "steps": "196",
++            "steps": "205",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2608,9 +2608,9 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "36",
++            "datagrams": "39",
+             "failedProbes": "0",
+-            "messages": "60",
++            "messages": "63",
+             "probes": "10",
+             "queueDrops": "0",
+             "steps": "189",
+@@ -2679,12 +2679,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "35",
++            "datagrams": "37",
+             "failedProbes": "0",
+-            "messages": "55",
++            "messages": "69",
+             "probes": "10",
+             "queueDrops": "0",
+-            "steps": "184",
++            "steps": "192",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2750,12 +2750,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "36",
++            "datagrams": "39",
+             "failedProbes": "0",
+-            "messages": "41",
++            "messages": "60",
+             "probes": "10",
+             "queueDrops": "0",
+-            "steps": "171",
++            "steps": "183",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2821,12 +2821,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "29",
++            "datagrams": "32",
+             "failedProbes": "1",
+-            "messages": "30",
++            "messages": "39",
+             "probes": "10",
+             "queueDrops": "0",
+-            "steps": "152",
++            "steps": "159",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2835,7 +2835,7 @@
+   },
+   {
+     "horizon": "5000000000",
+-    "seq": "3625",
++    "seq": "3735",
+     "nodes": [
+       {
+         "node": "a",
+@@ -2898,12 +2898,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "65",
++            "datagrams": "70",
+             "failedProbes": "0",
+-            "messages": "109",
++            "messages": "110",
+             "probes": "24",
+             "queueDrops": "0",
+-            "steps": "415",
++            "steps": "413",
+             "tcpOnly": "0"
+           }
+         }
+@@ -2969,12 +2969,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "69",
++            "datagrams": "77",
+             "failedProbes": "0",
+-            "messages": "97",
++            "messages": "126",
+             "probes": "23",
+             "queueDrops": "0",
+-            "steps": "369",
++            "steps": "394",
+             "tcpOnly": "0"
+           }
+         }
+@@ -3040,12 +3040,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "67",
++            "datagrams": "76",
+             "failedProbes": "0",
+-            "messages": "99",
++            "messages": "116",
+             "probes": "24",
+             "queueDrops": "0",
+-            "steps": "392",
++            "steps": "411",
+             "tcpOnly": "0"
+           }
+         }
+@@ -3111,12 +3111,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "60",
++            "datagrams": "67",
+             "failedProbes": "0",
+-            "messages": "92",
++            "messages": "101",
+             "probes": "24",
+             "queueDrops": "0",
+-            "steps": "360",
++            "steps": "370",
+             "tcpOnly": "0"
+           }
+         }
+@@ -3182,12 +3182,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "63",
++            "datagrams": "65",
+             "failedProbes": "0",
+-            "messages": "87",
++            "messages": "89",
+             "probes": "24",
+             "queueDrops": "0",
+-            "steps": "353",
++            "steps": "351",
+             "tcpOnly": "0"
+           }
+         }
+@@ -3253,12 +3253,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "67",
++            "datagrams": "68",
+             "failedProbes": "0",
+-            "messages": "87",
++            "messages": "100",
+             "probes": "24",
+             "queueDrops": "0",
+-            "steps": "358",
++            "steps": "364",
+             "tcpOnly": "0"
+           }
+         }
+@@ -3324,12 +3324,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "64",
++            "datagrams": "66",
+             "failedProbes": "0",
+-            "messages": "69",
++            "messages": "87",
+             "probes": "24",
+             "queueDrops": "0",
+-            "steps": "336",
++            "steps": "346",
+             "tcpOnly": "0"
+           }
+         }
+@@ -3395,12 +3395,12 @@
+           "stopped": false,
+           "left": false,
+           "stats": {
+-            "datagrams": "57",
++            "datagrams": "60",
+             "failedProbes": "1",
+-            "messages": "58",
++            "messages": "67",
+             "probes": "24",
+             "queueDrops": "0",
+-            "steps": "314",
++            "steps": "321",
+             "tcpOnly": "0"
+           }
+         }
+diff --git a/sim/trace/validate.go b/sim/trace/validate.go
+index 81a0998..8fbfad6 100644
+--- a/sim/trace/validate.go
++++ b/sim/trace/validate.go
+@@ -235,7 +235,7 @@ func (v *validator) payload(b []byte, kind string) error {
+ 			for _, m := range t.Messages {
+ 				switch m {
+ 				// "user" is no longer produced; v1 traces that carry it still read.
+-				case "ping", "indirect", "ack", "nack", "alive", "suspect", "dead", "exchange", "user":
++				case "ping", "indirect", "ack", "nack", "alive", "suspect", "dead", "exchange", "user", "gossip-request":
+ 				default:
+ 					return fmt.Errorf("invalid message kind")
+ 				}
+diff --git a/wire/body.go b/wire/body.go
+index fffaeaf..dfecf34 100644
+--- a/wire/body.go
++++ b/wire/body.go
+@@ -25,6 +25,7 @@ const (
+ 	tagSuspect
+ 	tagDead
+ 	tagExchange
++	tagGossipRequest
+ )
+ 
+ // minMember is the smallest encoded member: empty name and meta, IPv4 address,
+@@ -55,6 +56,7 @@ func accusationSize(a Accusation) int {
+ func MessageSize(m Message) int {
+ 	n := 1
+ 	switch {
++	case m.GossipRequest != nil:
+ 	case m.Ping != nil:
+ 		n += 8 + textSize(len(m.Ping.Target)) + identitySize(m.Ping.Source)
+ 	case m.Indirect != nil:
+@@ -127,6 +129,8 @@ func appendAccusation(b []byte, a Accusation) []byte {
+ 
+ func appendMessage(b []byte, m Message) []byte {
+ 	switch {
++	case m.GossipRequest != nil:
++		b = append(b, tagGossipRequest)
+ 	case m.Ping != nil:
+ 		b = binary.BigEndian.AppendUint64(append(b, tagPing), m.Ping.Sequence)
+ 		b = appendIdentity(appendText(b, m.Ping.Target), m.Ping.Source)
+@@ -271,6 +275,8 @@ func (r *reader) accusation() *Accusation {
+ func (r *reader) message() Message {
+ 	var m Message
+ 	switch r.byte() {
++	case tagGossipRequest:
++		m.GossipRequest = &GossipRequest{}
+ 	case tagPing:
+ 		m.Ping = &Ping{Sequence: r.sequence(), Target: r.text(), Source: r.identity()}
+ 	case tagIndirect:
+diff --git a/wire/gossip_request_test.go b/wire/gossip_request_test.go
+new file mode 100644
+index 0000000..738cdbb
+--- /dev/null
++++ b/wire/gossip_request_test.go
+@@ -0,0 +1,39 @@
++package wire
++
++import (
++	"bytes"
++	"reflect"
++	"strings"
++	"testing"
++)
++
++func TestGossipRequestCanonicalCodec(t *testing.T) {
++	marker := Message{GossipRequest: &GossipRequest{}}
++	raw, err := body([]Message{marker})
++	if err != nil || !bytes.Equal(raw, []byte{9}) || MessageSize(marker) != 1 {
++		t.Fatal(raw, err)
++	}
++	messages, err := DecodeBody(raw)
++	if err != nil || len(messages) != 1 || !reflect.DeepEqual(messages[0], marker.Clone()) {
++		t.Fatal(messages, err)
++	}
++	if (Message{GossipRequest: &GossipRequest{}, Ack: &Ack{}}).Validate() == nil {
++		t.Fatal("accepted two variants")
++	}
++	for _, options := range []Options{{}, {Label: strings.Repeat("l", MaxLabel)}, {Label: "protected", Keys: []Key{mustKey(t, 7)}}} {
++		member := Member{Identity: identity("n", "192.0.2.1:7946", 8), Incarnation: 1}
++		want := []Message{marker, {Alive: &member}}
++		frame, err := Encode(want, options)
++		if err != nil {
++			t.Fatal(err)
++		}
++		size, err := Size(want, options.Label, len(options.Keys) > 0)
++		if err != nil || len(frame) != size {
++			t.Fatal("marker size", size, len(frame), err)
++		}
++		got, err := Decode(frame, options)
++		if err != nil || !reflect.DeepEqual(got, want) {
++			t.Fatal("marker round trip", got, err)
++		}
++	}
++}
+diff --git a/wire/message.go b/wire/message.go
+index eb15a63..da24e29 100644
+--- a/wire/message.go
++++ b/wire/message.go
+@@ -77,20 +77,27 @@ type Exchange struct {
+ 	Members []Member `json:"members"`
+ }
+ 
++// GossipRequest marks a periodic gossip packet requesting one queued reply.
++type GossipRequest struct{}
++
+ // Message is a closed tagged union: exactly one field must be set.
+ type Message struct {
+-	Ping     *Ping       `json:"ping,omitempty"`
+-	Indirect *Indirect   `json:"indirect,omitempty"`
+-	Ack      *Ack        `json:"ack,omitempty"`
+-	Nack     *Ack        `json:"nack,omitempty"`
+-	Alive    *Member     `json:"alive,omitempty"`
+-	Suspect  *Accusation `json:"suspect,omitempty"`
+-	Dead     *Accusation `json:"dead,omitempty"`
+-	Exchange *Exchange   `json:"exchange,omitempty"`
++	GossipRequest *GossipRequest `json:"gossipRequest,omitempty"`
++	Ping          *Ping          `json:"ping,omitempty"`
++	Indirect      *Indirect      `json:"indirect,omitempty"`
++	Ack           *Ack           `json:"ack,omitempty"`
++	Nack          *Ack           `json:"nack,omitempty"`
++	Alive         *Member        `json:"alive,omitempty"`
++	Suspect       *Accusation    `json:"suspect,omitempty"`
++	Dead          *Accusation    `json:"dead,omitempty"`
++	Exchange      *Exchange      `json:"exchange,omitempty"`
+ }
+ 
+ func (m Message) Validate() error {
+ 	count := 0
++	if m.GossipRequest != nil {
++		count++
++	}
+ 	if m.Ping != nil {
+ 		count++
+ 		if m.Ping.Source.Validate() != nil || m.Ping.Target == "" || !ValidText(m.Ping.Target, MaxName) {
+@@ -145,6 +152,9 @@ func (i Identity) Clone() Identity { i.Meta = append([]byte(nil), i.Meta...); re
+ func (m Member) Clone() Member     { m.Identity = m.Identity.Clone(); return m }
+ 
+ func (m Message) Clone() Message {
++	if m.GossipRequest != nil {
++		m.GossipRequest = &GossipRequest{}
++	}
+ 	if m.Ping != nil {
+ 		p := *m.Ping
+ 		p.Source = p.Source.Clone()

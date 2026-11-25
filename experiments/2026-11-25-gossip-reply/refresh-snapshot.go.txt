@@ -1,0 +1,45 @@
+package main
+import (
+ "encoding/json"
+ "os"
+ "strconv"
+ "github.com/modulecollective/lightpool/core"
+ "github.com/modulecollective/lightpool/sim"
+ "github.com/modulecollective/lightpool/sim/trace"
+)
+func main() {
+ path := "sim/trace/testdata/pause-states.json"
+ raw,err:=os.ReadFile(path); if err!=nil { panic(err) }
+ var samples []struct {
+  Horizon string `json:"horizon"`
+  Seq string `json:"seq"`
+  Nodes []struct {
+   Node string `json:"node"`
+   Running bool `json:"running"`
+   PausedUntil string `json:"pausedUntil"`
+   Members []*trace.Member `json:"members"`
+   Summary *trace.Summary `json:"summary"`
+  } `json:"nodes"`
+ }
+ if err=json.Unmarshal(raw,&samples); err!=nil { panic(err) }
+ scenario,err:=os.ReadFile("examples/sim/pause.json"); if err!=nil { panic(err) }
+ for i:=range samples {
+  sample:=&samples[i]
+  var s sim.Scenario
+  if err=json.Unmarshal(scenario,&s); err!=nil { panic(err) }
+  h,err:=strconv.ParseInt(sample.Horizon,10,64); if err!=nil { panic(err) }
+  s.Horizon=core.Instant(h)
+  r,err:=sim.Run(s); if err!=nil || !r.Complete { panic("incomplete snapshot generation") }
+  sample.Seq=trace.Decimal(r.Events)
+  for j,want:=range sample.Nodes {
+   got:=r.Measurements[j]
+   want.Node=got.Name; want.Running=got.Running; want.PausedUntil=trace.Decimal(got.PausedUntil)
+   want.Members=make([]*trace.Member,0,len(got.Snapshot.Members))
+   for _,m:=range got.Snapshot.Members { want.Members=append(want.Members,trace.Membership(m)) }
+   want.Summary=trace.Counters(got.Snapshot)
+   sample.Nodes[j]=want
+  }
+ }
+ raw,err=json.MarshalIndent(samples,"","  "); if err!=nil { panic(err) }
+ if err=os.WriteFile(path,append(raw,'\n'),0600); err!=nil { panic(err) }
+}
