@@ -81,6 +81,41 @@ func TestDeliveryFixtures(t *testing.T) {
 	}
 }
 
+// The timing cases change only the case identity and uniform latency. This
+// comparison protects every other field, including seeds and fixed actions.
+func TestDeliveryTimingFixtures(t *testing.T) {
+	for _, loss := range []int{0, 10, 30} {
+		for _, mode := range []string{"on", "off"} {
+			name := fmt.Sprintf("delivery-32-loss-%d-exchange-%s", loss, mode)
+			wantSpec, want, err := Fixture(name, 201, "source")
+			if err != nil {
+				t.Fatal(err)
+			}
+			gotSpec, got, err := Fixture(name+"-latency-10ms", 201, "source")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = validateSpec(gotSpec, got); err != nil {
+				t.Fatal(err)
+			}
+			wantSpec.Case += "-latency-10ms"
+			want.Latency = 10 * time.Millisecond
+			if HashJSON(wantSpec) != HashJSON(gotSpec) || HashJSON(want) != HashJSON(got) {
+				t.Fatal("timing fixture changed workload", name)
+			}
+		}
+	}
+	for _, name := range []string{
+		"delivery-128-loss-30-exchange-off-latency-10ms",
+		"delivery-32-loss-10-exchange-on-latency-1ms",
+		"delivery-32-loss-10-exchange-on-latency-10ms-extra",
+	} {
+		if _, _, err := Fixture(name, 201, "source"); err == nil {
+			t.Fatal("accepted", name)
+		}
+	}
+}
+
 func newDeliveryEvidence(t *testing.T) *evidenceBuilder {
 	t.Helper()
 	b := newEvidence(t)

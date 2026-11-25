@@ -675,6 +675,11 @@ behavior, and it does not by itself admit a candidate experiment.
 
 ## Fixed metadata-update delivery (summary v3)
 
+Six additional fixed cases use the suffix `-latency-10ms` on the 32-node
+names below. They change only uniform latency to 10 ms; service time stays
+zero, seeds and workload remain identical. The 128-node names do not accept
+this suffix.
+
 `lightpool-experiment -case delivery-{32,128}-loss-{0,10,30}-exchange-{on,off}
 -replicate INDEX -out NEW_DIRECTORY` selects one of twelve finite workloads.
 Expand the braces to one case name. These cases start n000 onward with empty

@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"runtime"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/modulecollective/lightpool/core"
@@ -92,6 +93,9 @@ func Fixture(name string, replicate uint64, code string) (Spec, sim.Scenario, er
 		}
 	}
 	if shape == "delivery" {
+		if strings.HasSuffix(name, "-latency-10ms") {
+			s.Latency = 10 * time.Millisecond
+		}
 		if !exchange {
 			s.Protocol.PushPullInterval = 0
 		}
@@ -223,7 +227,8 @@ func deliveryCase(name string) (nodes, loss int, exchange bool) {
 	for _, n := range []int{32, 128} {
 		for _, percent := range []int{0, 10, 30} {
 			for _, mode := range []string{"on", "off"} {
-				if name == fmt.Sprintf("delivery-%d-loss-%d-exchange-%s", n, percent, mode) {
+				base := fmt.Sprintf("delivery-%d-loss-%d-exchange-%s", n, percent, mode)
+				if name == base || (n == 32 && name == base+"-latency-10ms") {
 					return n, percent * 10000, mode == "on"
 				}
 			}
