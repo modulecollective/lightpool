@@ -1,0 +1,14 @@
+{
+  "deleted": "Disposable restored copies only",
+  "restorationAuthority": "experiments/2026-11-24-update-delivery/evidence",
+  "cells": [
+    "delivery-32-loss-0-exchange-off-r1",
+    "delivery-32-loss-0-exchange-on-r1",
+    "delivery-32-loss-10-exchange-off-r1",
+    "delivery-32-loss-10-exchange-on-r1",
+    "delivery-32-loss-30-exchange-off-r1",
+    "delivery-32-loss-30-exchange-on-r1"
+  ],
+  "verifiedRawBytes": 450378582,
+  "originalsDeleted": false
+}

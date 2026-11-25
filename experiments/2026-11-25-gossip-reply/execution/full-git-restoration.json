@@ -1,0 +1,9 @@
+{
+  "tty": true,
+  "stdinClosed": true,
+  "toolExitCode": 0,
+  "originalsVerified": 28,
+  "deterministicRowsByteIdentical": true,
+  "verificationSpanSeconds": 503.319993019104,
+  "interruptedOriginalRemainsUnavailable": true
+}

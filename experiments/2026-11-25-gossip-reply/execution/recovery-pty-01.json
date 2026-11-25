@@ -1,0 +1,21 @@
+{
+  "budgetRulesUnchanged": true,
+  "continuation": "Previously unlaunched declared cells only",
+  "evidence": [
+    "pipe-vs-pty.json",
+    "full-git-restoration.json",
+    "candidate-replay.json"
+  ],
+  "executionFix": {
+    "sandboxUnchanged": true,
+    "stdinClosed": true,
+    "tty": true
+  },
+  "identity": "execution-recovery-pty-01",
+  "interruptedOriginalRetained": true,
+  "operatorRequest": "Investigate and fix the failure",
+  "originalsBefore": 28,
+  "originalsRetried": 0,
+  "previousCheckpoint": "9af044de529a13c4b91188b4a2a3b5fd087a4038",
+  "previousProgressSHA256": "99fa8a2d66288d73919389025f2bb94ee66bcfc8f9fa15a3cdebfde57c209910"
+}

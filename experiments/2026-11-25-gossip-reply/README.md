@@ -1,4 +1,4 @@
-# Queued gossip reply experiment — incomplete build
+# Queued gossip reply experiment — build in progress
 
 The candidate and six timing fixtures are implemented and tested. The candidate
 remains inert in `reply.patch`; the library protocol is unchanged. `base` pins
@@ -6,21 +6,21 @@ the protocol, `tools-base` the fixture tooling, and `PATCHES.sha256` the exact
 candidate and ordinary-driver test. The two patches reconstruct `candidate-tree`.
 The declaration fixed the campaign before its first original recording.
 
-Build is blocked by repeated external SIGTERM termination of the execution
-supervisor, including a one-attempt invocation. The source is not established.
-There are 28 retained originals: 27 complete and one with producer finalization
-unavailable. The interrupted original retains its trace/report/inputs and exact
-absence of summary, producer status, resources and producer exit observation.
-Nothing marks it complete. Original recordings were never retried.
+The prior execution block is resolved: controlled idle commands reproduced a
+Codex 0.172.0 Linux pipe-mode exit-143 failure; PTY execution avoids that process
+lifetime path. Run long Codex jobs with **exec_command `tty: true`** and close
+stdin (`</dev/null`). The sandbox and scientific inputs remain unchanged.
+`execution/` retains source references, controls, cancellation observations,
+full restoration of all 28 saved originals, and a byte-identical candidate
+regeneration. The exact local spawning-thread retirement was not traced;
+source/upstream reproduction supports that mechanism, while local tests verify
+the mode-specific failure and working alternative.
 
-The first two interruptions affected separate verification after successful
-original recording. Their diagnostics and offline-only recovery identities
-remain in `verification/`. The third interrupted producer finalization.
-`progress.json` records the build block; it is not a scientific stopping-rule
-verdict. No comparator set has been selected and no held-out attempt launched.
-`unlaunched.json` retains the remaining 92 development and 234 possible held-out
-identities. The paper is an unreviewed, incomplete build snapshot, not a
-completed study or improvement claim.
+`execution/recovery-pty-01.json` reopens only unlaunched declared cells after the
+operator requested diagnosis/fix. Original 28 remains incomplete, with missing
+producer finalization unavailable. It was never silently rerun or marked
+complete. The earlier paper/results remain a labeled 28-original snapshot until
+the campaign reaches its accepted stopping point and the report is regenerated.
 
 Reproduction commands (run from this record):
 
@@ -35,12 +35,6 @@ Reproduction commands (run from this record):
 
 `campaign.py NEW_DIRECTORY` starts the frozen campaign. A reconciled live
 campaign can use `--resume --max-attempts N` to launch only unlaunched cells.
-Stopped campaigns and unreconciled raw work refuse continuation. Investigate the
-external execution failures before reopening this campaign; preserve original
-28 and any genuine infrastructure recovery under distinct identities.
-
-All 28 originals passed online packing/restoration checks. Representative Git
-restoration was exercised for a complete candidate and the interrupted original;
-the remaining committed restorations and independent regeneration are still
-verification gaps. No ordinary-network performance, mixed-version deployment,
-held-out inference or library adoption is claimed.
+Stopped campaigns and unreconciled raw work refuse automatic continuation.
+No ordinary-network performance, mixed-version deployment, completed-study
+benefit or library adoption is claimed by this build checkpoint.

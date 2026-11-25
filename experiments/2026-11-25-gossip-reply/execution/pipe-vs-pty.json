@@ -1,0 +1,70 @@
+{
+  "cancellation": {
+    "controlCStopsSession": true,
+    "descendantHeartbeatStableSeconds": 3,
+    "first": [
+      "41",
+      1795632546253506009
+    ],
+    "gracefulPythonHandlerObserved": false,
+    "pty": true,
+    "second": [
+      "41",
+      1795632546253506009
+    ],
+    "stdinClosed": true
+  },
+  "cgroupEvents": {
+    "oom": 0,
+    "oomKill": 0,
+    "pidsMax": 0
+  },
+  "controls": [
+    {
+      "durationArgumentSeconds": 10,
+      "mode": "pipe",
+      "result": {
+        "complete": true,
+        "end": 1795632130.7374332
+      },
+      "toolExitCode": 0
+    },
+    {
+      "durationArgumentSeconds": 10,
+      "mode": "pty",
+      "result": {
+        "complete": true,
+        "end": 1795632136.8480432
+      },
+      "toolExitCode": 0
+    },
+    {
+      "durationArgumentSeconds": 45,
+      "mode": "pipe",
+      "result": {
+        "pgid": 1,
+        "sid": 1,
+        "start": 1795632195.9842033
+      },
+      "toolExitCode": 143
+    },
+    {
+      "durationArgumentSeconds": 45,
+      "mode": "pty",
+      "result": {
+        "complete": true,
+        "end": 1795632246.7918665
+      },
+      "toolExitCode": 0
+    }
+  ],
+  "mechanism": "Pipe-specific process-lifetime failure. Version-pinned source arms SIGTERM parent-death signaling only for pipe setup. Local spawning-thread exit was not traced; upstream provides that trace and reproduction.",
+  "platform": "Linux/x86_64",
+  "references": [
+    "https://github.com/openai/codex/issues/46702",
+    "https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/utils/pty/src/spawn_helper_main.rs"
+  ],
+  "sandbox": "workspace-write; unchanged between controls",
+  "tool": "Codex exec_command",
+  "version": "0.172.0"
+}
