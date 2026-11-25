@@ -13,5 +13,8 @@
   "originalsDeleted": false,
   "sizingProbeRawBytesReclaimed": 473912036,
   "sizingProbePackedCopyRetained": "/tmp/gossip-design-20261125/resource-128-packed",
-  "sizingProbeExcludedFromCampaign": true
+  "sizingProbeExcludedFromCampaign": true,
+  "disposableSourceArchiveBase": "36f0e38e543e25531fc8887c828c6f744067d831",
+  "disposableSourceArchiveFiles": 3081,
+  "disposableSourceArchiveBytesReclaimed": 281911571
 }
