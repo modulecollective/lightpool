@@ -1,0 +1,383 @@
+[
+  {
+    "arm": "r4-g3",
+    "cell": "dev-32-loss-0-exchange-on-r2-r4-g3",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "15730949179",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "18821120"
+    },
+    "phase": "dev",
+    "rawBytes": 55007763,
+    "replicate": 2,
+    "storedBytes": 5988188,
+    "totalWorkSeconds": 31.72417032100202
+  },
+  {
+    "arm": "r4-g4",
+    "cell": "dev-32-loss-0-exchange-on-r2-r4-g4",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "17173223908",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "26152960"
+    },
+    "phase": "dev",
+    "rawBytes": 55333461,
+    "replicate": 2,
+    "storedBytes": 5991252,
+    "totalWorkSeconds": 33.61655352299567
+  },
+  {
+    "arm": "r4-g6",
+    "cell": "dev-32-loss-0-exchange-on-r2-r4-g6",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "17189239941",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "26152960"
+    },
+    "phase": "dev",
+    "rawBytes": 55448417,
+    "replicate": 2,
+    "storedBytes": 5991304,
+    "totalWorkSeconds": 34.160277162001876
+  },
+  {
+    "arm": "r5-g3",
+    "cell": "dev-32-loss-0-exchange-on-r2-r5-g3",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "17616508253",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "26152960"
+    },
+    "phase": "dev",
+    "rawBytes": 58199032,
+    "replicate": 2,
+    "storedBytes": 6149083,
+    "totalWorkSeconds": 36.62310753399652
+  },
+  {
+    "arm": "r5-g4",
+    "cell": "dev-32-loss-0-exchange-on-r2-r5-g4",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "18401152546",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "26849280"
+    },
+    "phase": "dev",
+    "rawBytes": 58386110,
+    "replicate": 2,
+    "storedBytes": 6144595,
+    "totalWorkSeconds": 34.663359220998245
+  },
+  {
+    "arm": "r5-g6",
+    "cell": "dev-32-loss-0-exchange-on-r2-r5-g6",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "16115016234",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "26849280"
+    },
+    "phase": "dev",
+    "rawBytes": 58806247,
+    "replicate": 2,
+    "storedBytes": 6158857,
+    "totalWorkSeconds": 31.629792236002686
+  },
+  {
+    "arm": "r6-g3",
+    "cell": "dev-32-loss-0-exchange-on-r2-r6-g3",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "16549482538",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "26951680"
+    },
+    "phase": "dev",
+    "rawBytes": 61346003,
+    "replicate": 2,
+    "storedBytes": 6302208,
+    "totalWorkSeconds": 32.10381230599887
+  },
+  {
+    "arm": "r6-g4",
+    "cell": "dev-32-loss-0-exchange-on-r2-r6-g4",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "15736363037",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27205632"
+    },
+    "phase": "dev",
+    "rawBytes": 61715589,
+    "replicate": 2,
+    "storedBytes": 6303044,
+    "totalWorkSeconds": 31.634198725005263
+  },
+  {
+    "arm": "r6-g6",
+    "cell": "dev-32-loss-0-exchange-on-r2-r6-g6",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "16167692511",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27205632"
+    },
+    "phase": "dev",
+    "rawBytes": 62183984,
+    "replicate": 2,
+    "storedBytes": 6306780,
+    "totalWorkSeconds": 32.43288192399632
+  },
+  {
+    "arm": "reply",
+    "cell": "dev-32-loss-0-exchange-on-r2-reply",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "16233985378",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27205632"
+    },
+    "phase": "dev",
+    "rawBytes": 55838384,
+    "replicate": 2,
+    "storedBytes": 6029623,
+    "totalWorkSeconds": 32.67513163300464
+  },
+  {
+    "arm": "r4-g3",
+    "cell": "dev-32-loss-0-exchange-on-r3-r4-g3",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "15388433570",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27205632"
+    },
+    "phase": "dev",
+    "rawBytes": 54815391,
+    "replicate": 3,
+    "storedBytes": 5959147,
+    "totalWorkSeconds": 29.765151537998463
+  },
+  {
+    "arm": "r4-g4",
+    "cell": "dev-32-loss-0-exchange-on-r3-r4-g4",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "13935667927",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27205632"
+    },
+    "phase": "dev",
+    "rawBytes": 55349237,
+    "replicate": 3,
+    "storedBytes": 5981311,
+    "totalWorkSeconds": 28.456602768004814
+  },
+  {
+    "arm": "r4-g6",
+    "cell": "dev-32-loss-0-exchange-on-r3-r4-g6",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "13992882573",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27205632"
+    },
+    "phase": "dev",
+    "rawBytes": 55505436,
+    "replicate": 3,
+    "storedBytes": 5983461,
+    "totalWorkSeconds": 28.409054857998854
+  },
+  {
+    "arm": "r5-g3",
+    "cell": "dev-32-loss-0-exchange-on-r3-r5-g3",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "15491224953",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27205632"
+    },
+    "phase": "dev",
+    "rawBytes": 57949548,
+    "replicate": 3,
+    "storedBytes": 6117267,
+    "totalWorkSeconds": 31.248865718996967
+  },
+  {
+    "arm": "r5-g4",
+    "cell": "dev-32-loss-0-exchange-on-r3-r5-g4",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "14767363967",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27205632"
+    },
+    "phase": "dev",
+    "rawBytes": 58259373,
+    "replicate": 3,
+    "storedBytes": 6129126,
+    "totalWorkSeconds": 31.763268647002405
+  },
+  {
+    "arm": "r5-g6",
+    "cell": "dev-32-loss-0-exchange-on-r3-r5-g6",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "17327347731",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27205632"
+    },
+    "phase": "dev",
+    "rawBytes": 58869609,
+    "replicate": 3,
+    "storedBytes": 6140618,
+    "totalWorkSeconds": 34.738076777997776
+  },
+  {
+    "arm": "r6-g3",
+    "cell": "dev-32-loss-0-exchange-on-r3-r6-g3",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "17410479973",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27205632"
+    },
+    "phase": "dev",
+    "rawBytes": 61102452,
+    "replicate": 3,
+    "storedBytes": 6277710,
+    "totalWorkSeconds": 34.833763109003485
+  },
+  {
+    "arm": "r6-g4",
+    "cell": "dev-32-loss-0-exchange-on-r3-r6-g4",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "18945184603",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "27205632"
+    },
+    "phase": "dev",
+    "rawBytes": 61570594,
+    "replicate": 3,
+    "storedBytes": 6285632,
+    "totalWorkSeconds": null,
+    "verificationRecovery": "verification-interruption-01; verification-recovery-01"
+  },
+  {
+    "arm": "r6-g6",
+    "cell": "dev-32-loss-0-exchange-on-r3-r6-g6",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "16975204961",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "19234816"
+    },
+    "phase": "dev",
+    "rawBytes": 62253907,
+    "replicate": 3,
+    "storedBytes": 6300224,
+    "totalWorkSeconds": 33.527275788001134
+  },
+  {
+    "arm": "reply",
+    "cell": "dev-32-loss-0-exchange-on-r3-reply",
+    "exchange": "on",
+    "exitCode": 0,
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "originalResources": {
+      "elapsedNS": "14976323334",
+      "memorySource": "getrusage(RUSAGE_SELF).Maxrss; process high-water RSS",
+      "peakRSSBytes": "26382336"
+    },
+    "phase": "dev",
+    "rawBytes": 55701907,
+    "replicate": 3,
+    "storedBytes": 6000863,
+    "totalWorkSeconds": 29.762739379002596
+  }
+]

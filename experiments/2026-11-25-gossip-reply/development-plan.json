@@ -1,0 +1,1082 @@
+[
+  {
+    "arm": "r4-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "reply",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "reply",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "reply",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "reply",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 0,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "reply",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "reply",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "reply",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "reply",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 10,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "reply",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "reply",
+    "exchange": "on",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "reply",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 2
+  },
+  {
+    "arm": "r4-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r4-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r5-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g3",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g4",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "r6-g6",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  },
+  {
+    "arm": "reply",
+    "exchange": "off",
+    "latencyMS": 1,
+    "loss": 30,
+    "nodes": 32,
+    "phase": "dev",
+    "replicate": 3
+  }
+]

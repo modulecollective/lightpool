@@ -1,0 +1,9 @@
+{
+  "identity": "verification-interruption-01",
+  "outerSessionExit": 143,
+  "stage": "offline reduction after exact unpack",
+  "originalExit": 0,
+  "originalStatus": "complete",
+  "recordingRetried": false,
+  "reason": "Long-lived exec session ended with SIGTERM; tool lifetime suspected, not independently established."
+}

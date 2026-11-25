@@ -1,0 +1,12 @@
+{
+  "initial": {
+    "base": "7dddb3ee428c46704adb221f11745ce498389b14",
+    "originals": "1-18",
+    "verificationInterruption": "verification/verification-interruption-01.json"
+  },
+  "bounded": {
+    "base": "a3ec69ce6004d5a8883437e232eeadcab0e520fe",
+    "originals": "19 onward",
+    "selectionRuleCorrection": "Before primary recording; see selection-base."
+  }
+}
