@@ -1,0 +1,19 @@
+Primary references checked 2026-11-25:
+Das, Gupta, Motivala (2002). SWIM: Scalable Weakly-consistent Infection-style
+Process Group Membership Protocol. DSN. Abstract and Sections 3-4 separate
+probing/dissemination and describe piggybacked membership records on ping/ACK.
+https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf
+
+Dadgar, Phillips, Currey (2018). Lifeguard: Local Health Awareness for More
+Accurate Failure Detection. arXiv:1707.00788v2. Local processing health and
+memberlist-derived failure-detection tradeoffs; no reply-mechanism equivalence
+or transferred improvement claim is asserted here.
+https://arxiv.org/html/1707.00788v2
+
+Local authoritative inputs: base, tools-base, PATCHES.sha256, declaration.json,
+original evidence/attempt.json and summary.json, cells.tsv, inventory.json.
+The report derives replicate outcomes without pooling strata or receiver pairs.
+The initial declaration/selection implementation is pinned by declaration-base
+and selection-base. driver-base names the actual original campaign invocation;
+its helper was byte-identical to tools-base:experiments/evidence.sh. The later
+reproduction setup exports that same helper from the pin explicitly.
