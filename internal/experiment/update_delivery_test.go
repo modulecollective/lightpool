@@ -157,6 +157,12 @@ func TestDeliveryDeadlineClosureAndGeneration(t *testing.T) {
 			origin := b.generate()
 			b.add(origin.TimeNS, updateMember("n001", "n000", "upd-0000", "9", "alive"))
 			b.add(origin.TimeNS + tc.advance)
+			if tc.complete {
+				// A complete horizon closes this exact time; a prefix at the
+				// same event time must leave later same-time changes possible.
+				b.spec.HorizonNS = origin.TimeNS + deliveryWindowNS
+				b.scenario.Horizon = core.Instant(b.spec.HorizonNS)
+			}
 			r := b.measure(t, tc.complete).UpdateDelivery
 			if r.Delivered != 1 || r.Missed != tc.missed || r.IncompletePairs != tc.incomplete || r.EligiblePairs != r.Delivered+r.Missed+r.GenerationFailedPairs+r.IncompletePairs {
 				t.Fatal(r)
