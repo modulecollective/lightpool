@@ -1,5 +1,7 @@
 {
-  "reason": "No recording launched: 18,300,547,072 available bytes did not cover 18,470,956,894 byte conservative reservation; setup had two 318 MiB exports including historical evidence.",
+  "reason": "No recording launched: observed post-preflight free disk was below the initial conservative reservation. Setup had two 318 MiB exports including historical evidence.",
   "recovery": "Export compiler inputs and simulator fixtures, retaining both pinned revisions and exact patch bytes. New output directory gossip-reply-originals-02; no outcomes observed or retry of a protocol attempt.",
-  "completedAttempts": 0
+  "completedAttempts": 0,
+  "freeBytesObservedAfterPreflight": 18300547072,
+  "initialRequiredBytes": 18471290806
 }

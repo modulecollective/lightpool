@@ -111,9 +111,9 @@ def run(out):
         dump(raw / 'attempt.json', dict(task=task, command=command, source=source, projectedStoredBytes=projected,
                                        freeBytesBefore=free_before))
         raw_bytes = sum(p.stat().st_size for p in raw.iterdir())
-        subprocess.run(['bash', str(REPO / 'experiments/evidence.sh'), 'pack', str(raw), str(packed)], check=True)
+        subprocess.run(['bash', str(out / 'tools/baseline/experiments/evidence.sh'), 'pack', str(raw), str(packed)], check=True)
         restored = out / 'verification' / cell
-        subprocess.run(['bash', str(REPO / 'experiments/evidence.sh'), 'unpack', str(packed), str(restored)], check=True)
+        subprocess.run(['bash', str(out / 'tools/baseline/experiments/evidence.sh'), 'unpack', str(packed), str(restored)], check=True)
         verification = dict(cell=cell, checksumRestoration=True)
         if (raw / 'summary.json').exists():
             reduced = out / 'verification' / (cell + '.json')

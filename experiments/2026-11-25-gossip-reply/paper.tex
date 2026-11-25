@@ -1,0 +1,152 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.8in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\hypersetup{hidelinks}
+\setlength{\emergencystretch}{2em}
+\title{Queued Replies to Non-Empty Gossip Requests:\\A Bounded Lightpool Screening Study}
+\author{Codex (AI research and implementation draft)}
+\date{25 November 2026 --- Unreviewed draft}
+\begin{document}
+\maketitle
+\begin{abstract}
+We implement and test an opportunistic reverse-dissemination candidate as
+an inert patch to Lightpool. Periodic gossip requests one unmarked reply
+from the receiver's pre-admission broadcast queue. Replies spend existing
+finite retransmission counters. A predeclared nine-point baseline tuning
+grid compares delivery, conditional latency and measured offered traffic.
+The tables below derive from retained originals, including failures. The
+candidate does not ship as a library change; this is a bounded virtual
+screen, not a deployment or ordinary-network performance claim.
+\end{abstract}
+
+\section{Mechanism and related work}
+SWIM separates probing from membership dissemination and piggybacks updates
+on ping/acknowledgment traffic~\cite{swim}. Lifeguard studies local processing
+health and failure-detection tradeoffs in a memberlist-derived system~\cite{lifeguard}.
+Lightpool's extracted event core and canonical binary wire format define a
+separate baseline. This study changes periodic gossip only. It makes no
+novelty claim or unrestricted push--pull rumor-spreading claim.
+
+A request starts with an empty typed tag (one body byte), followed only by
+membership records. Complete validation precedes any reply or admission.
+The receiver sends at most one packet to the datagram source, using its
+queue before admitting incoming records. Replies contain no marker. Empty
+or non-fitting queues stay silent. Requests reserve a byte and batch slot;
+a record that fits only without the marker stays queued for other paths.
+There are no empty polls, acknowledgments, retries, request caches, timer
+state, recipient-knowledge estimates or replenished retransmission budgets.
+Duplicate requests can each elicit one reply. Once queues drain, neither
+solicitation nor recovery is possible through this mechanism.
+
+\section{Pinned methods and populations}
+The protocol baseline is \texttt{f707a5e}; \texttt{base} stores its full hash.
+Tooling ancestor \texttt{acce830} adds six exact 32-node, 10\,ms latency
+cases and changes no baseline core, wire or simulator code. The frozen
+\texttt{reply.patch} and \texttt{PATCHES.sha256} identify candidate code,
+tests, trace-marker support and regenerated candidate snapshot counters.
+Both arms use go1.26.3 linux/amd64 and identical measurement code.
+Development selection uses Python 3.13.5 and exact rational arithmetic.
+
+Staggered joins precede a 50\,s warm-up. Twenty distinct nodes generate
+8-byte metadata tokens at 50,54,\ldots,126\,s; the horizon is 130\,s. Uniform
+latency is 1\,ms in development, node service time is zero, and independent
+0/10/30\% datagram loss applies throughout. Periodic stream exchange is
+on/off; joins and probe fallback streams remain enabled. Full alive
+membership at warm-up is required. Four-second authoritative acceptance
+uses frozen 620 (32-node) or 2540 (128-node) update/receiver pairs. Later
+suspicions cannot change eligibility. Failed generation, invalid warm-up,
+incomplete observation and missed delivery are distinct outcomes.
+
+Per replicate, $M$ is misses divided by eligible pairs; $T$ is conditional
+nearest-rank pair p95 acceptance latency. Both conditional pair and
+all-receiver distributions retain non-completion counts. Over the closed
+$[50,130]$\,s window, $F$ is attempted framed datagram plus stream bytes;
+$U$ adds 28 bytes per attempted datagram. $U$ is IPv4 UDP sensitivity,
+not TCP wire cost. Lost sends, markers, replies, probes and streams count.
+Sent costs and whole-run totals remain alongside offered costs.
+
+The nine baselines are the Cartesian product of RetransmitMult
+$\{4,5,6\}$ and GossipNodes $\{3,4,6\}$. The reply candidate keeps defaults
+$(4,3)$. Development uses paired indices 2 and 3 in each of six
+loss/exchange strata (120 attempts). Protocol, fault and schedule seed
+namespaces are separate; matching fault-tape ordinals do not imply the
+same realized losses after traffic changes. Receiver pairs are dependent;
+replicate means are the comparison unit, and strata are never pooled.
+
+\section{Frozen selection and stopping}
+For each development stratum, $L$ has both costs at most the candidate's;
+choose lowest mean $M$, then $T,U,F$, retransmission multiplier and fanout.
+$H$ has both costs at least the candidate's; choose lowest $U,F,M,T$ and
+the same knobs. Null $T$ cannot win. Missing/invalid replicates invalidate
+the stratum; no survivor averages or new knob values are allowed. Write
+comparator overlays before any held-out launch; carry them unchanged to
+larger clusters and changed latency. Identical comparators collapse.
+
+The 32-node 30\% loss, exchange-off screen must be bracketed, reduce $M$
+against $L$ by both 25\% relatively and 0.001 absolutely, and reduce $T$
+by 10\%. Candidate $M,T,F,U$ must also be no worse than $H$ and no
+no-more-expensive measured baseline may dominate both $M,T$. A failed
+positive criterion is not evidence of no effect. Mean-only dominance with
+replicate ordering changes is inconclusive rather than equivalence.
+
+The frozen held-out plan has at most 234 additional attempts: six
+replicates 101--106 of all 32-node strata; six of 128-node 30\% loss
+strata; three 128-node low-loss replicates 101--103; and three 32-node,
+10\,ms latency replicates 201--203. Both 30\%, exchange-off primary
+comparisons must pass practical thresholds and paired, whole-replicate
+20,000-draw bootstrap checks (seed 20261125, two-sided 97.5\% percentile
+intervals). Regression checks use paired descriptive 95\% intervals,
+$+0.001$ absolute $M$, $+5\%$ $T$ and $+0.0001$ fixed-exposure non-alive
+fraction guardrails, with no extra exclusions when $L$ has zero. Insufficient
+baseline misses, failed observations, crossed held-out cost brackets or
+uncertainty beyond guardrails prevent a positive claim. Exact rules and
+all unlaunched identities are retained with the declaration.
+
+Maximum retention is 8\,GiB and active work 24 hours. The driver runs
+serially, checks disk space, retains every original and diagnostic, and
+checks restoration before deleting only disposable raw copies. It stops
+launching at resource limits without discarding an in-flight overrun.
+No automatic retries or outcome-driven extensions are permitted. The
+first preflight launched zero attempts; its diagnostic is retained.
+Removing duplicate exports of unrelated historical payloads allowed the
+second preflight without changing a candidate or inference rule.
+
+\section{Results}
+\input{paper-results.tex}
+
+\section{Limitations and reproduction}
+The two development replicates are a screen, not a powered estimate of
+rare misses. A stopped screen does not test the held-out hypotheses.
+Uniform latency, independent datagram loss and zero service time omit
+ordinary scheduling, heterogeneous routes, shared bottlenecks, encryption,
+clock skew and TCP packet loss. Simulation uses the same core/codec as the
+ordinary driver, but the ordinary UDP correctness/termination test supplies
+no network performance evidence. Homogeneous candidate clusters understand
+the new tag; deployment and wire-version policy are outside this study.
+There is no claim against every possible retuning, historical memberlist,
+or the original papers' experimental numbers.
+
+From the record, run \texttt{python3 verify.py NEW\_DIRECTORY} to restore
+committed originals and reproduce pinned offline summaries and deterministic
+rows. Run \texttt{bash run.sh CELL NEW\_DIRECTORY} to regenerate a retained
+cell independently. \texttt{campaign.py NEW\_DIRECTORY} executes the frozen
+campaign with original failure retention and resource checks; it never
+reuses a prior output directory. \texttt{results.py RECORD NEW\_DIRECTORY}
+derives the JSON outcomes and these tables without simulation. The pinned
+\texttt{render.sh TOOL\_CACHE} builds this PDF; \texttt{document-toolchain}
+identifies its engine and TeX bundle. Machine-readable artifacts and original
+traces, not this unreviewed prose, are authoritative. The operator owns
+wording and approval before any outward release.
+
+\begin{thebibliography}{9}
+\bibitem{swim} A. Das, I. Gupta and A. Motivala.
+\emph{SWIM: Scalable Weakly-consistent Infection-style Process Group Membership Protocol}.
+DSN, 2002. \url{https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf}.
+\bibitem{lifeguard} A. Dadgar, J. Phillips and J. Currey.
+\emph{Lifeguard: Local Health Awareness for More Accurate Failure Detection}.
+arXiv:1707.00788v2, 2018. \url{https://arxiv.org/html/1707.00788v2}.
+\end{thebibliography}
+\end{document}
