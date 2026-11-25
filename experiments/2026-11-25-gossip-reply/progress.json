@@ -1,7 +1,7 @@
 {
-  "completed": 100,
-  "elapsedSeconds": 7709.843076487414,
-  "rawBytes": 7332885411,
-  "stop": null,
-  "storedBytes": 728171099
+  "completed": 120,
+  "elapsedSeconds": 8782.753573087852,
+  "rawBytes": 9299945103,
+  "stop": "screen-rejection: held-out plan not launched",
+  "storedBytes": 912364757
 }
