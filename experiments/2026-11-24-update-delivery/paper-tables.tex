@@ -1,0 +1,24 @@
+\begin{table}[ht]\centering\small
+\begin{tabular}{rr|rr|r|rr}
+Loss & Exchange & Delivered & Missed & Pair p95 & All completed & All p95 \\
+(\%) & & /620 & /620 & (ms) & /20 & (ms) \\ \hline
+0 & on & 619 & 1 & 450.109 & 19 & 599.714 \\
+0 & off & 620 & 0 & 451.131 & 20 & 631.568 \\
+10 & on & 620 & 0 & 439.207 & 20 & 659.637 \\
+10 & off & 620 & 0 & 434.369 & 20 & 686.011 \\
+30 & on & 620 & 0 & 521.177 & 20 & 799.714 \\
+30 & off & 616 & 4 & 589.564 & 17 & 874.739 \\
+\end{tabular}
+\caption{Four-second acceptance. Quantiles condition on completion within four seconds; all-receiver quantiles exclude non-completed updates. One paired replicate per cell.}\end{table}
+\begin{table}[ht]\centering\small
+\begin{tabular}{rr|rrr|rr}
+Loss & Exchange & Measured UDP & IPv4 UDP & Stream & Whole UDP & Stream \\
+(\%) & & frames (B) & sens. (B) & (B) & frames (B) & (B) \\ \hline
+0 & on & 369984 & 641136 & 100176 & 613744 & 131109 \\
+0 & off & 370208 & 641752 & 0 & 613680 & 9021 \\
+10 & on & 557802 & 963438 & 134448 & 917429 & 185917 \\
+10 & off & 546102 & 941826 & 32368 & 897786 & 60701 \\
+30 & on & 782988 & 1332432 & 191992 & 1290670 & 279049 \\
+30 & off & 765961 & 1305521 & 87516 & 1262790 & 150937 \\
+\end{tabular}
+\caption{All sent traffic: measured closed interval [50,130] s and whole observed run. Offered attempt costs equal sent costs in these six attempts. IPv4 UDP sensitivity adds 28 bytes per datagram; stream bytes are framed bytes, not TCP wire cost.}\end{table}

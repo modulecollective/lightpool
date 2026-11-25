@@ -1,0 +1,9 @@
+{
+  "attempts": 6,
+  "rawBytes": 450378582,
+  "storedBytes": 45085093,
+  "summedOriginalElapsedNS": 138639792546,
+  "maxOriginalPeakRSSBytes": 17604608,
+  "elapsedScope": "Sum of original CLI recording and initial offline reduction elapsed times; excludes separate verification, packing and report rendering.",
+  "rssScope": "Maximum original per-process RUSAGE_SELF high-water RSS; not aggregate concurrent memory."
+}

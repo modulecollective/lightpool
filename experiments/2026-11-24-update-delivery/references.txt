@@ -1,0 +1,4 @@
+Bibliography is embedded in paper.tex; no external .bib or figure assets.
+SWIM: https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf
+Demers et al.: PODC 1987, Epidemic Algorithms for Replicated Database Maintenance.
+Related-work scope: vocabulary and protocol context only; no historical number replication.

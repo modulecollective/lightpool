@@ -16,4 +16,4 @@ mkdir -p "$cache/tex-cache"
 # Fixed bundle (not the moving default_bundle alias).
 XDG_CACHE_HOME="$cache/tex-cache" SOURCE_DATE_EPOCH=1795478400 "$cache/tectonic" \
  --web-bundle https://data1b.fullyjustified.net/tlextras-2022.0r0.tar \
- --keep-logs --outdir "$record" "$record/paper.tex"
+ --outdir "$record" "$record/paper.tex"
