@@ -1,0 +1,8 @@
+{
+  "identity": "git-verification-interruption-04",
+  "outerSessionExit": 143,
+  "cell": "dev-32-loss-0-exchange-off-r2-r6-g4",
+  "source": "external SIGTERM; cause unknown",
+  "originalMutated": false,
+  "recoveryIdentity": "git-verification-recovery-01"
+}
