@@ -1,0 +1,11 @@
+attempt.json: OK
+command.stderr: OK
+command.stdout: OK
+exit-code: OK
+report.json: OK
+resources.json: OK
+scenario.json: OK
+spec.json: OK
+status.json: OK
+summary.json: OK
+trace.ndjson: OK

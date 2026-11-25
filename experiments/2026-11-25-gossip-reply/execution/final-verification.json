@@ -1,0 +1,26 @@
+{
+  "sourceRevision": "211daced9b45bf1cae64a90a2b5a7e51d8617458",
+  "commands": [
+    {
+      "command": [
+        "python3",
+        "/home/dev/work/bureaucracy/.moe/clones/lightpool/gossip-pull-reply-2026-11-24/experiments/2026-11-25-gossip-reply/verify.py",
+        "/tmp/gossip-final-git-verification"
+      ],
+      "log": "/tmp/gossip-final-git-verification.log",
+      "exitCode": 0,
+      "elapsedSeconds": 2338.044293623003
+    },
+    {
+      "command": [
+        "bash",
+        "/home/dev/work/bureaucracy/.moe/clones/lightpool/gossip-pull-reply-2026-11-24/experiments/2026-11-25-gossip-reply/run.sh",
+        "dev-32-loss-0-exchange-on-r2-r4-g3",
+        "/tmp/gossip-final-baseline-replay"
+      ],
+      "log": "/tmp/gossip-final-baseline-replay.log",
+      "exitCode": 0,
+      "elapsedSeconds": 17.646786571996927
+    }
+  ]
+}

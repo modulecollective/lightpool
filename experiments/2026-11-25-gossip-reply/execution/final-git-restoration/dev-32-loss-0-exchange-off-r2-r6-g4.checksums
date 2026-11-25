@@ -1,0 +1,8 @@
+attempt.json: OK
+command.stderr: OK
+command.stdout: OK
+interruption.json: OK
+report.json: OK
+scenario.json: OK
+spec.json: OK
+trace.ndjson: OK

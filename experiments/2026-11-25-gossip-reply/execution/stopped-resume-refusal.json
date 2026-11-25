@@ -1,0 +1,15 @@
+{
+  "command": [
+    "python3",
+    "/home/dev/work/bureaucracy/.moe/clones/lightpool/gossip-pull-reply-2026-11-24/experiments/2026-11-25-gossip-reply/campaign.py",
+    "/tmp/gossip-reply-originals-02",
+    "--resume",
+    "--max-attempts",
+    "1"
+  ],
+  "exitCode": 1,
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"/home/dev/work/bureaucracy/.moe/clones/lightpool/gossip-pull-reply-2026-11-24/experiments/2026-11-25-gossip-reply/campaign.py\", line 217, in <module>\n    run(args.directory.resolve(), args.resume, args.max_attempts)\n    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/dev/work/bureaucracy/.moe/clones/lightpool/gossip-pull-reply-2026-11-24/experiments/2026-11-25-gossip-reply/campaign.py\", line 52, in run\n    raise RuntimeError('campaign already stopped; no automatic recovery or retries')\nRuntimeError: campaign already stopped; no automatic recovery or retries\n",
+  "checkpointFilesUnchanged": true,
+  "inFlightOriginals": 0
+}

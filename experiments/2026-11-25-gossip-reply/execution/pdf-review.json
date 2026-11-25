@@ -1,0 +1,19 @@
+{
+  "sha256": "4c81ae047a42c5ff2115e51892cac97cd88f75fca1bfbfb7f07bebf75bb3510b",
+  "pages": 5,
+  "allPagesVisuallyInspected": true,
+  "allSixFrontiersVisible": true,
+  "aggregateTextValuesMatch": true,
+  "reviewer": "Codex build agent",
+  "renderer": "pypdfium2 4.30.0 / Pillow 11.1.0",
+  "valuesChecked": [
+    "120 attempts",
+    "119 completed",
+    "screen rejection",
+    "9,299,945,103 raw bytes",
+    "912,364,757 stored bytes",
+    "2380 generated updates",
+    "six loss/exchange strata"
+  ],
+  "note": "Manual page review and PDF text checks apply only to this exact PDF hash; regenerated PDFs require review again."
+}

@@ -1,0 +1,40 @@
+{
+  "sourceRevision": "211daced9b45bf1cae64a90a2b5a7e51d8617458",
+  "originals": 120,
+  "complete": 119,
+  "unavailable": [
+    "dev-32-loss-0-exchange-off-r2-r6-g4"
+  ],
+  "heldoutUnlaunched": 234,
+  "allFrozenIdentitiesMatch": true,
+  "preOutcomeDeclarationAndPatchesIdentical": true,
+  "comparatorsRecomputedExactly": true,
+  "originalCosts": {
+    "attempts": 120,
+    "maximumOriginalPeakRSSBytes": 28717056,
+    "rawBytes": 9299945103,
+    "resourcesAvailable": 119,
+    "resourcesUnavailable": 1,
+    "storedBytes": 912364757,
+    "summedOriginalElapsedNS": 2775207749135
+  },
+  "pdf": {
+    "sha256": "4c81ae047a42c5ff2115e51892cac97cd88f75fca1bfbfb7f07bebf75bb3510b",
+    "pages": 5,
+    "allPagesVisuallyInspected": true,
+    "allSixFrontiersVisible": true,
+    "aggregateTextValuesMatch": true,
+    "reviewer": "Codex build agent",
+    "renderer": "pypdfium2 4.30.0 / Pillow 11.1.0",
+    "valuesChecked": [
+      "120 attempts",
+      "119 completed",
+      "screen rejection",
+      "9,299,945,103 raw bytes",
+      "912,364,757 stored bytes",
+      "2380 generated updates",
+      "six loss/exchange strata"
+    ],
+    "note": "Manual page review and PDF text checks apply only to this exact PDF hash; regenerated PDFs require review again."
+  }
+}

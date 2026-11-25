@@ -1,0 +1,3 @@
+reply.patch: OK
+ordinary-test.patch: OK
+dev-32-loss-0-exchange-on-r2-r4-g3: regenerated deterministic row matches

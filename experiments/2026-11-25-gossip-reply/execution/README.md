@@ -29,3 +29,12 @@ cancellation check is the stopped descendant heartbeat.
 These diagnostics are execution probes, not protocol campaign recordings.
 Original 28 remains incomplete and must still invalidate its development
 stratum. A runtime fix does not turn missing measurements into completed data.
+
+The resumed frozen grid reached its screen-rejection stop at 120 originals.
+All 92 newly launched originals completed under PTY. The final full Git
+verifier restored all 120 and reproduced the deterministic rows byte-for-byte
+(119 completed summaries plus the explicit missing-status refusal). Independent
+baseline and candidate regenerations matched saved rows. Final verification
+commands, revision, timings and logs are retained in `final-verification.json`,
+`final-git-restoration/` and the adjacent logs; earlier candidate replay
+evidence retains its own identity.

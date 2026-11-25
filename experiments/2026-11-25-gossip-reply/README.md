@@ -1,4 +1,4 @@
-# Queued gossip reply experiment — build in progress
+# Queued gossip reply screening study
 
 The candidate and six timing fixtures are implemented and tested. The candidate
 remains inert in `reply.patch`; the library protocol is unchanged. `base` pins
@@ -11,16 +11,24 @@ Codex 0.172.0 Linux pipe-mode exit-143 failure; PTY execution avoids that proces
 lifetime path. Run long Codex jobs with **exec_command `tty: true`** and close
 stdin (`</dev/null`). The sandbox and scientific inputs remain unchanged.
 `execution/` retains source references, controls, cancellation observations,
-full restoration of all 28 saved originals, and a byte-identical candidate
-regeneration. The exact local spawning-thread retirement was not traced;
+full restoration of all 120 committed originals, and byte-identical baseline
+and candidate regenerations. The exact local spawning-thread retirement was not traced;
 source/upstream reproduction supports that mechanism, while local tests verify
 the mode-specific failure and working alternative.
 
 `execution/recovery-pty-01.json` reopens only unlaunched declared cells after the
 operator requested diagnosis/fix. Original 28 remains incomplete, with missing
-producer finalization unavailable. It was never silently rerun or marked
-complete. The earlier paper/results remain a labeled 28-original snapshot until
-the campaign reaches its accepted stopping point and the report is regenerated.
+producer finalization unavailable. It was never rerun or marked complete.
+
+All 120 frozen development originals are retained: 119 complete and original
+28 incomplete. The primary 30% loss, exchange-off stratum selected `r4-g3`
+as L and `r4-g4` as H. The candidate failed both frozen practical criteria,
+so the campaign stopped at **screen-rejection**. All 234 possible held-out
+identities remain unlaunched. The zero-loss/off stratum is invalidated by its
+missing replicate; no survivor mean is substituted. `comparators.json` and
+`results.json` preserve exact per-stratum and per-replicate values. The paper
+and rendered PDF are unreviewed drafts derived from this retained record;
+no smaller-effect exclusion, equivalence or positive benefit is claimed.
 
 Reproduction commands (run from this record):
 
@@ -36,5 +44,5 @@ Reproduction commands (run from this record):
 `campaign.py NEW_DIRECTORY` starts the frozen campaign. A reconciled live
 campaign can use `--resume --max-attempts N` to launch only unlaunched cells.
 Stopped campaigns and unreconciled raw work refuse automatic continuation.
-No ordinary-network performance, mixed-version deployment, completed-study
-benefit or library adoption is claimed by this build checkpoint.
+No ordinary-network performance, mixed-version deployment or library adoption
+is claimed by this screening result.

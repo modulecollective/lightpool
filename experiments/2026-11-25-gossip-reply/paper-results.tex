@@ -1,7 +1,7 @@
 \subsection*{Recorded outcome}
-Disposition: \textbf{incomplete build; no study conclusion}. Recorded 28 of at most 354 original attempts; 28 development and 0 held-out. Every launched original, its diagnostics and host observations is retained.
-Development is incomplete. No development comparator set or held-out inference is available; the build is blocked by external execution interruptions, not a scientific screen decision.
-Originals total 1,617,999,166 raw bytes and 169,355,467 stored bytes. Summed original recording/initial-reduction time was 434.029 seconds; maximum original process RSS was 28,585,984 bytes. Host costs are available only where the original producer wrote resources.json. These observations exclude later verification and rendering; missing host observations are unavailable, not zero.
+Disposition: \textbf{screen rejection}. Recorded 120 of at most 354 original attempts; 120 development and 0 held-out. Every launched original, its diagnostics and host observations is retained.
+The primary 32-node development stratum was bracketed. Its lower/upper comparators were \texttt{r4-g3} / \texttt{r4-g4}. Practical threshold 1: False; threshold 2: False. The frozen screen therefore did not admit any held-out attempt. This does not establish equivalence or disprove a smaller effect.
+Originals total 9,299,945,103 raw bytes and 912,364,757 stored bytes. Summed original recording/initial-reduction time was 2775.208 seconds; maximum original process RSS was 28,717,056 bytes. Host costs are available only where the original producer wrote resources.json. These observations exclude later verification and rendering; missing host observations are unavailable, not zero.
 \Needspace{190pt}
 \subsection*{Development: 0\% loss, exchange on}
 \begin{center}\small
@@ -23,81 +23,81 @@ reply & 2,2 & 0.323 & 427.368 & 464.2 & 733.8 & 0 \\
 \begin{center}\small
 \begin{tabular}{lrrrrrr}
 Arm & Misses (r2,r3) & $\bar M$ (\%) & $\bar T$ (ms) & $\bar F$ (KiB) & $\bar U$ (KiB) & Suspect ns \\ \hline
-r4-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r4-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r4-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
+r4-g3 & 0,0 & 0.000 & 405.220 & 359.7 & 621.7 & 0 \\
+r4-g4 & 0,0 & 0.000 & 367.463 & 364.1 & 633.9 & 0 \\
+r4-g6 & 0,1 & 0.081 & 289.518 & 364.4 & 634.8 & 0 \\
+r5-g3 & 0,0 & 0.000 & 405.220 & 407.6 & 700.8 & 0 \\
+r5-g4 & 0,0 & 0.000 & 363.347 & 409.6 & 706.5 & 0 \\
+r5-g6 & 0,0 & 0.000 & 289.518 & 414.5 & 719.8 & 0 \\
+r6-g3 & 0,0 & 0.000 & 405.220 & 455.1 & 779.1 & 0 \\
 r6-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-reply & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
+r6-g6 & 0,0 & 0.000 & 289.518 & 464.5 & 804.9 & 0 \\
+reply & 1,4 & 0.403 & 416.815 & 366.3 & 635.4 & 0 \\
 \end{tabular}\end{center}
 \Needspace{190pt}
 \subsection*{Development: 10\% loss, exchange on}
 \begin{center}\small
 \begin{tabular}{lrrrrrr}
 Arm & Misses (r2,r3) & $\bar M$ (\%) & $\bar T$ (ms) & $\bar F$ (KiB) & $\bar U$ (KiB) & Suspect ns \\ \hline
-r4-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r4-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r4-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-reply & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
+r4-g3 & 0,0 & 0.000 & 416.434 & 658.3 & 1042.2 & 0 \\
+r4-g4 & 0,0 & 0.000 & 365.352 & 665.8 & 1058.7 & 0 \\
+r4-g6 & 1,0 & 0.081 & 267.113 & 661.4 & 1054.1 & 0 \\
+r5-g3 & 0,0 & 0.000 & 421.563 & 719.6 & 1140.9 & 0 \\
+r5-g4 & 1,0 & 0.081 & 367.906 & 713.9 & 1136.2 & 0 \\
+r5-g6 & 0,0 & 0.000 & 301.339 & 719.1 & 1150.3 & 0 \\
+r6-g3 & 0,0 & 0.000 & 425.199 & 752.1 & 1193.3 & 0 \\
+r6-g4 & 0,0 & 0.000 & 364.624 & 764.2 & 1218.8 & 0 \\
+r6-g6 & 0,0 & 0.000 & 274.544 & 766.0 & 1228.9 & 0 \\
+reply & 2,1 & 0.242 & 433.948 & 674.5 & 1072.3 & 0 \\
 \end{tabular}\end{center}
 \Needspace{190pt}
 \subsection*{Development: 10\% loss, exchange off}
 \begin{center}\small
 \begin{tabular}{lrrrrrr}
 Arm & Misses (r2,r3) & $\bar M$ (\%) & $\bar T$ (ms) & $\bar F$ (KiB) & $\bar U$ (KiB) & Suspect ns \\ \hline
-r4-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r4-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r4-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-reply & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
+r4-g3 & 0,1 & 0.081 & 419.785 & 564.6 & 951.7 & 0 \\
+r4-g4 & 0,0 & 0.000 & 358.254 & 572.0 & 967.3 & 0 \\
+r4-g6 & 0,1 & 0.081 & 278.309 & 570.8 & 966.5 & 0 \\
+r5-g3 & 0,0 & 0.000 & 409.393 & 612.9 & 1028.2 & 0 \\
+r5-g4 & 0,0 & 0.000 & 363.669 & 607.0 & 1024.0 & 0 \\
+r5-g6 & 0,0 & 0.000 & 291.126 & 624.9 & 1057.4 & 0 \\
+r6-g3 & 0,0 & 0.000 & 428.321 & 650.5 & 1088.7 & 0 \\
+r6-g4 & 0,0 & 0.000 & 381.329 & 656.0 & 1103.8 & 0 \\
+r6-g6 & 0,0 & 0.000 & 283.181 & 664.0 & 1123.5 & 0 \\
+reply & 1,11 & 0.968 & 447.126 & 569.2 & 961.9 & 0 \\
 \end{tabular}\end{center}
 \Needspace{190pt}
 \subsection*{Development: 30\% loss, exchange on}
 \begin{center}\small
 \begin{tabular}{lrrrrrr}
 Arm & Misses (r2,r3) & $\bar M$ (\%) & $\bar T$ (ms) & $\bar F$ (KiB) & $\bar U$ (KiB) & Suspect ns \\ \hline
-r4-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r4-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r4-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-reply & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
+r4-g3 & 1,3 & 0.323 & 521.315 & 918.5 & 1436.1 & 0 \\
+r4-g4 & 0,2 & 0.161 & 403.466 & 941.1 & 1478.3 & 0 \\
+r4-g6 & 0,0 & 0.000 & 333.932 & 940.4 & 1481.1 & 0 \\
+r5-g3 & 0,1 & 0.081 & 501.031 & 981.1 & 1534.8 & 0 \\
+r5-g4 & 0,1 & 0.081 & 423.667 & 987.9 & 1552.7 & 0 \\
+r5-g6 & 0,1 & 0.081 & 330.009 & 985.0 & 1553.8 & 0 \\
+r6-g3 & 0,0 & 0.000 & 479.310 & 1030.8 & 1614.8 & 0 \\
+r6-g4 & 0,0 & 0.000 & 410.137 & 1029.3 & 1619.0 & 0 \\
+r6-g6 & 0,0 & 0.000 & 331.133 & 1036.4 & 1637.4 & 0 \\
+reply & 4,9 & 1.048 & 554.110 & 947.8 & 1488.0 & 0 \\
 \end{tabular}\end{center}
 \Needspace{190pt}
 \subsection*{Development: 30\% loss, exchange off}
 \begin{center}\small
 \begin{tabular}{lrrrrrr}
 Arm & Misses (r2,r3) & $\bar M$ (\%) & $\bar T$ (ms) & $\bar F$ (KiB) & $\bar U$ (KiB) & Suspect ns \\ \hline
-r4-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r4-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r4-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r5-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g3 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g4 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-r6-g6 & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
-reply & \multicolumn{6}{l}{Incomplete or unlaunched; no survivor mean} \\
+r4-g3 & 2,5 & 0.565 & 534.265 & 832.0 & 1357.2 & 0 \\
+r4-g4 & 4,3 & 0.565 & 448.312 & 852.3 & 1395.4 & 0 \\
+r4-g6 & 0,3 & 0.242 & 303.639 & 851.7 & 1397.7 & 0 \\
+r5-g3 & 1,0 & 0.081 & 498.651 & 898.9 & 1463.7 & 0 \\
+r5-g4 & 0,1 & 0.081 & 410.823 & 898.2 & 1467.2 & 0 \\
+r5-g6 & 1,0 & 0.081 & 317.585 & 885.3 & 1451.3 & 0 \\
+r6-g3 & 1,0 & 0.081 & 526.608 & 940.2 & 1527.2 & 0 \\
+r6-g4 & 0,0 & 0.000 & 439.470 & 930.0 & 1518.0 & 0 \\
+r6-g6 & 0,0 & 0.000 & 340.648 & 950.5 & 1560.3 & 0 \\
+reply & 11,5 & 1.290 & 529.189 & 848.8 & 1386.4 & 0 \\
 \end{tabular}\end{center}
 \subsection*{Completeness and secondary outcomes}
 Original attempts with unavailable final summary: 1. Their absent metrics are unavailable, never zero. 
-Across the attempts with available summaries, 540 updates generated; 0 generation failures and 0 incomplete receiver pairs. Running-target exclusions: 0; suspicion episodes: 0. Non-alive exposure: 0 of 2,142,720,000,000,000 fixed running-pair nanoseconds. These sums describe the retained record, not an inference pooling strata or receiver pairs. \texttt{results.json} retains each replicate separately: pair and all-receiver latency distributions (including non-completion counts), attempted/sent traffic over measured/whole-run windows, eligibility, suspicions, exclusions and non-alive exposure. Complete original summaries retain every update/receiver acceptance reference.
+Across the attempts with available summaries, 2380 updates generated; 0 generation failures and 0 incomplete receiver pairs. Running-target exclusions: 0; suspicion episodes: 0. Non-alive exposure: 0 of 9,443,840,000,000,000 fixed running-pair nanoseconds. These sums describe the retained record, not an inference pooling strata or receiver pairs. \texttt{results.json} retains each replicate separately: pair and all-receiver latency distributions (including non-completion counts), attempted/sent traffic over measured/whole-run windows, eligibility, suspicions, exclusions and non-alive exposure. Complete original summaries retain every update/receiver acceptance reference.
