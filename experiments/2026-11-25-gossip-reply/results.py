@@ -72,7 +72,7 @@ def derive(record, out):
     # valid. Partial rows remain inspectable in results.json and the originals.
     for loss in [0, 10, 30]:
         for mode in ['on','off']:
-            text += [r'\subsection*{Development: '+f'{loss}\\% loss, exchange {mode}'+r'}',
+            text += [r'\Needspace{190pt}', r'\subsection*{Development: '+f'{loss}\\% loss, exchange {mode}'+r'}',
                      r'\begin{center}\small',r'\begin{tabular}{lrrrrrr}',
                      r'Arm & Misses (r2,r3) & $\bar M$ (\%) & $\bar T$ (ms) & $\bar F$ (KiB) & $\bar U$ (KiB) & Suspect ns \\ \hline']
             for arm in declaration['arms']:

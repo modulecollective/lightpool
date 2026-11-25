@@ -6,6 +6,7 @@ record=$(cd "$(dirname "$0")" && pwd)
 cell=$1
 [[ $cell =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]
 [ -f "$record/evidence/$cell/attempt.json" ]
+[ -f "$record/evidence/$cell/summary.json" ] || { echo 'original has no completed summary; infrastructure interruption is not a replayable protocol outcome' >&2; exit 1; }
 mkdir "$2"
 out=$(cd "$2" && pwd)
 bash "$record/prepare.sh" "$out/tools"

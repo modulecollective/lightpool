@@ -4,11 +4,12 @@
 \usepackage{lmodern}
 \usepackage{hyperref}
 \usepackage{amsmath}
+\usepackage{needspace}
 \hypersetup{hidelinks}
 \setlength{\emergencystretch}{2em}
 \title{Queued Replies to Non-Empty Gossip Requests:\\A Bounded Lightpool Screening Study}
 \author{Codex (AI research and implementation draft)}
-\date{25 November 2026 --- Unreviewed draft}
+\date{25 November 2026 --- Unreviewed, incomplete build snapshot}
 \begin{document}
 \maketitle
 \begin{abstract}
@@ -17,7 +18,7 @@ an inert patch to Lightpool. Periodic gossip requests one unmarked reply
 from the receiver's pre-admission broadcast queue. Replies spend existing
 finite retransmission counters. A predeclared nine-point baseline tuning
 grid compares delivery, conditional latency and measured offered traffic.
-The tables below derive from retained originals, including failures. The
+The tables below derive from retained originals, including failures. This unfinished development grid has no study conclusion. The
 candidate does not ship as a library change; this is a bounded virtual
 screen, not a deployment or ordinary-network performance claim.
 \end{abstract}
@@ -112,7 +113,12 @@ launching at resource limits without discarding an in-flight overrun.
 No automatic retries or outcome-driven extensions are permitted. The
 first preflight launched zero attempts; its diagnostic is retained.
 Removing duplicate exports of unrelated historical payloads allowed the
-second preflight without changing a candidate or inference rule.
+second preflight without changing a candidate or inference rule. External SIGTERM later interrupted offline verification after originals
+18 and 27 had completed and been packed. Distinct diagnostics and offline-only
+recoveries are retained. A one-attempt continuation then interrupted producer
+finalization for original 28. Its final summary, producer status, resources and
+exit observation remain unavailable. Build is blocked pending diagnosis; no
+original recording was repeated and no scientific screen verdict was issued.
 
 \section{Results}
 \input{paper-results.tex}
