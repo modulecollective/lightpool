@@ -1,0 +1,299 @@
+diff --git a/core/expiry_probe_test.go b/core/expiry_probe_test.go
+new file mode 100644
+index 0000000..3604015
+--- /dev/null
++++ b/core/expiry_probe_test.go
+@@ -0,0 +1,196 @@
++package core
++
++import (
++	"fmt"
++	"testing"
++	"time"
++
++	"github.com/modulecollective/lightpool/wire"
++)
++
++// expiryCore suspects b with only a's own accusation, so the deadline is the
++// lone maximum and the expiry probe is armed ProbeTimeout before it.
++func expiryCore(t *testing.T) (*Core, Instant) {
++	t.Helper()
++	c := testCore(t)
++	for j := 3; j <= 5; j++ {
++		add(t, c, fmt.Sprint(j), uint16(j))
++	}
++	suspicionEvent(c, "a")
++	deadline := c.timers["suspect:b"].at
++	if p, ok := c.timers["expiry-probe:b"]; !ok || p.at != deadline.Add(-c.config.ProbeTimeout) || p.kind != "expiry-probe" {
++		t.Fatal("expiry probe not armed ProbeTimeout before the deadline", p)
++	}
++	return c, deadline
++}
++
++// Steps and receive counters move with any input; these are the probe's own.
++func probeStats(c *Core) [3]uint64 {
++	return [3]uint64{c.stats.Probes, c.stats.FailedProbes, c.stats.TCPOnly}
++}
++
++func fireExpiryProbe(t *testing.T, c *Core) SendDatagram {
++	t.Helper()
++	p := c.timers["expiry-probe:b"]
++	es := step(t, c, p.at, Fired{p.timer})
++	var sends []SendDatagram
++	for _, e := range es {
++		switch e := e.(type) {
++		case SendDatagram:
++			sends = append(sends, e)
++		case OpenStream:
++			t.Fatal("expiry probe opened a stream")
++		}
++	}
++	if len(sends) != 1 {
++		t.Fatal("expiry probe must send exactly one datagram", es)
++	}
++	return sends[0]
++}
++
++func TestExpiryProbeSendsOneDirectPingAndSuspicion(t *testing.T) {
++	c, deadline := expiryCore(t)
++	health, stats := c.health, probeStats(c)
++	send := fireExpiryProbe(t, c)
++	if send.To != identity("b", 2).Address || len(send.Messages) < 2 {
++		t.Fatal("wrong destination or contents", send)
++	}
++	ping, accusation := send.Messages[0].Ping, send.Messages[1].Suspect
++	if ping == nil || ping.Target != "b" || ping.Sequence != c.susp["b"].probing || accusation == nil || *accusation != (wire.Accusation{Node: "b", Incarnation: 1, From: "a"}) {
++		t.Fatal("expected a ping and a suspect record at the held incarnation", send.Messages)
++	}
++	if _, ok := c.timers["expiry-probe:b"]; ok || c.timers["suspect:b"].at != deadline || len(c.probes) != 0 || c.health != health || probeStats(c) != stats {
++		t.Fatal("expiry probe moved the deadline or touched probe state")
++	}
++}
++
++func TestExpiryProbeSilenceDeclaresAtUnchangedDeadline(t *testing.T) {
++	c, deadline := expiryCore(t)
++	fireExpiryProbe(t, c)
++	step(t, c, deadline-1, Probe{Peer: "3"})
++	if state(c, "b") != wire.Suspect {
++		t.Fatal("not suspect one nanosecond before the deadline")
++	}
++	d := c.timers["suspect:b"]
++	step(t, c, deadline, Fired{d.timer})
++	if state(c, "b") != wire.Dead {
++		t.Fatal("silence did not declare dead at the deadline")
++	}
++	if _, ok := c.timers["expiry-probe:b"]; ok {
++		t.Fatal("dead left the expiry probe armed")
++	}
++}
++
++func TestExpiryProbeACKRestartsSuspicion(t *testing.T) {
++	c, deadline := expiryCore(t)
++	send := fireExpiryProbe(t, c)
++	s := c.susp["b"]
++	duration := s.duration()
++	at := c.now.Add(50 * time.Millisecond)
++	health, stats := c.health, probeStats(c)
++	step(t, c, at, Datagram{From: send.To, Received: at, Messages: []wire.Message{{Ack: &wire.Ack{Sequence: send.Messages[0].Ping.Sequence}}}})
++	if s.probing != 0 || s.start != at || c.timers["suspect:b"].at != at.Add(duration) || c.timers["expiry-probe:b"].at != at.Add(duration-c.config.ProbeTimeout) {
++		t.Fatal("ACK did not restart both timers", c.timers["suspect:b"], c.timers["expiry-probe:b"])
++	}
++	if state(c, "b") != wire.Suspect || c.health != health || probeStats(c) != stats {
++		t.Fatal("ACK cleared suspicion or touched health and statistics")
++	}
++	if _, ok := c.timers["suspect:b"]; !ok || deadline >= c.timers["suspect:b"].at {
++		t.Fatal("old deadline still armed")
++	}
++	// A later silent expiry still declares dead.
++	fireExpiryProbe(t, c)
++	d := c.timers["suspect:b"]
++	step(t, c, d.at, Fired{d.timer})
++	if state(c, "b") != wire.Dead {
++		t.Fatal("restarted suspicion never expired")
++	}
++}
++
++func TestExpiryProbeIgnoresForeignAndLateACKs(t *testing.T) {
++	c, deadline := expiryCore(t)
++	send := fireExpiryProbe(t, c)
++	seq := send.Messages[0].Ping.Sequence
++	step(t, c, c.now, Datagram{From: identity("3", 3).Address, Received: c.now, Messages: []wire.Message{{Ack: &wire.Ack{Sequence: seq}}}})
++	if c.susp["b"].probing != seq || c.timers["suspect:b"].at != deadline {
++		t.Fatal("ACK from another address changed the suspicion")
++	}
++	c.alive(wire.Member{Identity: identity("b", 2), Incarnation: 2})
++	if _, ok := c.timers["expiry-probe:b"]; ok || c.susp["b"] != nil {
++		t.Fatal("refutation left expiry state")
++	}
++	before := len(c.timers)
++	step(t, c, c.now, Datagram{From: send.To, Received: c.now, Messages: []wire.Message{{Ack: &wire.Ack{Sequence: seq}}}})
++	if state(c, "b") != wire.Alive || len(c.timers) != before {
++		t.Fatal("late ACK acted")
++	}
++}
++
++func TestExpiryProbeShortenedDeadlineDeclaresAtOnce(t *testing.T) {
++	c, _ := expiryCore(t)
++	fireExpiryProbe(t, c)
++	s := c.susp["b"]
++	c.now = s.start.Add(s.min + time.Second)
++	suspicionEvent(c, "3")
++	suspicionEvent(c, "4")
++	due := c.timers["suspect:b"]
++	if due.at != c.now {
++		t.Fatal("confirmations did not bring the deadline to now")
++	}
++	if _, ok := c.timers["expiry-probe:b"]; ok {
++		t.Fatal("outstanding probe was rearmed")
++	}
++	es := step(t, c, c.now, Fired{due.timer})
++	for _, e := range es {
++		if s, ok := e.(SendDatagram); ok && s.Messages[0].Ping != nil {
++			t.Fatal("second probe sent")
++		}
++	}
++	if state(c, "b") != wire.Dead {
++		t.Fatal("shortened deadline did not declare at once")
++	}
++
++	// Before any probe fires, a deadline shortened to now cancels it.
++	c, _ = expiryCore(t)
++	s = c.susp["b"]
++	c.now = s.start.Add(s.min + time.Second)
++	suspicionEvent(c, "3")
++	suspicionEvent(c, "4")
++	if _, ok := c.timers["expiry-probe:b"]; ok || c.timers["suspect:b"].at != c.now {
++		t.Fatal("probe armed for a deadline that is not in the future")
++	}
++}
++
++func TestExpiryProbeCancelledByRefutationDeadAndShutdown(t *testing.T) {
++	for _, end := range []string{"alive", "dead", "shutdown"} {
++		c, _ := expiryCore(t)
++		switch end {
++		case "alive":
++			c.alive(wire.Member{Identity: identity("b", 2), Incarnation: 2})
++		case "dead":
++			c.dead(wire.Accusation{Node: "b", Incarnation: 1, From: "3"})
++		case "shutdown":
++			step(t, c, c.now, Shutdown{})
++		}
++		for _, k := range []string{"suspect:b", "expiry-probe:b"} {
++			if _, ok := c.timers[k]; ok {
++				t.Fatal(end, "left", k, "armed")
++			}
++		}
++	}
++}
++
++func TestExpiryProbeSendFailureNotEscalated(t *testing.T) {
++	c, deadline := expiryCore(t)
++	send := fireExpiryProbe(t, c)
++	es := step(t, c, c.now, Sent{ID: send.ID, Failure: RemoteFailure})
++	for _, e := range es {
++		switch e.(type) {
++		case SendDatagram, OpenStream, Arm:
++			t.Fatal("failed expiry probe escalated", e)
++		}
++	}
++	if state(c, "b") != wire.Suspect || c.timers["suspect:b"].at != deadline {
++		t.Fatal("send failure changed the suspicion")
++	}
++}
+diff --git a/core/membership.go b/core/membership.go
+index dd5299f..50d11ec 100644
+--- a/core/membership.go
++++ b/core/membership.go
+@@ -17,6 +17,21 @@ type suspicion struct {
+ 	min, max      time.Duration
+ 	k, n          int
+ 	confirmations map[string]bool
++	probing       uint64
++}
++
++// armSuspicion keeps the deadline where it was and asks the suspect directly
++// once, one ProbeTimeout before it: an observer that missed a refutation holds
++// a stale incarnation, and nothing else repairs it before the next exchange.
++func (c *Core) armSuspicion(name string, s *suspicion) {
++	at := s.start.Add(s.duration())
++	c.arm("suspect:"+name, "suspicion", at, 0, name)
++	if s.probing == 0 && at > c.now {
++		// A separate key: arm replaces by key, and the deadline must stay armed.
++		c.arm("expiry-probe:"+name, "expiry-probe", at.Add(-c.config.ProbeTimeout), 0, name)
++	} else {
++		c.cancel("expiry-probe:" + name)
++	}
+ }
+ 
+ // These formulas are retained from memberlist's util.go and suspicion.go.
+@@ -96,6 +111,7 @@ func (c *Core) alive(n wire.Member) {
+ 		}
+ 	}
+ 	c.cancel("suspect:" + n.Name)
++	c.cancel("expiry-probe:" + n.Name)
+ 	delete(c.susp, n.Name)
+ 	kind := "update"
+ 	if old == nil || old.State == wire.Dead || old.State == wire.Left {
+@@ -156,7 +172,7 @@ func (c *Core) suspect(a wire.Accusation) {
+ 		c.record(Inspection{Kind: "suspicion", Subject: a.Node, Outcome: "confirmation:" + a.From})
+ 		c.queue(wire.Message{Suspect: &a}, a.Node, 0)
+ 		// arm clamps an already shortened deadline to now; no recursive transition.
+-		c.arm("suspect:"+a.Node, "suspicion", s.start.Add(s.duration()), 0, a.Node)
++		c.armSuspicion(a.Node, s)
+ 		return
+ 	}
+ 	if n.State != wire.Alive {
+@@ -188,7 +204,7 @@ func (c *Core) suspect(a wire.Accusation) {
+ 	}
+ 	c.susp[a.Node] = s
+ 	c.record(Inspection{Kind: "suspicion", Subject: a.Node, Outcome: "started:" + a.From})
+-	c.arm("suspect:"+a.Node, "suspicion", c.now.Add(s.duration()), 0, a.Node)
++	c.armSuspicion(a.Node, s)
+ }
+ 
+ func (c *Core) dead(a wire.Accusation) {
+@@ -201,6 +217,7 @@ func (c *Core) dead(a wire.Accusation) {
+ 		return
+ 	}
+ 	c.cancel("suspect:" + a.Node)
++	c.cancel("expiry-probe:" + a.Node)
+ 	delete(c.susp, a.Node)
+ 	if n.State == wire.Dead || n.State == wire.Left {
+ 		return
+diff --git a/core/probe.go b/core/probe.go
+index b9aabe4..191b0d4 100644
+--- a/core/probe.go
++++ b/core/probe.go
+@@ -89,6 +89,18 @@ func (c *Core) startProbe(peer wire.Identity, command uint64, explicit, periodic
+ }
+ 
+ func (c *Core) ack(a *wire.Ack, from netip.AddrPort, received Instant) {
++	// An expiry probe is not a probe: it never touches health, statistics or
++	// results. Its answer restarts the suspicion; the member stays suspect.
++	for name, s := range c.susp {
++		if s.probing != 0 && s.probing == a.Sequence {
++			if n := c.nodes[name]; n != nil && from == n.Address {
++				s.probing = 0
++				s.start = c.now
++				c.armSuspicion(name, s)
++			}
++			return
++		}
++	}
+ 	p := c.probes[a.Sequence]
+ 	if p == nil {
+ 		return
+@@ -299,6 +311,13 @@ func (c *Core) fire(t Timer) {
+ 			c.finishProbe(d.op, Timeout, 0)
+ 			c.datagram(to, []wire.Message{{Nack: &wire.Ack{Sequence: seq}}}, 0)
+ 		}
++	case "expiry-probe":
++		// One datagram, no indirect or TCP leg, and a failed send is not
++		// escalated: the deadline already decides what silence means.
++		if n, s := c.nodes[d.node], c.susp[d.node]; n != nil && n.State == wire.Suspect && s != nil && s.probing == 0 {
++			s.probing = c.token().ID
++			c.datagram(n.Address, []wire.Message{{Ping: &wire.Ping{Sequence: s.probing, Target: n.Name, Source: routing(c.nodes[c.self].Identity)}}, {Suspect: &wire.Accusation{Node: n.Name, Incarnation: n.Incarnation, From: c.self}}}, 0)
++		}
+ 	case "suspicion":
+ 		if n := c.nodes[d.node]; n != nil && n.State == wire.Suspect {
+ 			c.dead(wire.Accusation{Node: n.Name, Incarnation: n.Incarnation, From: c.self})
