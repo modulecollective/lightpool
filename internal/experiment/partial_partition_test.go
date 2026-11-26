@@ -123,7 +123,7 @@ func TestPartialPartitionPopulationDiscrimination(t *testing.T) {
 }
 
 func TestPartialPartitionAdmissionRefused(t *testing.T) {
-	for _, name := range []string{"partial-partition", "partial-partition-healthy"} {
+	for _, name := range []string{"partial-partition", "partial-partition-healthy", "correlated-dense-64-aged", "correlated-dense-64-aged-healthy", "small-double-crash"} {
 		// Exact fixed inputs isolate the case-name admission guard from the
 		// unchanged-fixture check. Synthetic all-alive evidence is sufficient.
 		spec, scenario, err := Fixture(name, 1, "source")

@@ -24,7 +24,7 @@ func main() {
 func run(args []string, stderr io.Writer) error {
 	flags := flag.NewFlagSet("lightpool-experiment", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	name := flags.String("case", "", "fixed case: healthy, crash, threshold, interval, loss, correlated, partial-partition, partial-partition-healthy, correlated-dense, correlated-dense-healthy, correlated-dense-{latency-100us,latency-10ms,service-100us,service-1ms,buffer-64k,buffer-16m}, threshold-128, ordinary-{healthy,pause,crash}, delivery-{32,128}-loss-{0,10,30}-exchange-{on,off}, delivery-32-loss-{0,10,30}-exchange-{on,off}-latency-10ms")
+	name := flags.String("case", "", "fixed case: healthy, crash, threshold, interval, loss, correlated, partial-partition, partial-partition-healthy, correlated-dense, correlated-dense-healthy, correlated-dense-{latency-100us,latency-10ms,service-100us,service-1ms,buffer-64k,buffer-16m}, correlated-dense-64-aged, correlated-dense-64-aged-healthy, small-double-crash, threshold-128, ordinary-{healthy,pause,crash}, delivery-{32,128}-loss-{0,10,30}-exchange-{on,off}, delivery-32-loss-{0,10,30}-exchange-{on,off}-latency-10ms")
 	replicate := flags.Uint64("replicate", 0, "positive paired replicate index")
 	out := flags.String("out", "", "new run directory, or new JSON file with -reduce/-admission")
 	revision := flags.String("revision", "", "explicit source identity for unstamped/modified builds")

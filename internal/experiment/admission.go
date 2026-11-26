@@ -159,7 +159,7 @@ func Admit(directory string) (*Admission, error) {
 	expectedSpec, expectedScenario, err := Fixture(summary.Spec.Case, summary.Spec.Replicate, summary.Spec.Code)
 	if err == nil {
 		expectedSpec.Toolchain, expectedSpec.Platform = summary.Spec.Toolchain, summary.Spec.Platform
-		if !strings.HasPrefix(summary.Spec.Case, "correlated") || HashJSON(expectedSpec) != HashJSON(summary.Spec) || HashJSON(expectedScenario) != HashJSON(scenario) {
+		if !strings.HasPrefix(summary.Spec.Case, "correlated") || strings.HasPrefix(summary.Spec.Case, "correlated-dense-64-aged") || HashJSON(expectedSpec) != HashJSON(summary.Spec) || HashJSON(expectedScenario) != HashJSON(scenario) {
 			err = fmt.Errorf("admission requires an unchanged fixed correlated fixture")
 		}
 	}

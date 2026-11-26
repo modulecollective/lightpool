@@ -247,6 +247,17 @@ Six additional fixed cases change one dimension from dense:
 All retain the same bounds, populations, target and seed namespaces. These
 are uncalibrated virtual workloads, not ordinary UDP/TCP reproductions.
 
+Three further fixed cases support suspicion-expiry studies:
+
+| Case | Change |
+| --- | --- |
+| `correlated-dense-64-aged` | 64 nodes, warm-up 95 s, horizon 200 s. T is fault rank 4; A is ranks 0–3 and 5–48; the other 15 nodes are O and give 15 O→T healthy pairs. A→T datagrams drop and streams fail over [95 s,111.384 s). |
+| `correlated-dense-64-aged-healthy` | The same groups, seeds and window with no faults. |
+| `small-double-crash` | 4 nodes; the first two fault-ranked non-bootstrap nodes crash at 15 s. `spec.Target` names the first. Default warm-up and horizon. |
+
+The 95 s warm-up places every node's first periodic exchange before the
+fault. None of the three qualifies for `-admission`.
+
 ```sh
 ./lightpool-experiment -admission results-correlated-dense-1 -out admission.json
 ```
