@@ -80,6 +80,7 @@ header+='\tdatagramCount\tdatagramBytes\tstreamBytes\n'
 printf "$header" >"$out/cells.tsv"
 if ((retain)); then
 	[ ! -e "$record/evidence.tsv" ] || die "evidence.tsv exists; the original campaign runs once"
+	mkdir -p "$record/evidence"
 	printf 'attempt\tdirectory\tprovenance\texitCode\tstatus\trawBytes\tstoredBytes\n' >"$record/evidence.tsv"
 	printf 'cell\treason\n' >"$out/unlaunched.tsv"
 fi
