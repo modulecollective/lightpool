@@ -16,3 +16,7 @@ coverage.out
 /lightpool-sim
 /lightpool-report
 /lightpool-experiment
+
+# Attempt payloads live in release assets; see experiments/evidence-store.sh.
+experiments/*/evidence/*/*
+!experiments/*/evidence/*/SHA256SUMS
