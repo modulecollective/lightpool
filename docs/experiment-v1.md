@@ -301,8 +301,9 @@ against a named baseline commit, and each experiment leaves one directory,
 | `<variant>.patch` | One per variant, from `git diff <base> -- core wire`. |
 | `run.sh` | The grid as a recipe: cases, overlays, replicates, variants. |
 | `cells.tsv` | One row per cell: identity, status, trace and summary SHA256, headline numbers named in advance. |
-| `evidence/<attempt>/` | Original payloads, compressed NDJSON and raw-byte `SHA256SUMS`. |
+| `evidence/<attempt>/` | Raw-byte `SHA256SUMS` in Git; payloads, with NDJSON compressed, restored by `evidence-store.sh fetch`. |
 | `evidence.tsv` | Attempt provenance, observed exit/status and raw/stored byte totals. |
+| `evidence-assets.tsv` | One release asset per attempt: tag, asset name, bytes and SHA-256. |
 
 Original campaign evidence is stored independently of regeneration. A virtual
 cell is deterministic, so `run.sh <new-dir> [cell ...]` rebuilds the baseline and
@@ -327,16 +328,24 @@ The recipe keeps comparisons honest:
 A winning candidate lands later as an ordinary unconditional change in
 `core`, which becomes the next baseline.
 
+A pin (`base` and every other `*base` file) keeps the hash it was recorded
+with, because that string is an identity in traces, rows and digests.
+Scripts hand a pin to Git through `experiments/revision.sh PIN`, which
+prints the commit it now names: the mapped hash if
+`experiments/rewritten-commits.tsv` lists it after a history rewrite, and
+otherwise the pin itself.
+
 ## Retaining and restoring original evidence
 
 Retain every attempt in a declared campaign under
 `experiments/<id>/evidence/<attempt>/`, including controls, negative results,
 invalid warm-ups, recording failures and retries. Each retry or fresh-process
 repeat has a new attempt ID. Disposable development probes and compiled
-binaries are excluded. Keep evidence indefinitely in ordinary Git history;
-deleting it later does not reclaim that history. Measure campaign totals
-before committing. A materially larger campaign needs a new storage decision,
-not selective omission of failures. There is no automatic pruning or quota.
+binaries are excluded. Payloads never enter Git: each packed attempt is
+kept as one release asset on the source repository, and Git keeps the
+attempt's `SHA256SUMS` and the record's `evidence-assets.tsv`. An attempt
+whose archive would near GitHub's 2 GiB asset limit needs a new storage
+decision, not selective omission of failures. There is no automatic pruning.
 
 `experiments/evidence.sh pack SOURCE NEW_DEST` reads a finished, quiescent
 attempt directory, compresses every `*.ndjson` as `*.ndjson.gz` with
@@ -427,29 +436,60 @@ an explicit observed failure in the inventory; it does not fabricate a trace
 or status file. If the original attempt directory is lost and no diagnostics
 survive, keep an unavailable inventory row with no invented evidence path.
 
-Include the evidence and inventory in the source commit. Then verify from
-that commit, using a fresh checkout or `git archive` and with the producing
-directory unavailable. For example, after committing, from the repository root:
+`.gitignore` keeps everything under `experiments/*/evidence/*/` except
+`SHA256SUMS` out of Git. `experiments/evidence-store.sh` moves the payloads:
+
+- `publish RECORD BATCH` archives every attempt directory that holds payloads
+  and has no `evidence-assets.tsv` row as a deterministic `<attempt>.tar.gz`
+  (`tar --sort=name --mtime=@0`, `gzip -n -6`), uploads it to the draft
+  release `evidence-<record>-<batch>`, and appends the row only when the
+  store reports the same size and SHA-256. It then publishes the release.
+  A rerun resumes. Every evidence tag points at
+  `1801ef926af5ee05d80617bb531f6dfcd24a71e1`, the last commit before any
+  payload entered history, because `git clone` fetches every tag. Needs an
+  authenticated `gh` with write access.
+- `fetch RECORD [ATTEMPT...]` downloads without credentials, checks size and
+  SHA-256 against the manifest, refuses unsafe or nested archive members,
+  requires the archived `SHA256SUMS` to equal the committed one and moves
+  the payloads into `experiments/<record>/evidence/<attempt>/`. It refuses
+  an attempt directory that already holds payloads.
+- `check` confirms through the API that every manifest row names a published
+  asset of the same size and digest, and that every attempt directory has a
+  row or its payloads. The pre-push hook runs it.
+
+Two checksums guard two things: the manifest's `sha256` proves the archive
+arrived intact, and the committed `SHA256SUMS` proves the restored files are
+the original attempt. Recipes that restore originals take `SHA256SUMS` from
+Git and the payloads from the working tree, and say to run `fetch` first
+when the payloads are absent.
+
+Publish, then commit the manifest, `SHA256SUMS` and inventory. Then verify
+from a fresh clone of that commit, with the producing directory unavailable,
+so the payloads can only come from the store. For example, from the
+repository root:
 
 ```sh
 # Choose an existing writable disk-backed parent; check this filesystem.
 set -euo pipefail
 scratch_parent=/absolute/path/on/writable-disk
 df -h "$scratch_parent"
+experiments/evidence-store.sh publish "${record#experiments/}" 1
+git add "$record" && git commit -m "Retain $attempt"
 saved=$(mktemp -d "$scratch_parent/evidence-check.XXXXXX")
+git clone --quiet --no-local . "$saved/clone"
 evidence_revision=$(git rev-parse HEAD)
 reducer_revision=$evidence_revision # Use the actual pinned reducer revision.
-git archive "$evidence_revision" -- "$record/evidence/$attempt" | tar -x -C "$saved"
+(cd "$saved/clone" && experiments/evidence-store.sh fetch "${record#experiments/}" "$attempt")
 printf 'evidence=%s\nreducer=%s\n' "$evidence_revision" "$reducer_revision" > "$saved/verification.txt"
-cp "$saved/$record/evidence/$attempt/SHA256SUMS" "$saved/input-hashes.sha256"
+cp "$saved/clone/$record/evidence/$attempt/SHA256SUMS" "$saved/input-hashes.sha256"
 experiments/evidence.sh unpack \
-  "$saved/$record/evidence/$attempt" "$saved/restored"
+  "$saved/clone/$record/evidence/$attempt" "$saved/restored"
 (cd "$saved/restored" && sha256sum -c "$saved/input-hashes.sha256")
 ```
 
-Only successful restoration from the committed record, followed by pushing
-through the existing workflow, establishes durable completion. A local pack
-alone does not. With the producing source/toolchain pinned, virtual recordings
+Only successful restoration through the store, followed by pushing through
+the existing workflow, establishes durable completion. A local pack or an
+upload alone does not. With the producing source/toolchain pinned, virtual recordings
 can then be remeasured offline without simulation:
 
 ```sh
@@ -462,7 +502,7 @@ cmp "$saved/restored/admission.json" "$saved/admission.json"
 # After every required check succeeds, remove only this owned working copy.
 # Retain verification.txt, input-hashes.sha256, outputs and diagnostic logs.
 (cd "$saved/restored" && sha256sum -c "$saved/input-hashes.sha256")
-rm -r -- "$saved/restored" "$saved/$record/evidence/$attempt"
+rm -r -- "$saved/restored" "$saved/clone"
 ```
 
 For optional checks, restore one attempt at a time with the checked-out helper,
@@ -473,7 +513,8 @@ original committed evidence is never disposable. Older pinned recipes still
 invoke their historical helper and do not acquire this guard retroactively.
 
 The fixed non-alive remeasurement recipe uses the helper from its own checkout,
-`evidence-base` only for original payloads, and `reducer-base` for the rebuilt
+`evidence-base` only for the original attempts' committed `SHA256SUMS`
+(payloads come from the tree after `evidence-store.sh fetch`), and `reducer-base` for the rebuilt
 research tool. Its interface remains `run.sh NEW_DIRECTORY`. For example:
 
 ```sh
