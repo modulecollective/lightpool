@@ -1,0 +1,7 @@
+attempt	tag	asset	bytes	sha256
+delivery-32-loss-0-exchange-off-r1	evidence-2026-11-24-update-delivery-1	delivery-32-loss-0-exchange-off-r1.tar.gz	3436334	3b6a2ffb527c054cf0e9d137cc0842e97265c7ded87d4b8e0826ced92a316ae2
+delivery-32-loss-0-exchange-on-r1	evidence-2026-11-24-update-delivery-1	delivery-32-loss-0-exchange-on-r1.tar.gz	3534050	be338d8c3b52241b4efbad2d211203fac547173438fba87c6525a40312603a42
+delivery-32-loss-10-exchange-off-r1	evidence-2026-11-24-update-delivery-1	delivery-32-loss-10-exchange-off-r1.tar.gz	4879057	b7b8649458c8abd103008da052f7f785a148480d355a2c0ab9b355259fd9bf2a
+delivery-32-loss-10-exchange-on-r1	evidence-2026-11-24-update-delivery-1	delivery-32-loss-10-exchange-on-r1.tar.gz	5072088	2ebed9faf035f899ce663a8fdf3e06f2eba0cccc5340814594854d9ea57015bf
+delivery-32-loss-30-exchange-off-r1	evidence-2026-11-24-update-delivery-1	delivery-32-loss-30-exchange-off-r1.tar.gz	6631321	92753ee11fd085c20aa9ab109fb63f9af767329bcc8cd6dc0f6e4135fe338163
+delivery-32-loss-30-exchange-on-r1	evidence-2026-11-24-update-delivery-1	delivery-32-loss-30-exchange-on-r1.tar.gz	6836979	ab919661703dd3884ee81a7ea106bf5101ff30a7b5c1e4b83f107a7490fc38d5

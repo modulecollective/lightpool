@@ -1,0 +1,7 @@
+attempt	tag	asset	bytes	sha256
+partial-partition-healthy-r1	evidence-2026-11-21-partial-partition-1	partial-partition-healthy-r1.tar.gz	2708578	4da1e483121100f13ba048b299bcb8804336463115b7e5d5e4231546d541926a
+partial-partition-healthy-r2	evidence-2026-11-21-partial-partition-1	partial-partition-healthy-r2.tar.gz	2696052	1d455997ed0270e352b7e4cd145475e7cc8bb47ecdf14b10cf8dc5b82be5e6ae
+partial-partition-healthy-r3	evidence-2026-11-21-partial-partition-1	partial-partition-healthy-r3.tar.gz	2682961	d80f3a33114decd469470c19c54f51d797ddb61ed380f0e4ebebb4b48d1d27f2
+partial-partition-r1	evidence-2026-11-21-partial-partition-1	partial-partition-r1.tar.gz	2725974	c1bfdd4782a8820d31374f4daa09c46255865e521ea8b83bd5f251848b7b09ba
+partial-partition-r2	evidence-2026-11-21-partial-partition-1	partial-partition-r2.tar.gz	2707149	35acc30966c9ba20b0e962b2219fc75f6eea8c50377566e021d6c98e17c2be8c
+partial-partition-r3	evidence-2026-11-21-partial-partition-1	partial-partition-r3.tar.gz	2689534	8b7899d282bededf2d63ebed00cdabf10d7772d6e825eda872dc5adaa2f2ec5e

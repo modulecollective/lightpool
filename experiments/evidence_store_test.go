@@ -290,6 +290,27 @@ func TestEvidenceStoreCheckDiscriminates(t *testing.T) {
 	}
 }
 
+// Payloads live in release assets; Git keeps only each attempt's checksums.
+func TestEvidenceTrackedFilesAreChecksumsOnly(t *testing.T) {
+	out, err := exec.Command("git", "ls-files", "-z", "--", ".").Output()
+	if err != nil {
+		t.Skipf("not in a Git checkout: %v", err)
+	}
+	attempts := 0
+	for path := range strings.SplitSeq(string(out), "\x00") {
+		parts := strings.Split(path, "/")
+		if len(parts) >= 4 && parts[1] == "evidence" {
+			if len(parts) != 4 || parts[3] != "SHA256SUMS" {
+				t.Errorf("tracked payload: experiments/%s", path)
+			}
+			attempts++
+		}
+	}
+	if attempts == 0 {
+		t.Fatal("no tracked attempt checksums found")
+	}
+}
+
 func TestRevision(t *testing.T) {
 	dir := t.TempDir()
 	data, err := os.ReadFile("revision.sh")
