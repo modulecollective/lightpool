@@ -305,6 +305,11 @@ against a named baseline commit, and each experiment leaves one directory,
 | `evidence.tsv` | Attempt provenance, observed exit/status and raw/stored byte totals. |
 | `evidence-assets.tsv` | One release asset per attempt: tag, asset name, bytes and SHA-256. |
 
+`experiments/` has its own `go.mod`, so the library's module zip excludes the
+records and `go get` never downloads them. A record's Go tests import only the
+standard library; one that wants library code is a new decision, not a
+`replace` line added in passing.
+
 Original campaign evidence is stored independently of regeneration. A virtual
 cell is deterministic, so `run.sh <new-dir> [cell ...]` rebuilds the baseline and
 each patched variant from `git archive <base>`, records the named cells (all

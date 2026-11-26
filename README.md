@@ -175,5 +175,14 @@ go test ./wire -run '^$' -fuzz FuzzFrame -fuzztime 10s
 go test ./wire -run '^$' -fuzz FuzzBody -fuzztime 10s
 ```
 
+`experiments/` is a separate Go module, so the library's module zip leaves the
+records out. Its checks run with `-C experiments`:
+
+```sh
+go -C experiments vet ./...
+go -C experiments mod tidy -diff
+go -C experiments test -race -count=1 ./...
+```
+
 Inherited copyright notices and the MPL-2.0 license remain in the repository.
 The banner and logo images are © James Phillips, licensed under CC BY 4.0.

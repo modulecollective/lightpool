@@ -27,6 +27,9 @@ jobs:
       - run: go build ./...
       - run: go vet ./...
       - run: go test -race -count=1 ./...
+      # Experiment records are their own module, kept out of the library's zip.
+      - run: go -C experiments vet ./...
+      - run: go -C experiments test -race -count=1 ./...
 
   lint:
     runs-on: ubuntu-latest
@@ -39,5 +42,11 @@ jobs:
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.15.0
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          working-directory: experiments
       - name: go.mod and go.sum are tidy
         run: go mod tidy -diff
+      - name: experiments/go.mod is tidy
+        run: go -C experiments mod tidy -diff
