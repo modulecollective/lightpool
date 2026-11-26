@@ -172,16 +172,29 @@ fetch() {
 
 check() {
 	[[ $# -eq 0 ]] || usage
-	local manifest failed=0 checked=0
-	declare -A assets=()
+	local tracked manifest record attempt path failed=0 checked=0
+	# The index, not the working tree: refuse only attempts the push carries,
+	# and never accept local payloads as a substitute for a published asset.
+	# Captured rather than read through process substitution, which would
+	# swallow the failure. :(glob) keeps * from crossing /.
+	tracked=$(git -C "$experiments" ls-files -- ':(glob)*/evidence/*/SHA256SUMS') || die "check needs a Git checkout"
+	local -a committed=() records=()
+	[[ -z $tracked ]] || mapfile -t committed <<<"$tracked"
+	declare -A assets=() visit=()
+	for path in "${committed[@]}"; do visit[${path%%/*}]=1; done
 	for manifest in "$experiments"/*/evidence-assets.tsv; do
-		read_manifest "$manifest"
-		local record_path=${manifest%/*} attempt
-		for attempt in "$record_path"/evidence/*/; do
-			attempt=${attempt%/}
-			attempt=${attempt##*/}
-			if [[ ! -v rows[$attempt] ]] && ! has_payload "$record_path/evidence/$attempt"; then
-				echo "evidence-store.sh: ${record_path##*/}/evidence/$attempt has neither payloads nor an asset row" >&2
+		record=${manifest%/*}
+		visit[${record##*/}]=1
+	done
+	[[ ${#visit[@]} -eq 0 ]] || mapfile -t records < <(printf '%s\n' "${!visit[@]}" | sort)
+	for record in "${records[@]}"; do
+		read_manifest "$experiments/$record/evidence-assets.tsv"
+		for path in "${committed[@]}"; do
+			[[ ${path%%/*} == "$record" ]] || continue
+			attempt=${path#*/evidence/}
+			attempt=${attempt%/SHA256SUMS}
+			if [[ ! -v rows[$attempt] ]]; then
+				echo "evidence-store.sh: $record/evidence/$attempt is committed without an asset row; publish it" >&2
 				failed=1
 			fi
 		done

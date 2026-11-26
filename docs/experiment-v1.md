@@ -454,8 +454,9 @@ survive, keep an unavailable inventory row with no invented evidence path.
   the payloads into `experiments/<record>/evidence/<attempt>/`. It refuses
   an attempt directory that already holds payloads.
 - `check` confirms through the API that every manifest row names a published
-  asset of the same size and digest, and that every attempt directory has a
-  row or its payloads. The pre-push hook runs it.
+  asset of the same size and digest, and that every attempt whose
+  `SHA256SUMS` is committed has a row, payloads present or not. The pre-push
+  hook runs it.
 
 Two checksums guard two things: the manifest's `sha256` proves the archive
 arrived intact, and the committed `SHA256SUMS` proves the restored files are

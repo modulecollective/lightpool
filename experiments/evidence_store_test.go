@@ -84,12 +84,22 @@ func newStoreFixture(t *testing.T) *storeFixture {
 		evidence(t, "pack", raw, directory, false)
 		f.packed[attempt] = readDir(t, directory)
 	}
+	// check reads the attempt list from the index, as the pre-push hook sees it.
+	git(t, root, "init", "--quiet")
+	git(t, root, "add", "--", "experiments/rec/evidence/a-r1/SHA256SUMS", "experiments/rec/evidence/a-r2/SHA256SUMS")
 	toolShim(t, bin, "gh", fakeGitHub)
 	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
 	t.Setenv("STORE", store)
 	t.Setenv("EVIDENCE_STORE_URL", "file://"+filepath.Join(store, "download"))
 	t.Setenv("FAULT", "")
 	return f
+}
+
+func git(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	if out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
 }
 
 func readDir(t *testing.T, directory string) map[string][]byte {
@@ -266,27 +276,55 @@ func TestEvidenceStoreCheckDiscriminates(t *testing.T) {
 	for _, tc := range []struct{ name, want string }{
 		{"digest", "manifest pins"},
 		{"release", "nothing"},
-		{"orphan", "neither payloads nor an asset row"},
+		{"unpublished", "rec/evidence/%s is committed without an asset row; publish it"},
+		{"no-manifest", "rec/evidence/a-r1 is committed without an asset row"},
+		{"not-a-checkout", "check needs a Git checkout"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newStoreFixture(t)
-			f.run(false, "publish", "rec", "1")
-			row := manifestRow.FindStringSubmatch(f.manifest())
+			want := tc.want
+			if tc.name != "no-manifest" {
+				f.run(false, "publish", "rec", "1")
+			}
 			switch tc.name {
 			case "digest": // One character is enough.
+				row := manifestRow.FindStringSubmatch(f.manifest())
 				f.editManifest(row[4], row[4][:63]+string("10"[row[4][63]&1]))
 			case "release":
 				if err := os.RemoveAll(filepath.Join(os.Getenv("STORE"), "download")); err != nil {
 					t.Fatal(err)
 				}
-			case "orphan":
-				f.dropPayloads()
+			case "unpublished": // Payloads stay: the clone that packed them still has them.
+				row := manifestRow.FindStringSubmatch(f.manifest())
 				f.editManifest(row[0]+"\n", "")
+				want = strings.Replace(want, "%s", row[1], 1)
+			case "not-a-checkout":
+				root := filepath.Dir(f.experiments)
+				if err := os.RemoveAll(filepath.Join(root, ".git")); err != nil {
+					t.Fatal(err)
+				}
+				t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
 			}
-			if out := f.run(true, "check"); !strings.Contains(out, tc.want) {
+			out := f.run(true, "check")
+			if !strings.Contains(out, want) {
+				t.Fatalf("check: %s", out)
+			}
+			if tc.name == "no-manifest" && !strings.Contains(out, "rec/evidence/a-r2 is committed without an asset row") {
 				t.Fatalf("check: %s", out)
 			}
 		})
+	}
+}
+
+// The negative control: an attempt the push does not carry needs no row.
+func TestEvidenceStoreCheckIgnoresUntrackedAttempts(t *testing.T) {
+	f := newStoreFixture(t)
+	f.run(false, "publish", "rec", "1")
+	row := manifestRow.FindStringSubmatch(f.manifest())
+	git(t, filepath.Dir(f.experiments), "rm", "--cached", "--quiet", "--", "experiments/rec/evidence/"+row[1]+"/SHA256SUMS")
+	f.editManifest(row[0]+"\n", "")
+	if out := f.run(false, "check"); !strings.Contains(out, "1 assets match") {
+		t.Fatalf("check: %s", out)
 	}
 }
 
