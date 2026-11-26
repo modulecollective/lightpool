@@ -38,6 +38,12 @@ def verify(out, selected_cell=None):
                                            str(RELATIVE / 'evidence' / cell)]))) as archive:
             archive.extractall(payload, filter='data')
         packed = payload / RELATIVE / 'evidence' / cell
+        # Git holds the attempt's SHA256SUMS; evidence-store.sh fetch puts the payloads in the tree.
+        fetched = [p for p in (RECORD / 'evidence' / cell).iterdir() if p.name != 'SHA256SUMS']
+        if not fetched:
+            raise RuntimeError(f'{cell}: payloads absent; run experiments/evidence-store.sh fetch {RECORD.name} first')
+        for p in fetched:
+            shutil.copyfile(p, packed / p.name)
         raw = out / cell
         subprocess.run(['bash', str(out / 'tools/baseline/experiments/evidence.sh'), 'unpack', str(packed), str(raw)], check=True)
         with (raw / 'attempt.json').open() as f:

@@ -9,14 +9,14 @@ repo=$(git -C "$record" rev-parse --show-toplevel)
 export GOTOOLCHAIN
 GOTOOLCHAIN=$(<"$record/toolchain")
 mkdir "$out/src" "$out/driver" "$out/replay" "$out/restored"
-git -C "$repo" archive "$(cat "$record/base")" | tar -x -C "$out/src"
+git -C "$repo" archive "$(bash "$record/../revision.sh" "$(cat "$record/base")")" | tar -x -C "$out/src"
 (cd "$out/src" && go build -trimpath -buildvcs=false -o "$out/producer" ./cmd/lightpool-experiment)
-git -C "$repo" archive "$(cat "$record/healthy-base")" | tar -x -C "$out/driver"
+git -C "$repo" archive "$(bash "$record/../revision.sh" "$(cat "$record/healthy-base")")" | tar -x -C "$out/driver"
 (cd "$out/driver" && go test -c -trimpath -buildvcs=false -o "$out/driver.test" .)
 sha=$(sha256sum "$out/producer" | cut -d' ' -f1)
 driver=$(sha256sum "$out/driver.test" | cut -d' ' -f1)
 # HEAD's journal format moves with the baseline; replay with the decoder that reads these.
-git -C "$repo" archive "$(<"$record/replay-base")" | tar -x -C "$out/replay"
+git -C "$repo" archive "$(bash "$record/../revision.sh" "$(<"$record/replay-base")")" | tar -x -C "$out/replay"
 (cd "$out/replay" && go test -c -trimpath -buildvcs=false -o "$out/replay.test" .)
 printf 'case\tindex\tstatus\tfailedProbes\tlocalSuspicions\teligibleEpisodes\twitnesses\tharmful\thealthyDead\tpairExposureNS\tmaxBacklog\tlateTimers\tmaxTimerLatenessNS\tstop\n' > "$out/cells.tsv"
 printf 'attempt\tmetric\tn\tmedian\tp95\tp99\tmax\n' > "$out/timing.tsv"

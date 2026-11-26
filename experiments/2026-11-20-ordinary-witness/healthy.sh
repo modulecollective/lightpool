@@ -7,8 +7,9 @@ out=$(cd "$1" && pwd)
 record=$(cd "$(dirname "$0")" && pwd)
 repo=$(git -C "$record" rev-parse --show-toplevel)
 source=$(<"$record/healthy-base")
+commit=$(bash "$record/../revision.sh" "$source")
 mkdir "$out/src" "$out/raw" "$out/evidence"
-git -C "$repo" archive "$source" | tar -x -C "$out/src"
+git -C "$repo" archive "$commit" | tar -x -C "$out/src"
 (cd "$out/src" && GOTOOLCHAIN=$(<"$record/toolchain") go test -c -trimpath -buildvcs=false -o "$out/driver.test" .)
 digest=$(sha256sum "$out/driver.test" | cut -d' ' -f1)
 uname -a > "$out/host.txt"

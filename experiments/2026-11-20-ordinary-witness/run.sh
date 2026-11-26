@@ -7,10 +7,11 @@ out=$(cd "$1" && pwd)
 record=$(cd "$(dirname "$0")" && pwd)
 repo=$(git -C "$record" rev-parse --show-toplevel)
 base=$(<"$record/base")
+commit=$(bash "$record/../revision.sh" "$base")
 export GOTOOLCHAIN
 GOTOOLCHAIN=$(<"$record/toolchain")
 mkdir "$out/src" "$out/raw" "$out/evidence"
-git -C "$repo" archive "$base" | tar -x -C "$out/src"
+git -C "$repo" archive "$commit" | tar -x -C "$out/src"
 (cd "$out/src" && go build -trimpath -buildvcs=false -o "$out/producer" ./cmd/lightpool-experiment)
 digest=$(sha256sum "$out/producer" | cut -d' ' -f1)
 size() { find "$1" -maxdepth 1 -type f -printf '%s\n' | awk '{n+=$1}END{printf "%.0f",n}'; }

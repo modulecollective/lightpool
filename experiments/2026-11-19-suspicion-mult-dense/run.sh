@@ -26,10 +26,12 @@ out=$(cd "$1" && pwd)
 shift
 want=" $* "
 base=$(cat "$record/base")
+# The pin stays the identity; Git gets what that commit is now.
+commit=$(bash "$record/../revision.sh" "$base")
 read -r toolchain platform <"$record/toolchain"
 export GOTOOLCHAIN=$toolchain
 [ "$(go env GOOS)/$(go env GOARCH)" = "$platform" ] || die "replay is pinned to $platform"
-git merge-base --is-ancestor "$base" HEAD || die "base $base is not an ancestor of HEAD"
+git merge-base --is-ancestor "$commit" HEAD || die "base $base is not an ancestor of HEAD"
 
 # Candidates change the subject, never the instrument.
 variants=()
@@ -47,7 +49,7 @@ declare -A identity=([base]=$base)
 mkdir "$out/src" "$out/bin" "$out/cells"
 for v in base "${variants[@]}"; do
 	mkdir "$out/src/$v"
-	git archive "$base" | tar -x -C "$out/src/$v"
+	git archive "$commit" | tar -x -C "$out/src/$v"
 	if [ "$v" != base ]; then
 		patch="$record/$v.patch"
 		# The ceiling stops git apply from finding an enclosing repository.

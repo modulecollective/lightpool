@@ -15,6 +15,10 @@ func TestPatchPathGuard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	resolver, err := os.ReadFile("../revision.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
 	const contents = "first\nrename from sim/not-a-header.go\ncopy from sim/not-a-header.go\nlast\n"
 	operation := func(kind, source, destination string) string {
 		return fmt.Sprintf("diff --git a/%s b/%s\nsimilarity index 100%%\n%s from %s\n%s to %s\n",
@@ -73,6 +77,7 @@ func TestPatchPathGuard(t *testing.T) {
 			write(filepath.Join(record, "base"), git("rev-parse", "HEAD")+"\n", 0o644)
 			write(filepath.Join(record, "toolchain"), "go1.26.3 linux/amd64\n", 0o644)
 			write(filepath.Join(record, "run.sh"), string(recipe), 0o755)
+			write(filepath.Join(repo, "experiments", "revision.sh"), string(resolver), 0o755)
 			patch := filepath.Join(record, "candidate.patch")
 			write(patch, tt.patch, 0o644)
 			// Syntax failures must not masquerade as path-guard refusals.

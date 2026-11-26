@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Restore originals from Git, rather than proving only working-tree packaging.
+# Restore originals against the checksums committed in Git, rather than
+# proving only working-tree packaging. Payloads live in release assets.
 set -euo pipefail
 record=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$record/../.." && pwd)
@@ -8,13 +9,20 @@ relative=experiments/2026-11-24-update-delivery
 mkdir "$1"
 out=$(cd "$1" && pwd)
 base=$(cat "$record/base")
+commit=$(bash "$record/../revision.sh" "$base")
 read -r toolchain platform <"$record/toolchain"
 export GOTOOLCHAIN=$toolchain
 [ "$(go env GOOS)/$(go env GOARCH)" = "$platform" ]
-git -C "$repo" merge-base --is-ancestor "$base" HEAD
+git -C "$repo" merge-base --is-ancestor "$commit" HEAD
 mkdir "$out/source" "$out/committed" "$out/restored"
-git -C "$repo" archive "$base" | tar -x -C "$out/source"
+git -C "$repo" archive "$commit" | tar -x -C "$out/source"
 git -C "$repo" archive HEAD "$relative/evidence" "$relative/cells.tsv" | tar -x -C "$out/committed"
+# Git holds each attempt's SHA256SUMS; evidence-store.sh fetch puts the payloads in the tree.
+for packed in "$out/committed/$relative/evidence/"*; do
+ payloads=$(find "$record/evidence/${packed##*/}" -maxdepth 1 -type f ! -name SHA256SUMS)
+ [ -n "$payloads" ] || { echo "verify.sh: payloads absent; run experiments/evidence-store.sh fetch ${relative##*/} first" >&2; exit 1; }
+ find "$record/evidence/${packed##*/}" -maxdepth 1 -type f ! -name SHA256SUMS -exec cp -- {} "$packed/" \;
+done
 (cd "$out/source" && go build -buildvcs=false -o "$out/lightpool-experiment" ./cmd/lightpool-experiment)
 python3 "$record/rows.py" --header >"$out/cells.tsv"
 for packed in "$out/committed/$relative/evidence/"*; do

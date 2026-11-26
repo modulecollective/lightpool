@@ -21,13 +21,15 @@ trap retained EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 reducer=$(<"$record/reducer-base")
+reducer_commit=$(bash "$record/../revision.sh" "$reducer")
 evidence=$(<"$record/evidence-base")
+evidence_commit=$(bash "$record/../revision.sh" "$evidence")
 export GOTOOLCHAIN GOTMPDIR
 GOTOOLCHAIN=$(<"$record/toolchain")
 GOTMPDIR="$work/tmp"
 mkdir "$work" "$work/src" "$work/source" "$GOTMPDIR" "$out/summaries" "$out/logs"
 # Only Go source is needed to build this standard-library-only reducer.
-git -C "$repo" archive "$reducer" -- '*.go' go.mod | tar -x -C "$work/src"
+git -C "$repo" archive "$reducer_commit" -- '*.go' go.mod | tar -x -C "$work/src"
 (cd "$work/src" && go build -trimpath -buildvcs=false -o "$work/reducer" ./cmd/lightpool-experiment)
 printf 'cell\tcase\treplicate\tproducer\treducer\tspecSHA256\tscenarioSHA256\ttraceSHA256\tsummarySHA256\toriginalStatus\toriginalExit\tstatus\texit\treason\tpopulation\tenrolledPairs\tnominalPairNS\tobservedPairNS\taliveNS\tsuspectNS\tdeadNS\tleftNS\tabsentNS\tnotAliveNS\tsuspectDeadNS\tnotAliveFraction\tstarts\tcarryIns\tcompleted\tcensored\tp50NS\tp95NS\tmaxNS\n' > "$out/cells.tsv"
 
@@ -46,7 +48,15 @@ unmeasured() {
 
 measure() {
   # Each attempt is restored separately, using this checkout's safety helper.
-  git -C "$repo" archive "$evidence" -- "experiments/$source_record/$directory" | tar -x -C "$work/source" || return 1
+  git -C "$repo" archive "$evidence_commit" -- "experiments/$source_record/$directory" | tar -x -C "$work/source" || return 1
+  # Git holds the attempt's SHA256SUMS; evidence-store.sh fetch puts the payloads in the tree.
+  local fetched=("$repo/experiments/$source_record/$directory"/*) payloads=() file
+  for file in "${fetched[@]}"; do [[ ${file##*/} == SHA256SUMS ]] || payloads+=("$file"); done
+  if [[ ${#payloads[@]} == 0 ]]; then
+    echo "run.sh: payloads absent; run experiments/evidence-store.sh fetch $source_record first" >&2
+    return 1
+  fi
+  cp -- "${payloads[@]}" "$work/source/experiments/$source_record/$directory/" || return 1
   bash "$repo/experiments/evidence.sh" unpack "$work/source/experiments/$source_record/$directory" "$restored" > "$log.restore.stdout" 2> "$log.restore.stderr" || return 1
   check_inputs > "$log.before" 2>&1 || return 1
   jq -e --arg status "$original_status" '.status == $status' "$restored/status.json" > /dev/null || return 1

@@ -7,12 +7,13 @@ repo=$(cd "$record/../.." && pwd)
 mkdir "$1"
 out=$(cd "$1" && pwd)
 base=$(cat "$record/base")
+commit=$(bash "$record/../revision.sh" "$base")
 read -r toolchain platform <"$record/toolchain"
 export GOTOOLCHAIN=$toolchain
 [ "$(go env GOOS)/$(go env GOARCH)" = "$platform" ]
-git -C "$repo" merge-base --is-ancestor "$base" HEAD
+git -C "$repo" merge-base --is-ancestor "$commit" HEAD
 mkdir "$out/src" "$out/cells"
-git -C "$repo" archive "$base" | tar -x -C "$out/src"
+git -C "$repo" archive "$commit" | tar -x -C "$out/src"
 (cd "$out/src" && go build -buildvcs=false -o "$out/lightpool-experiment" ./cmd/lightpool-experiment)
 python3 "$record/rows.py" --header >"$out/cells.tsv"
 failed=0

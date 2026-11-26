@@ -15,7 +15,7 @@ import (
 // Exercise the checked-in recipe with real Git archives and packaging, replacing
 // only the expensive Go build/reducer and the particular failing I/O boundary.
 func TestNonAliveRecipe(t *testing.T) {
-	for _, fault := range []string{"success", "low", "partial", "reducer", "bytes", "set", "symlink", "status", "compatibility", "summary", "compression", "final", "interrupt", "build", "archive", "cleanup"} {
+	for _, fault := range []string{"success", "low", "partial", "reducer", "bytes", "set", "symlink", "status", "compatibility", "summary", "compression", "final", "interrupt", "build", "archive", "cleanup", "absent"} {
 		t.Run(fault, func(t *testing.T) {
 			repo, bin := t.TempDir(), t.TempDir()
 			write := func(path, data string) {
@@ -41,6 +41,10 @@ func TestNonAliveRecipe(t *testing.T) {
 				t.Fatal(err)
 			}
 			helper, err := os.ReadFile("evidence.sh")
+			if err != nil {
+				t.Fatal(err)
+			}
+			resolver, err := os.ReadFile("revision.sh")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -95,11 +99,22 @@ func TestNonAliveRecipe(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
+			// As in production, Git keeps each attempt's SHA256SUMS and the
+			// payloads are fetched into the working tree.
+			write(filepath.Join(repo, ".gitignore"), "experiments/*/evidence/*/*\n!experiments/*/evidence/*/SHA256SUMS\n")
+			if fault == "absent" {
+				for _, name := range []string{"spec.json", "status.json", "summary.json", "scenario.json", "trace.ndjson.gz"} {
+					if err := os.Remove(filepath.Join(repo, "experiments", "original", "evidence", "a02", name)); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
 			run(repo, "git", "add", ".")
 			run(repo, "git", "-c", "user.name=Recipe Test", "-c", "user.email=recipe@example.invalid", "commit", "--quiet", "-m", "pinned inputs")
 			base := strings.TrimSpace(string(run(repo, "git", "rev-parse", "HEAD")))
 			write(filepath.Join(repo, "experiments", "evidence.sh"), string(helper))
 			write(filepath.Join(record, "run.sh"), string(recipe))
+			write(filepath.Join(repo, "experiments", "revision.sh"), string(resolver))
 			write(filepath.Join(record, "reducer-base"), base+"\n")
 			write(filepath.Join(record, "evidence-base"), base+"\n")
 			write(filepath.Join(record, "toolchain"), "local\n")
@@ -228,10 +243,13 @@ exec "$REAL_RM" "$@"`)
 			if err != nil || strings.Contains(string(calls), "a03") {
 				t.Fatalf("work continued after failure: %s %v", calls, err)
 			}
-			if (fault == "low" || fault == "partial" || fault == "archive" || fault == "status") && strings.Contains(string(calls), "reduce a02") {
+			if (fault == "low" || fault == "partial" || fault == "archive" || fault == "status" || fault == "absent") && strings.Contains(string(calls), "reduce a02") {
 				t.Fatalf("reducer reached invalid restoration: %s", calls)
 			}
-			if fault != "low" && fault != "archive" {
+			if fault == "absent" && !strings.Contains(string(output), "evidence-store.sh fetch original first") {
+				t.Fatalf("absent payloads not diagnosed: %s", output)
+			}
+			if fault != "low" && fault != "archive" && fault != "absent" {
 				if _, err := os.Stat(filepath.Join(work, "restored")); err != nil {
 					t.Fatalf("failed restoration lost: %v", err)
 				}

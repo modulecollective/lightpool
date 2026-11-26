@@ -11,7 +11,7 @@ repo=$(git -C "$record" rev-parse --show-toplevel)
 export GOTOOLCHAIN
 GOTOOLCHAIN=$(<"$record/toolchain")
 mkdir "$out/src" "$out/restored" "$out/reports"
-git -C "$repo" archive "$(<"$record/base")" | tar -x -C "$out/src"
+git -C "$repo" archive "$(bash "$record/../revision.sh" "$(<"$record/base")")" | tar -x -C "$out/src"
 (cd "$out/src" && go test -c -trimpath -buildvcs=false -o "$out/driver.test" . &&
   go build -trimpath -buildvcs=false -o "$out/producer" ./cmd/lightpool-experiment)
 driver=$(sha256sum "$out/driver.test" | cut -d' ' -f1)

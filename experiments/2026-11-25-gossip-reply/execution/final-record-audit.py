@@ -17,8 +17,9 @@ for i in inventory:
  assert int(u['generated'])==20 and int(u['eligiblePairs'])==620 and int(u['missed'])+int(u['delivered'])==620
 assert missing==['dev-32-loss-0-exchange-off-r2-r6-g4']
 assert not (record/'evidence'/missing[0]/'status.json').exists()
+frozen=subprocess.check_output(['bash','experiments/revision.sh','593105a8074104bc7c835d835f42ba14789c910e'],text=True).strip()
 for name in ['declaration.json','reply.patch','ordinary-test.patch','PATCHES.sha256']:
- assert (record/name).read_bytes()==subprocess.check_output(['git','show',f'593105a:experiments/2026-11-25-gossip-reply/{name}'])
+ assert (record/name).read_bytes()==subprocess.check_output(['git','show',f'{frozen}:experiments/2026-11-25-gossip-reply/{name}'])
 assert result['originalCosts']['resourcesAvailable']==119 and result['originalCosts']['resourcesUnavailable']==1
 assert result['originalCosts']['rawBytes']==9299945103 and result['originalCosts']['storedBytes']==912364757
 assert len(result['attempts'])==120 and result['comparators']==comparators

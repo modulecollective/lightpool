@@ -11,11 +11,12 @@ out=$(cd "$1" && pwd)
 record=$(cd "$(dirname "$0")" && pwd)
 repo=$(git -C "$record" rev-parse --show-toplevel)
 base=$(<"$record/base")
+commit=$(bash "$record/../revision.sh" "$base")
 export GOTOOLCHAIN
 GOTOOLCHAIN=$(<"$record/toolchain")
 cap=$((512 * 1024 * 1024))
 mkdir "$out/src" "$out/raw" "$out/evidence" "$out/check"
-git -C "$repo" archive "$base" | tar -x -C "$out/src"
+git -C "$repo" archive "$commit" | tar -x -C "$out/src"
 (cd "$out/src" && go test -c -trimpath -buildvcs=false -o "$out/driver.test" . &&
   go build -trimpath -buildvcs=false -o "$out/producer" ./cmd/lightpool-experiment)
 driver=$(sha256sum "$out/driver.test" | cut -d' ' -f1)

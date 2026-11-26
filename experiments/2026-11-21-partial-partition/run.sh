@@ -11,12 +11,13 @@ die() { echo "run.sh: $*" >&2; exit 1; }
 mkdir "$1" || die "output must be a new directory"
 out=$(cd "$1" && pwd)
 base=$(cat "$record/base")
+commit=$(bash "$record/../revision.sh" "$base")
 read -r toolchain platform <"$record/toolchain"
 export GOTOOLCHAIN=$toolchain
 [ "$(go env GOOS)/$(go env GOARCH)" = "$platform" ] || die "replay is pinned to $platform"
-git -C "$repo" merge-base --is-ancestor "$base" HEAD || die "base must be an ancestor of HEAD"
+git -C "$repo" merge-base --is-ancestor "$commit" HEAD || die "base must be an ancestor of HEAD"
 mkdir "$out/src" "$out/cells"
-git -C "$repo" archive "$base" | tar -x -C "$out/src"
+git -C "$repo" archive "$commit" | tar -x -C "$out/src"
 (cd "$out/src" && go build -buildvcs=false -o "$out/lightpool-experiment" ./cmd/lightpool-experiment)
 
 printf 'cell\tcase\treplicate\tidentity\texitCode\tstatus\tspecSHA256\tscenarioSHA256\ttraceSHA256\tsummarySHA256\thealthyTransitions\thealthyPairs\thealthyPairNS\trunningTransitions\trunningPairNS\trecoveryCompleted\trecoveryEligible\n' >"$out/cells.tsv"
