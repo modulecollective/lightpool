@@ -340,6 +340,13 @@ prints the commit it now names: the mapped hash if
 `experiments/rewritten-commits.tsv` lists it after a history rewrite, and
 otherwise the pin itself.
 
+History from `8522aa2` was rewritten once, on 2026-11-26, to remove
+committed payloads; the map lists every old commit beside its replacement.
+The original commits are in `lightpool-pre-rewrite.bundle` on the
+`history-pre-rewrite` release (SHA-256
+`d2da9c73218f48e825d5090927c3728aa40fd09390ef5f2e711111dd5e1bd81d`), and
+`git fetch lightpool-pre-rewrite.bundle master:pre-rewrite` restores them.
+
 ## Retaining and restoring original evidence
 
 Retain every attempt in a declared campaign under
