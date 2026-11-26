@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # A pin keeps the hash it was recorded with: that string is an identity in
-# rows and digests. History from 8522aa2 was rewritten once to remove
-# committed payloads, so a script hands a pin to Git through this map.
-# Prints the rewritten hash, or the argument when it was never rewritten.
+# rows and digests. A history rewrite that removes committed payloads
+# lists old and new hashes in rewritten-commits.tsv, so a script hands a
+# pin to Git through this map. Prints the rewritten hash, or the argument
+# when there is no map or the hash is not in it.
 set -euo pipefail
 [[ $# -eq 1 && $1 =~ ^[0-9a-f]{40}$ ]] || { echo 'usage: revision.sh FULL_COMMIT_HASH' >&2; exit 2; }
 map=$(dirname "$0")/rewritten-commits.tsv
