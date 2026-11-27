@@ -247,6 +247,20 @@ Six additional fixed cases change one dimension from dense:
 All retain the same bounds, populations, target and seed namespaces. These
 are uncalibrated virtual workloads, not ordinary UDP/TCP reproductions.
 
+The A→T faults above refuse streams: an open fails after one latency and an
+established stream closes at once, unlike a packet filter. Five silent twins
+add `-silent` to `correlated-dense` and its `latency-100us`, `latency-10ms`,
+`service-100us` and `service-1ms` cases. They are the same case with each
+A→T fault built as `Drop` plus `StreamDrop` instead of `StreamFailure`, so
+A→T stream traffic is discarded without notice. An A→T open, or a T→A open
+whose handshake reply is lost, times out at its own deadline with no accept
+at the peer. A chunk sent A→T on an established stream is dropped and the
+write and the reader's read run to their deadlines; T→A data on that stream
+still arrives. Nothing dropped is retransmitted: an open started before the
+heal still times out after it, while real TCP would retry the SYN at about
+1, 3 and 7 s and could connect once the path heals. Opens started after the
+heal succeed. `-admission` accepts them. No other case has a silent twin.
+
 Three further fixed cases support suspicion-expiry studies:
 
 | Case | Change |

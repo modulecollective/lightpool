@@ -45,7 +45,11 @@ type Fault struct {
 	Delay, Jitter time.Duration
 	Duplicate     bool
 	StreamFailure bool
-	LossPPM       int `json:",omitempty"`
+	// StreamDrop silently discards stream traffic From→To, like a packet
+	// filter: opens and writes hang to their own deadlines. StreamFailure on
+	// the same link wins. Nothing dropped is retransmitted after End.
+	StreamDrop bool `json:",omitempty"`
+	LossPPM    int  `json:",omitempty"`
 }
 
 type Scenario struct {
@@ -303,16 +307,23 @@ func execute(s Scenario, x *exporter) (Result, error) {
 		case "drain":
 			r.drain(e)
 		case "connect":
-			if conn := r.streams[e.stream]; conn != nil && conn.connecting {
-				conn.connecting = false
-				t := conn.opening
-				t.Stage = "arrival"
-				r.traffic(t)
-				r.readDeadline(conn, 0, conn.openDeadline)
-				r.readDeadline(conn, 1, r.now.Add(r.scenario.Protocol.StreamTimeout))
-				r.coreEvent(conn.names[1], r.now, core.Accepted{ID: conn.tokens[1], Peer: r.nodes[conn.names[0]].spec.Identity.Address})
-				r.coreEvent(conn.names[0], r.now, core.Opened{ID: conn.tokens[0]})
+			conn := r.streams[e.stream]
+			if conn == nil || !conn.connecting {
+				break
 			}
+			// A silently dropped handshake reply leaves the open to connect-expire.
+			// A refusing fault on the same link keeps its own behaviour.
+			if f := r.fault(conn.names[1], conn.names[0], r.now); f.StreamDrop && !f.StreamFailure {
+				break
+			}
+			conn.connecting = false
+			t := conn.opening
+			t.Stage = "arrival"
+			r.traffic(t)
+			r.readDeadline(conn, 0, conn.openDeadline)
+			r.readDeadline(conn, 1, r.now.Add(r.scenario.Protocol.StreamTimeout))
+			r.coreEvent(conn.names[1], r.now, core.Accepted{ID: conn.tokens[1], Peer: r.nodes[conn.names[0]].spec.Identity.Address})
+			r.coreEvent(conn.names[0], r.now, core.Opened{ID: conn.tokens[0]})
 		case "connect-expire":
 			if conn := r.streams[e.stream]; conn != nil && conn.connecting {
 				r.coreEvent(conn.names[0], r.now, core.Opened{ID: conn.tokens[0], Failure: core.Timeout})
@@ -559,6 +570,7 @@ func (r *runner) fault(from, to string, at core.Instant) Fault {
 		if f.From == from && f.To == to && at >= f.Start && at < f.End {
 			result.Drop = result.Drop || f.Drop
 			result.StreamFailure = result.StreamFailure || f.StreamFailure
+			result.StreamDrop = result.StreamDrop || f.StreamDrop
 			result.Duplicate = result.Duplicate || f.Duplicate
 			result.Delay += f.Delay
 			result.LossPPM = max(result.LossPPM, f.LossPPM)
@@ -711,6 +723,13 @@ func (r *runner) open(name string, e core.OpenStream) {
 		r.enqueue(&event{at: at, kind: "open-failed", from: name, life: r.nodes[name].life, input: core.Opened{ID: e.ID, Failure: failure}})
 		return
 	}
+	if r.fault(name, to, r.now).StreamDrop {
+		t.Stage = "drop"
+		t.Detail = "open: directional stream drop"
+		r.traffic(t)
+		r.enqueue(&event{at: e.Deadline, kind: "open-failed", from: name, life: r.nodes[name].life, input: core.Opened{ID: e.ID, Failure: core.Timeout}})
+		return
+	}
 	r.streamID++
 	id := r.streamID
 	token := core.Token{Lifetime: r.nodes[to].life, ID: 1<<63 | id}
@@ -808,7 +827,8 @@ func (r *runner) pump(conn *connection, side int) {
 	}
 	d := &conn.directions[side]
 	from, to := conn.names[side], conn.names[1-side]
-	if r.fault(from, to, r.now).StreamFailure {
+	f := r.fault(from, to, r.now)
+	if f.StreamFailure {
 		r.close(conn, core.RemoteFailure)
 		return
 	}
@@ -823,6 +843,14 @@ func (r *runner) pump(conn *connection, side int) {
 		r.traffic(t)
 	}
 	t := d.traffic
+	if f.StreamDrop {
+		// The write stays incomplete; write-expire and read-expire end it.
+		t.Stage = "drop"
+		t.Bytes = trace.Decimal(count)
+		t.Detail = "directional stream drop"
+		r.traffic(t)
+		return
+	}
 	r.enqueue(&event{at: r.now.Add(r.scenario.Latency + r.fault(from, to, r.now).Delay), kind: "chunk", stream: conn.id, direction: side, life: d.generation, frame: chunk, traffic: &t})
 }
 

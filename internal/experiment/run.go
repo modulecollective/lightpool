@@ -196,6 +196,7 @@ func validateSpec(spec Spec, scenario sim.Scenario) error {
 	}
 	switch spec.Case {
 	case "partial-partition", "partial-partition-healthy", "correlated-dense-64-aged", "correlated-dense-64-aged-healthy", "small-double-crash":
+	case "correlated-dense-silent", "correlated-dense-latency-100us-silent", "correlated-dense-latency-10ms-silent", "correlated-dense-service-100us-silent", "correlated-dense-service-1ms-silent":
 	case "healthy", "crash", "threshold", "interval", "loss", "correlated", "threshold-128", "ordinary-healthy", "ordinary-pause", "ordinary-crash", "correlated-dense", "correlated-dense-healthy", "correlated-dense-latency-100us", "correlated-dense-latency-10ms", "correlated-dense-service-100us", "correlated-dense-service-1ms", "correlated-dense-buffer-64k", "correlated-dense-buffer-16m":
 	default:
 		if n, _, _ := deliveryCase(spec.Case); n == 0 {

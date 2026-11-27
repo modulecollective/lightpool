@@ -35,6 +35,7 @@ type Fault struct {
 	Drop                     bool
 	Delay, Jitter            string
 	Duplicate, StreamFailure bool
+	StreamDrop               bool   `json:",omitempty"`
 	LossPPM                  string `json:",omitempty"`
 }
 

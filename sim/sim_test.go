@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -665,5 +666,109 @@ func TestScheduleKeepsThePrescribedFaultedWorld(t *testing.T) {
 	}
 	if !reflect.DeepEqual(first.Manifest.PreparedFaults, second.Manifest.PreparedFaults) || !reflect.DeepEqual(first.Manifest.NodeSeeds, second.Manifest.NodeSeeds) {
 		t.Fatal("schedule seed changed the faulted world or initial protocol seeds")
+	}
+}
+
+// joinResults returns each command result with the time it was emitted.
+func joinResults(r Result) ([]core.Result, []core.Instant) {
+	var out []core.Result
+	var at []core.Instant
+	for _, tr := range r.Trace {
+		for _, raw := range tr.Effects {
+			var e tagged
+			_ = json.Unmarshal(raw, &e)
+			if e.Kind == "core.Result" {
+				var result core.Result
+				_ = json.Unmarshal(e.Effect, &result)
+				out = append(out, result)
+				at = append(at, tr.Time)
+			}
+		}
+	}
+	return out, at
+}
+
+// streamPair is two nodes whose only stream traffic is a's joins to b.
+func streamPair(faults []Fault, joins ...time.Duration) Scenario {
+	s := fixture()
+	s.Nodes = s.Nodes[:2]
+	s.Protocol.ProbeInterval, s.Protocol.GossipInterval, s.Protocol.PushPullInterval = 0, 0, 0
+	s.Protocol.StreamTimeout = 100 * time.Millisecond
+	s.Latency = 10 * time.Millisecond
+	s.Horizon = core.Instant(400 * time.Millisecond)
+	s.Faults = faults
+	s.Actions = nil
+	for _, at := range joins {
+		s.Actions = append(s.Actions, Action{At: core.Instant(at), Node: "a", Kind: "join", Peer: "b"})
+	}
+	return s
+}
+
+func TestStreamDropHangsToDeadline(t *testing.T) {
+	ms := func(n int) core.Instant { return core.Instant(time.Duration(n) * time.Millisecond) }
+	for _, tc := range []struct {
+		name     string
+		fault    Fault
+		earliest core.Instant
+		accepted int
+	}{
+		// The SYN never reaches b.
+		{name: "forward-open", fault: Fault{From: "a", To: "b", End: ms(400), StreamDrop: true}, earliest: ms(110)},
+		// b's handshake reply is lost, so b never accepts either.
+		{name: "reverse-open", fault: Fault{From: "b", To: "a", End: ms(400), StreamDrop: true}, earliest: ms(110)},
+		// Established at 20ms; a's request reaches b, b's reply is dropped and
+		// a's read runs to its request-write deadline.
+		{name: "mid-stream", fault: Fault{From: "b", To: "a", Start: ms(25), End: ms(400), StreamDrop: true}, earliest: ms(120), accepted: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := run(t, streamPair([]Fault{tc.fault}, 10*time.Millisecond))
+			rs, at := joinResults(r)
+			if len(rs) != 1 || rs[0].Failure != core.Timeout || at[0] < tc.earliest || at[0] > tc.earliest+ms(5) {
+				t.Errorf("silent fault must time out at %v: %+v at %v", time.Duration(tc.earliest), rs, at)
+			}
+			if n := steps(r, "b", "core.Accepted", 0, end(r)); n != tc.accepted {
+				t.Errorf("accepts at b: %d, want %d", n, tc.accepted)
+			}
+			if n := steps(r, "a", "core.StreamMessage", 0, end(r)); n != 0 {
+				t.Error("a received through a silent fault", n)
+			}
+			if n := steps(r, "b", "core.StreamMessage", 0, end(r)); n != tc.accepted {
+				t.Errorf("unfaulted direction delivered %d messages to b, want %d", n, tc.accepted)
+			}
+		})
+	}
+}
+
+func end(r Result) core.Instant { return r.Manifest.Scenario.Horizon + 1 }
+
+func TestStreamDropHealDoesNotRetransmit(t *testing.T) {
+	fault := Fault{From: "a", To: "b", End: core.Instant(50 * time.Millisecond), StreamDrop: true}
+	r := run(t, streamPair([]Fault{fault}, 10*time.Millisecond, 200*time.Millisecond))
+	rs, at := joinResults(r)
+	if len(rs) != 2 {
+		t.Fatalf("results: %+v", rs)
+	}
+	if rs[0].Failure != core.Timeout || at[0] < core.Instant(110*time.Millisecond) {
+		t.Fatalf("open before End must still time out after End: %+v at %v", rs[0], at[0])
+	}
+	if rs[1].Failure != core.Success {
+		t.Fatalf("open after End must succeed: %+v", rs[1])
+	}
+}
+
+func TestStreamFailureWinsOverStreamDrop(t *testing.T) {
+	for _, faults := range [][]Fault{
+		{{From: "a", To: "b", End: core.Instant(400 * time.Millisecond)}},
+		{{From: "b", To: "a", End: core.Instant(400 * time.Millisecond)}},
+		{{From: "b", To: "a", Start: core.Instant(25 * time.Millisecond), End: core.Instant(400 * time.Millisecond)}},
+	} {
+		refusing := streamPair(slices.Clone(faults), 10*time.Millisecond)
+		refusing.Faults[0].StreamFailure = true
+		both := streamPair(slices.Clone(faults), 10*time.Millisecond)
+		both.Faults[0].StreamFailure, both.Faults[0].StreamDrop = true, true
+		want, got := run(t, refusing), run(t, both)
+		if !reflect.DeepEqual(want.Trace, got.Trace) || !reflect.DeepEqual(want.Measurements, got.Measurements) {
+			t.Fatalf("StreamFailure with StreamDrop diverged from StreamFailure alone: %+v", faults[0])
+		}
 	}
 }

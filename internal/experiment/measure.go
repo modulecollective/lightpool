@@ -199,7 +199,7 @@ func Measure(spec Spec, scenario sim.Scenario, base *report.Report, input io.Rea
 			}
 		}
 		for _, f := range scenario.Faults {
-			if f.Start < scenario.Horizon && int64(f.End) > spec.WarmupNS && ((f.From == p.Observer && f.To == p.Subject) || (f.From == p.Subject && f.To == p.Observer)) && (f.Drop || f.StreamFailure || f.Delay > 0 || f.Jitter > 0 || f.LossPPM > 0) {
+			if f.Start < scenario.Horizon && int64(f.End) > spec.WarmupNS && ((f.From == p.Observer && f.To == p.Subject) || (f.From == p.Subject && f.To == p.Observer)) && (f.Drop || f.StreamFailure || f.StreamDrop || f.Delay > 0 || f.Jitter > 0 || f.LossPPM > 0) {
 				return nil, fmt.Errorf("healthy pair has a configured path impairment")
 			}
 		}
