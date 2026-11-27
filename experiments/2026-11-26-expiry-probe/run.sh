@@ -8,7 +8,8 @@
 # reproduce its row exactly; rows produced are written to NEW_DIRECTORY/cells.tsv.
 #
 # --retain is the original campaign: each attempt is packed into evidence/,
-# inventoried in evidence.tsv and its raw directory removed. It stops
+# inventoried in evidence.tsv and its raw directory removed. Once evidence.tsv
+# exists, --retain continues only with named cells never attempted before. It stops
 # launching, and lists what it did not launch in unlaunched.tsv, once packed
 # evidence passes 2 GiB or campaign time passes 6 hours. No retries.
 set -euo pipefail
@@ -79,13 +80,24 @@ header+='\tcrashSubjects\tcrashMaxNS\tcrashP50NS\tcrashCompleted\tcrashEligible\
 header+='\tdatagramCount\tdatagramBytes\tstreamBytes\n'
 printf "$header" >"$out/cells.tsv"
 if ((retain)); then
-	[ ! -e "$record/evidence.tsv" ] || die "evidence.tsv exists; the original campaign runs once"
-	mkdir -p "$record/evidence"
-	printf 'attempt\tdirectory\tprovenance\texitCode\tstatus\trawBytes\tstoredBytes\n' >"$record/evidence.tsv"
+	if [ -e "$record/evidence.tsv" ]; then
+		# Continuing an interrupted campaign launches only named cells that
+		# have never been attempted; an attempted cell is never retried.
+		[ "$want" != "  " ] || die "evidence.tsv exists; name the never-attempted cells to continue"
+		for cell in $want; do
+			! awk -F '\t' -v c="$cell" '$1 == c { found = 1 } END { exit !found }' "$record/evidence.tsv" || die "$cell was already attempted"
+		done
+	else
+		mkdir -p "$record/evidence"
+		printf 'attempt\tdirectory\tprovenance\texitCode\tstatus\trawBytes\tstoredBytes\n' >"$record/evidence.tsv"
+	fi
 	printf 'cell\treason\n' >"$out/unlaunched.tsv"
 fi
 started=$(date +%s)
 stored_total=0
+if ((retain)); then
+	stored_total=$(awk -F '\t' 'NR > 1 && $7 != "-" { n += $7 } END { printf "%.0f", n }' "$record/evidence.tsv")
+fi
 failed=0
 for spec in "${cells[@]}"; do
 	read -r arm name replicate <<<"$spec"
