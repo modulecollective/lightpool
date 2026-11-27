@@ -8,10 +8,11 @@
 # already listed in this record's cells.tsv must reproduce its row exactly.
 #
 # --retain is the original campaign: each attempt is packed into evidence/,
-# inventoried in evidence.tsv and its raw directory removed. It stops
-# launching once packed evidence passes 512 MiB, or after the fixed control
-# block if any control row differs from the 2026-11-20 record, and lists
-# what it did not launch in unlaunched.tsv. No retries.
+# inventoried in evidence.tsv and its raw directory removed. Once evidence.tsv
+# exists, --retain continues only with named cells never attempted before. It
+# stops launching once packed evidence passes 512 MiB, or once a fixed control
+# cell misses its 2026-11-20 row in the gate columns, and lists what it did
+# not launch in unlaunched.tsv. No retries.
 set -euo pipefail
 
 retain=0
@@ -35,9 +36,6 @@ export GOTOOLCHAIN=$toolchain
 git -C "$repo" merge-base --is-ancestor "$commit" HEAD || die "base $base is not an ancestor of HEAD"
 reference="$record/../2026-11-20-ordinary-witness-current/virtual-cells.tsv"
 [ -f "$reference" ] || die "missing control reference $reference"
-if ((retain)) && [ -e "$record/evidence.tsv" ]; then
-	die "evidence.tsv exists; the original campaign has run"
-fi
 
 mkdir "$out/src" "$out/cells"
 git -C "$repo" archive "$commit" | tar -x -C "$out/src"
@@ -60,13 +58,27 @@ control_cells=18
 header='cell\tarm\tcase\treplicate\texitCode\tstatus\tspecSHA256\tscenarioSHA256\ttraceSHA256\tsummarySHA256\tadmissionExit\tadmissionSHA256'
 header+='\tadmissionStatus\tfailedProbes\tlocalSuspicions\teligibleEpisodes\twitnesses\tharmful\thealthyDead\tpairExposureNS\tmaxBacklog\tlateTimers\tmaxTimerLatenessNS\tstop\tcontrolGate\n'
 printf "$header" >"$out/cells.tsv"
+stored_total=0 failed=0 gate_failed=0 launched=0
 if ((retain)); then
-	mkdir -p "$record/evidence"
-	printf 'attempt\tdirectory\tprovenance\texitCode\tstatus\trawBytes\tstoredBytes\n' >"$record/evidence.tsv"
+	if [ -e "$record/evidence.tsv" ]; then
+		# Continuing an interrupted campaign launches only named cells that
+		# have never been attempted; an attempted cell is never retried.
+		[ "$want" != "  " ] || die "evidence.tsv exists; name the never-attempted cells to continue"
+		for cell in $want; do
+			! awk -F '\t' -v c="$cell" '$1 == c { found = 1 } END { exit !found }' "$record/evidence.tsv" || die "$cell was already attempted"
+		done
+		stored_total=$(awk -F '\t' 'NR > 1 { n += $7 } END { printf "%.0f", n }' "$record/evidence.tsv")
+	else
+		mkdir -p "$record/evidence"
+		printf 'attempt\tdirectory\tprovenance\texitCode\tstatus\trawBytes\tstoredBytes\n' >"$record/evidence.tsv"
+	fi
 	printf 'cell\treason\n' >"$out/unlaunched.tsv"
 fi
 size() { find "$1" -maxdepth 1 -type f -printf '%s\n' | awk '{n+=$1} END {printf "%.0f", n}'; }
-stored_total=0 failed=0 gate_failed=0 launched=0
+# The gate columns the design declared: case, index, status, failed probes,
+# local suspicions, eligible episodes, witnesses, harmful episodes and the
+# stopping point. Backlog and timer lateness are reported, not gated.
+gated() { cut -f1-8,14; }
 for spec in "${cells[@]}"; do
 	read -r arm name replicate <<<"$spec"
 	cell="$name-r$replicate"
@@ -121,7 +133,7 @@ for spec in "${cells[@]}"; do
 	fi
 	gate=-
 	if [ "$arm" = control ] && ((replicate <= 3)); then
-		if [ "$classified" = "$(awk -F '\t' -v c="$name" -v r="$replicate" '$1 == c && $2 == r' "$reference")" ]; then
+		if [ "$(gated <<<"$classified")" = "$(awk -F '\t' -v c="$name" -v r="$replicate" '$1 == c && $2 == r' "$reference" | gated)" ]; then
 			gate=same
 		else
 			gate=differs
