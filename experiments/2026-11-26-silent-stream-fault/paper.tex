@@ -1,0 +1,168 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.8in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\hypersetup{hidelinks}
+\setlength{\emergencystretch}{2em}
+\input{results.tex}
+\title{Refused or Silent: Does the Simulator's Stream Fault\\Explain Its Correlated-Suspicion Witnesses?}
+\author{Claude (AI research and implementation draft)}
+\date{26 November 2026 --- Unreviewed research draft}
+\begin{document}
+\maketitle
+\begin{abstract}
+Lightpool's deterministic simulator shows a correlated-suspicion
+acceleration mechanism that a real routed packet drop has not reproduced.
+One named difference was untested: the simulator's directed fault refuses
+TCP-like streams at once, whereas a packet filter drops them silently and
+leaves opens and writes to their deadlines. We added a silent stream fault
+to the simulator and ran a predeclared campaign of 93 cells, of which 79
+were recorded before a 512\,MiB evidence cap stopped launching. All 18
+fixed control cells reproduced the earlier record in the gate columns. On
+\Pairs{} valid held-out pairs the refusing and silent arms each had
+\Rcount{} witness cells, on the same indices, with no discordant pair. The
+predeclared verdict is \emph{\Verdict}: witnesses survive a silent stream
+fault, and the refused stream does not explain the disagreement between
+the simulator and ordinary networking. This is a virtual result only.
+\end{abstract}
+
+\section{Question}
+Lightpool is a SWIM-family membership library with Lifeguard's
+confirmation-scaled suspicion timeout~\cite{swim,lifeguard}. Its first
+research question concerns correlated suspicion: when a group A loses its
+path to a target T, can A's confirmations shorten the suspicion timers of
+healthy observers O enough to declare T dead before T refutes? In the
+virtual companions of an earlier record, acceleration witnesses appeared
+in five of fifteen impaired cells. Nine ordinary cells with a real A$\to$T
+nftables drop recorded 187 eligible O$\to$T suspicion episodes and no
+witness. The simulator's fault fails an A$\to$T stream open after one
+latency with a remote failure and closes an established stream at once.
+A packet filter is silent. We ask whether the witnesses survive when the
+simulated stream fault is silent too.
+
+\section{Related work}
+SWIM separates failure detection from dissemination and adds a suspicion
+subprotocol~\cite{swim}. Lifeguard scales the suspicion timeout down with
+independent confirmations~\cite{lifeguard}, which is the term a correlated
+group can exploit. Memberlist, from which Lightpool descends, falls back
+to a TCP ping when a UDP probe and its indirect probes fail, and runs a
+periodic TCP push--pull exchange. Both use streams that a directed fault
+can refuse or silently drop.
+
+\section{Fault model and arms}
+The new \texttt{StreamDrop} flag on a simulated directed link discards
+stream traffic without notice. An open from A to T, or an open from T to A
+whose handshake reply would cross the faulted direction, times out at its
+own deadline and the peer records no accept. A chunk sent from A to T on
+an established stream is dropped; the write and the peer's read run to
+their deadlines, while data from T to A on that stream still arrives.
+Nothing is retransmitted after the heal. The refusing
+\texttt{StreamFailure} flag is unchanged and wins where both are set. With
+\texttt{StreamDrop} absent, scenarios and traces are byte-identical to
+the previous simulator; we checked one full trace.
+
+The \emph{control} arm uses \texttt{correlated-dense} (32 nodes, 24 in A,
+one T, seven O; A$\to$T datagrams dropped and streams refused for
+16.384\,s from 15\,s) and its recorded variants: no fault, 100\,\textmu s
+or 10\,ms latency, and 100\,\textmu s or 1\,ms node service time. The
+\emph{silent} arm uses the same five impaired cases with
+\texttt{StreamDrop} in place of \texttt{StreamFailure}. Seeds, cohorts,
+window and protocol are shared by index. One differing event reshuffles
+the rest of a run's schedule, so a silent cell is not the control minus
+one effect; held-out indices give the comparison a denominator.
+
+\section{Methods}
+All runs are deterministic virtual simulations at default protocol
+settings, built from one pinned commit with go1.26.3 linux/amd64. Each
+cell is classified by the unchanged mechanism-admission pass. A
+\emph{witness cell} is a complete cell with at least one acceleration
+witness; cells, not episodes, are the unit, because episodes in one cell
+share their originating failures. The grid, launch order and decision rule
+were committed before any held-out cell: 18 fixed control cells (indices
+1--3), 30 held-out pairs of \texttt{correlated-dense} and its silent twin
+(indices 201--230, never used before), and 15 fixed silent cells. The 18
+fixed controls had to reproduce the earlier record's status, failed
+probes, local suspicions, eligible episodes, witnesses, harmful episodes
+and stopping point. Over valid held-out pairs, with R and S the witness
+cells per arm and b, c the pairs where only the control or only the silent
+arm has one, the rule reads: \emph{underpowered} if $R<5$ or more than
+five pairs are dropped; \emph{eliminated} if $R\ge5$ and no silent cell is
+a witness; \emph{reduced} if $S>0$ and $P(\mathrm{Bin}(b+c,\frac12)\ge
+b)\le0.05$; otherwise \emph{not explained}.
+
+\section{Results}
+The first launch stopped at its thirteenth control cell because the
+campaign script compared all fourteen classifier columns, not the seven
+declared ones. A timer-lateness diagnostic differed (1296 late timers
+against 1269); the seven gate columns matched. The comparison was narrowed
+and the never-attempted cells were launched; nothing was retried. All 18
+fixed controls then passed the gate. The second launch reached the
+512\,MiB evidence cap after the 60 held-out cells and one fixed silent
+cell, because cells packed to about 6.8\,MB rather than the 4\,MB
+estimated. The other 14 fixed silent cells were not launched. They count
+only toward the zero required for ``eliminated'', which the held-out
+silent witnesses already exclude.
+
+Index 229 was an invalid warm-up in both arms and was dropped, leaving
+\Pairs{} pairs. $R=\Rcount$, $S=\Scount$, $b=\Bcount$, $c=\Ccount$; the
+sign test has no discordant pair ($p=\Pvalue$). The verdict is
+\emph{\Verdict}. In every valid pair the two arms agree on whether a
+witness occurs; witness counts per cell match in all but one pair
+(index 213: 13 against 14).
+
+\begin{center}
+\begin{tabular}{lrrrrrrr}
+\toprule
+Arm & Cells & Witness cells & Witnesses & Failed probes & Local susp. & Eligible & Harmful \\
+\midrule
+\ArmRows
+\bottomrule
+\end{tabular}
+\end{center}
+
+The silent fault does act. In the restored pair at index 213, the control
+trace records 12 A$\to$T opens refused, and the silent trace 12 opens
+silently dropped, one timed out and seven cancelled by their opener while
+hung. All held-out silent traces differ from their controls. The
+difference simply does not reach the mechanism: the mechanism-relevant
+counts (failed probes, local suspicions, eligible episodes) differ in only
+a few pairs, by at most five eligible episodes. A failed TCP fallback ping
+cannot change a probe's outcome, since the probe ends at its overall timer
+whichever way the stream fails, and periodic exchanges between A and T
+are rare in a 16\,s window under a 30\,s interval.
+
+\section{Limitations}
+This is a virtual result. The model is a message model, not TCP: it does
+not retry a SYN, so an open started in the last seconds of a fault hangs
+to its deadline instead of connecting after the heal. Witnesses formed
+well before the heal in the earlier record, so this edge is unlikely to
+matter, but it was not tested. The held-out comparison uses one setting
+(nominal \texttt{correlated-dense}); the four impaired variants have only
+their fixed control cells and, because of the cap, no silent cells. The
+evidence cap was set from an underestimate of packed size.
+
+The disagreement between virtual and ordinary runs needs another cause.
+Candidates already recorded include timing intervention by the recorder at
+32 nodes and the ordinary runs' wider cross-process ordering intervals;
+neither is tested here.
+
+\section{Reproduction}
+\texttt{run.sh NEW\_DIR [CELL \ldots]} in
+\texttt{experiments/2026-11-26-silent-stream-fault/} rebuilds the producer
+from the pinned commit and refuses any cell whose row differs from
+\texttt{cells.tsv}. \texttt{evidence-store.sh fetch
+2026-11-26-silent-stream-fault} restores the original attempts;
+\texttt{analyze.py} applies the rule; \texttt{render.sh} renders this
+draft.
+
+\begin{thebibliography}{9}
+\bibitem{swim} A.~Das, I.~Gupta and A.~Motivala. SWIM: Scalable
+Weakly-consistent Infection-style Process Group Membership Protocol.
+\emph{DSN}, 2002.
+\bibitem{lifeguard} A.~Dadgar, J.~Phillips and J.~Currey. Lifeguard: Local
+Health Awareness for More Accurate Failure Detection. arXiv:1707.00788v2,
+2018.
+\end{thebibliography}
+\end{document}
