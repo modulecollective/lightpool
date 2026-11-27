@@ -144,7 +144,8 @@ and a 2-byte port. A member is an identity, incarnation and one state byte
 overlong varints, unknown tags, out-of-range states and address lengths,
 trailing bytes and invalid identities are rejected, and an accepted body
 re-encodes to the same bytes. Names and labels are limited to 64 bytes,
-metadata to 512 bytes, exchanges to 16,384 members and bodies to 8 MiB.
+metadata to 512 bytes, exchanges to 16,384 members, incarnations to 2^62
+and bodies to 8 MiB.
 Lengths and counts are checked against these limits and against the bytes
 remaining before anything is allocated. These bounds are fork contracts.
 

@@ -5,6 +5,7 @@ package wire
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"io"
 	"net/netip"
@@ -92,10 +93,11 @@ func variants() [][]Message {
 	var out [][]Message
 	for _, i := range []Identity{small, large, mapped} {
 		for _, inc := range []uint64{0, 127, 128, 1 << 35, ^uint64(0)} {
-			member := Member{Identity: i, Incarnation: inc}
+			// Sequences use the full uint64; record incarnations stop at the limit.
+			member := Member{Identity: i, Incarnation: min(inc, MaxIncarnation)}
 			left := member
 			left.State = Left
-			accusation := Accusation{Node: i.Name, Incarnation: inc, From: strings.Repeat("f", MaxName)}
+			accusation := Accusation{Node: i.Name, Incarnation: min(inc, MaxIncarnation), From: strings.Repeat("f", MaxName)}
 			out = append(out,
 				[]Message{{Ping: &Ping{Sequence: inc, Target: i.Name, Source: i}}},
 				[]Message{{Indirect: &Indirect{Sequence: inc, Target: i, Source: small}}},
@@ -212,6 +214,9 @@ func TestRejectedBodies(t *testing.T) {
 		{"count past remaining bytes", []byte{tagExchange, 2, 1, 'a', 4, 192, 0, 2, 1, 0, 1, 0, 1, 0}},
 		{"count over limit", append([]byte{tagExchange, 0x81, 0x80, 0x01}, make([]byte, minMember*(MaxNodes+1))...)},
 		{"batch over limit", bytes.Repeat(ack, MaxBatch+1)},
+		{"alive incarnation over limit", append(binary.AppendUvarint([]byte{tagAlive, 1, 'a', 4, 192, 0, 2, 1, 0, 1, 0}, MaxIncarnation+1), 0)},
+		{"suspect incarnation over limit", append(binary.AppendUvarint([]byte{tagSuspect, 1, 'a'}, MaxIncarnation+1), 1, 'b')},
+		{"exchange incarnation over limit", append(binary.AppendUvarint([]byte{tagExchange, 1, 1, 'a', 4, 192, 0, 2, 1, 0, 1, 0}, MaxIncarnation+1), 1)},
 	} {
 		if _, err := DecodeBody(tc.body); err == nil {
 			t.Errorf("%s: accepted %x", tc.name, tc.body)
@@ -219,6 +224,33 @@ func TestRejectedBodies(t *testing.T) {
 	}
 	if _, err := DecodeBody(bytes.Repeat(ack, MaxBatch)); err != nil {
 		t.Fatal("batch at limit rejected", err)
+	}
+}
+
+func TestIncarnationLimit(t *testing.T) {
+	id := Identity{Name: "a", Address: netip.MustParseAddrPort("192.0.2.1:1")}
+	for _, inc := range []uint64{MaxIncarnation, MaxIncarnation + 1} {
+		messages := []Message{
+			{Alive: &Member{Identity: id, Incarnation: inc}},
+			{Dead: &Accusation{Node: "a", From: "b", Incarnation: inc}},
+			{Exchange: &Exchange{Members: []Member{{Identity: id, Incarnation: inc, State: Suspect}}}},
+		}
+		for _, m := range messages {
+			frame, err := Encode([]Message{m}, Options{})
+			if inc > MaxIncarnation {
+				if err == nil {
+					t.Errorf("encoded %d: %+v", inc, m)
+				}
+				continue
+			}
+			if err != nil {
+				t.Fatal("limit rejected", err)
+			}
+			got, err := Decode(frame, Options{})
+			if err != nil || !reflect.DeepEqual(got, []Message{m}) {
+				t.Fatalf("round trip at limit: %v %+v", err, got)
+			}
+		}
 	}
 }
 
@@ -302,7 +334,7 @@ func TestProtectionAndKeys(t *testing.T) {
 
 func TestDefaultPacketCosts(t *testing.T) {
 	for _, addr := range []string{"192.0.2.255:65535", "[2001:db8:ffff:ffff:ffff:ffff:ffff:ffff]:65535"} {
-		n := Member{Identity: Identity{Name: strings.Repeat("n", MaxName), Address: netip.MustParseAddrPort(addr), Meta: bytes.Repeat([]byte{255}, MaxMeta)}, Incarnation: ^uint64(0), State: Alive}
+		n := Member{Identity: Identity{Name: strings.Repeat("n", MaxName), Address: netip.MustParseAddrPort(addr), Meta: bytes.Repeat([]byte{255}, MaxMeta)}, Incarnation: MaxIncarnation, State: Alive}
 		for _, label := range []string{"", strings.Repeat("l", MaxLabel)} {
 			for _, protected := range []bool{false, true} {
 				messages := []Message{{Alive: &n}}

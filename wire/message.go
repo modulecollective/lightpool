@@ -17,6 +17,10 @@ const (
 	MaxNodes = 16384
 	MaxBatch = 256
 	MaxBody  = 8 << 20
+
+	// MaxIncarnation leaves headroom below the uint64 edge so refutation can
+	// saturate instead of wrapping a member's incarnation to zero.
+	MaxIncarnation = 1 << 62
 )
 
 type State uint8
@@ -111,14 +115,15 @@ func (m Message) Validate() error {
 	}
 	if m.Alive != nil {
 		count++
-		if m.Alive.Validate() != nil || m.Alive.State != Alive {
+		if m.Alive.Validate() != nil || m.Alive.State != Alive || m.Alive.Incarnation > MaxIncarnation {
 			return errors.New("invalid alive")
 		}
 	}
 	for _, a := range []*Accusation{m.Suspect, m.Dead} {
 		if a != nil {
 			count++
-			if a.Node == "" || a.From == "" || !ValidText(a.Node, MaxName) || !ValidText(a.From, MaxName) {
+			if a.Node == "" || a.From == "" || !ValidText(a.Node, MaxName) || !ValidText(a.From, MaxName) ||
+				a.Incarnation > MaxIncarnation {
 				return errors.New("invalid accusation")
 			}
 		}
@@ -129,7 +134,7 @@ func (m Message) Validate() error {
 			return errors.New("oversized exchange")
 		}
 		for _, n := range m.Exchange.Members {
-			if n.Validate() != nil || n.State > Left {
+			if n.Validate() != nil || n.State > Left || n.Incarnation > MaxIncarnation {
 				return errors.New("invalid member")
 			}
 		}
