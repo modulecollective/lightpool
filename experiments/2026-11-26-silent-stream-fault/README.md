@@ -105,3 +105,28 @@ Rebuilds the producer from the pinned commit with the pinned toolchain,
 records the named cells (all by default) and refuses any whose row differs
 from `cells.tsv`. The original attempts are restored with
 `experiments/evidence-store.sh fetch 2026-11-26-silent-stream-fault`.
+
+## Campaign log
+
+Appended after launch; the sections above are as declared.
+
+- Launch 1 (`run.sh --retain`, from `74650b8`) recorded the first 13 fixed
+  control cells and stopped at `correlated-dense-service-100us-r1` with
+  `control does not reproduce the 2026-11-20 record`. Its `lateTimers` was
+  1296 against 1269 at `62c746a`. The seven gate columns (status, failed
+  probes, local suspicions, eligible episodes, witnesses, harmful
+  episodes, stopping point) all matched. `run.sh` had compared all 14
+  columns, which is stricter than the rule above, and it stopped at that
+  cell rather than at the end of the block. No silent cell had run.
+- `960ae78` narrowed the comparison to the seven columns and let `--retain`
+  continue with named never-attempted cells. That attempt's `controlGate`
+  reads `same` in `cells.tsv`, as the corrected `run.sh` regenerates it.
+- Launch 2 recorded the other 5 fixed control cells (all `same`), the 60
+  held-out cells and `correlated-dense-silent-r1`. It then hit the 512 MiB
+  cap at 540,401,824 packed bytes: cells packed to about 6.8 MB, not the
+  4 MB estimated. The other 14 fixed silent cells are in
+  `unlaunched.tsv`. They count only toward the zero in "Eliminated", which
+  ten held-out silent witness cells already exclude, so the verdict does
+  not depend on them.
+- Index 229 is an invalid warm-up in both arms and is dropped.
+- 79 attempts, all retained, none retried.
