@@ -25,7 +25,9 @@ exposes plaintext and lets an attacker forge frames. A 1,000-node cluster
 sending about 17 datagrams per node-second reaches 2^32 in roughly three
 days. Rotate the primary key well inside that bound. There is no replay
 protection beyond the protocol's own incarnation and sequence checks: a
-captured frame stays valid under its key and can be sent again.
+captured frame stays valid under its key and can be sent again. Anyone
+trusted to send records can also name a member at the incarnation limit,
+after which that name cannot refute an accusation.
 
 Identity/address/count checks, bounded frame allocation, stream deadlines
 and finite driver queues limit input handling. CIDR admission

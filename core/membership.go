@@ -127,7 +127,12 @@ func (c *Core) refute(inc uint64) {
 	if c.left {
 		return
 	}
-	n.Incarnation = max(n.Incarnation, inc) + 1
+	// At the wire cap the member cannot outbid the record; it still announces
+	// itself, which persuades observers holding a lower incarnation.
+	if max(n.Incarnation, inc) >= wire.MaxIncarnation {
+		c.emit(Observation{Kind: "incarnation-exhausted", Value: 1})
+	}
+	n.Incarnation = min(max(n.Incarnation, inc), wire.MaxIncarnation-1) + 1
 	n.State = wire.Alive
 	c.recordMember(n.Member)
 	c.record(Inspection{Kind: "refutation", Subject: c.self})
