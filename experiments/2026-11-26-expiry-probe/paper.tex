@@ -1,0 +1,220 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.8in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\hypersetup{hidelinks}
+\setlength{\emergencystretch}{2em}
+\input{results.tex}
+\newcommand{\R}[1]{\csname #1\endcsname}
+\title{A Direct Probe Before Suspicion Expiry:\\A Bounded Lightpool Screening Study}
+\author{Claude (AI research and implementation draft)}
+\date{26 November 2026 --- Unreviewed research draft}
+\begin{document}
+\maketitle
+\begin{abstract}
+A suspicion that collects no confirmations runs to a fixed maximum, and
+an observer that missed the suspect's refutation then declares a reachable
+member dead. Above 32 nodes the default anti-entropy interval is longer
+than that maximum. We test, as an inert patch to Lightpool, one direct
+probe sent one \texttt{ProbeTimeout} before the unchanged deadline, whose
+acknowledgment restarts the suspicion. A predeclared campaign of 208
+virtual cells compared it with the baseline and three timeout retunes;
+207 completed and one was interrupted by its supervisor and retained.
+On 20 held-out aged 64-node replicates the baseline made
+\R{Wbase} working-path expiry death, fewer than the 3 the rules required,
+so the benefit test is inconclusive. The probe and the
+\texttt{SuspicionMaxMult} retunes had none. The probe left crash
+detection latency unchanged to the nanosecond in both crash fixtures,
+added at most 1.7\% to mean datagram counts, and passed every null
+control. Every retune slowed detection by 18--63\% in one crash fixture.
+The candidate is neither rejected nor admitted. This is a bounded virtual
+screen, not an ordinary-network claim.
+\end{abstract}
+
+\section{Question}
+In Lightpool, as in memberlist, a suspicion that collects no confirmations
+runs to a fixed maximum and the observer then declares the member dead
+without consulting its own path to it. An observer that missed the
+member's refutation keeps the old incarnation; its later successful probes
+of the member change nothing, and only the next push--pull exchange
+repairs the belief. With defaults the lone maximum is 36.1\,s at 32 nodes
+and 43.3\,s at 64, while the exchange interval is 30\,s up to 32 nodes and
+60\,s from 33 to 64. Above 32 nodes the timer can therefore win the race
+and declare a reachable member dead. We ask whether one direct probe, sent
+one \texttt{ProbeTimeout} before the unchanged deadline, removes those
+deaths without slowing crash detection or adding traffic, and whether a
+single timeout retune does as well.
+
+\section{Related work}
+SWIM~\cite{swim} adds a suspicion subprotocol to its randomized probing
+detector. Section~4.2 states that if a member ``successfully pings a
+suspected member \ldots\ during the due course of the basic SWIM protocol,
+it un-marks the previous suspicion'' and spreads an Alive message; entries
+that time out before an Alive message is received are declared faulty.
+Lightpool inherits memberlist's rule instead, under which only the
+suspected member may end a suspicion, by refuting with a higher
+incarnation, and Lifeguard's confirmation-scaled timeout~\cite{lifeguard}.
+The candidate sits between the two: it consults the observer's own path
+once, just before the deadline, and an answer only postpones the
+declaration. We read the SWIM text for this draft; we have not surveyed
+other implementations and make no novelty claim.
+
+\section{Candidate and arms}
+Each suspicion keeps its timer and deadline. A second timer is armed
+\texttt{ProbeTimeout} before the deadline whenever the suspicion timer is
+armed or re-armed, unless an expiry probe is outstanding or the deadline
+is not in the future. When it fires and the member is still suspect, the
+observer sends one datagram to the member's address: a ping and the held
+accusation, from itself, so a target that never heard the suspicion can
+refute. There is no indirect leg, TCP fallback or retry, and a failed send
+is not escalated. An acknowledgment from that address restarts the
+suspicion at its current confirmation level; the member stays suspect.
+Silence lets the unchanged deadline declare dead. Health, probe statistics
+and results are untouched. The patch changes \texttt{core/membership.go}
+and \texttt{core/probe.go} by 38 lines and adds no wire message,
+configuration field or journal kind.
+
+The arms are the baseline at the pinned tooling commit (\texttt{base}),
+the candidate (\texttt{probe}), \texttt{SuspicionMaxMult} 8 and 12
+(\texttt{smax8}, \texttt{smax12}) and \texttt{SuspicionMult} 5
+(\texttt{sm5}), the retunes applied as protocol overlays on the baseline.
+The baseline defaults are \texttt{SuspicionMult} 4 and
+\texttt{SuspicionMaxMult} 6.
+
+\section{Methods}
+All runs are deterministic virtual simulations with 1\,ms one-way latency,
+fixed seeds derived from the replicate index, and go1.26.3 linux/amd64.
+The primary workload, \texttt{correlated-dense-64-aged}, has 64 nodes; for
+16.384\,s from 95\,s, datagrams from 48 nodes A to a target T are dropped
+and streams fail, and the run ends at 200\,s. The 95\,s warm-up puts every
+node's first periodic exchange before the fault. Its healthy control has
+no faults. \texttt{crash} kills one non-bootstrap node of 32 at 15\,s;
+\texttt{small-double-crash} kills two of four, where confirmations are
+scarce and the suspicion timeout is near its maximum. Seven existing
+32-node fixtures at development indices 1--3 serve as regression and null
+controls.
+
+The arms, 208 cells, metrics and rejection rules were committed before the
+first held-out cell (indices 101 and up; indices 1--23 were used to design
+the candidate). Every summary was reduced again offline by the baseline
+binary and had to match. \emph{W} counts dead declarations caused by local
+suspicion expiry about a running target, with neither endpoint paused and
+no configured fault between them at declaration time. \emph{L} is, per
+crash, the largest completed per-observer dead latency; a cell's L is the
+mean over its crashes and an arm's L the mean over replicates. \emph{C} is
+the attempted datagram count over the measured window. Replicates are the
+unit of comparison; observer pairs within a run are dependent and are
+never pooled.
+
+The candidate is rejected if (1) baseline has at least 3 W deaths on the
+20 aged replicates and the candidate more than half as many (fewer than 3
+is inconclusive); (2) a retune has W no greater than the candidate's on
+their common aged replicates and mean L within 5\% of the candidate's in
+both crash fixtures; or (3) the candidate's mean L exceeds baseline's by
+more than 5\% in either crash fixture, its mean datagram count exceeds
+baseline's by more than 2\% in any fixture, it declares a running,
+unpaused target dead in a cell where baseline does not, or a null control
+differs.
+
+\section{Results}
+All 208 declared cells were attempted. The supervising shell's two-hour
+limit killed the first full launch while recording
+\texttt{probe-correlated-dense-64-aged-r117}; that attempt is retained
+with its partial output and was not retried, so replicate 117 is
+inconclusive for probe comparisons. The ten cells never launched were then
+recorded by a continuation that refuses any already attempted cell. An
+earlier launch stopped after one development cell because its evidence
+directory did not exist; that attempt is retained too. Every recorded
+summary equals the baseline binary's offline reduction. The verdict is
+\emph{\Verdict}: rule~1 \RuleOne, rule~2 \RuleTwo, rule~3 \RuleThree.
+
+\paragraph{Working-path deaths.}
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Arm & Replicates & Complete & W \\
+\midrule
+\texttt{base} & 101--120 & \R{Nbase} & \R{Wbase} \\
+\texttt{probe} & 101--120 & \R{Nprobe} & \R{Wprobe} \\
+\texttt{smax8} & 101--110 & \R{Nsmax8} & \R{Wsmax8} \\
+\texttt{smax12} & 101--120 & \R{Nsmax12} & \R{Wsmax12} \\
+\texttt{sm5} & 101--110 & \R{Nsm5} & \R{Wsm5} \\
+\bottomrule
+\end{tabular}
+\end{center}
+The single baseline death, in replicate 115, is absent under the probe and
+\texttt{smax12}. There the probe turned 4.622\,s of dead pair-time into
+suspect time and sent 6 fewer datagrams than baseline. On the
+\Wcommon{} replicates where both completed, \Wonlybase{} replicate had a
+death under baseline only and \Wonlyprobe{} under the probe only. The
+design screen had seen 3 such deaths in 10 development replicates of the
+same workload; the held-out rate was lower, and rule~1 needs at least 3.
+In 19 of 20 aged replicates every arm produced the same suspect time:
+each suspicion was refuted before any timeout bound mattered, so the arms
+differ only where a stale lone suspicion runs out.
+
+\paragraph{Crash detection.}
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+Fixture & \texttt{base} & \texttt{probe} & \texttt{smax8} & \texttt{smax12} & \texttt{sm5} \\
+\midrule
+\texttt{crash}, mean L (s) & \R{Lcrashbase} & \R{Lcrashprobe} & \R{Lcrashsmax8} & \R{Lcrashsmax12} & \R{Lcrashsm5} \\
+\texttt{small-double-crash}, mean L (s) & \R{Lsmalldoublecrashbase} & \R{Lsmalldoublecrashprobe} & \R{Lsmalldoublecrashsmax8} & \R{Lsmalldoublecrashsmax12} & \R{Lsmalldoublecrashsm5} \\
+\bottomrule
+\end{tabular}
+\end{center}
+The probe's per-cell maximum latencies equal baseline's in all 16 crash
+replicates. The \texttt{SuspicionMaxMult} retunes match baseline at 32
+nodes, where confirmations bring timers to their minimum, and cost 21\%
+and 63\% when two of four nodes crash and confirmations are scarce.
+\texttt{SuspicionMult} 5 is 18\% slower in \texttt{crash} and 46\% faster in
+the double crash: with four nodes its confirmation target exceeds the
+two possible confirmers, so every suspicion uses the minimum timeout. No retune meets rule~2's 5\% latency bound in both
+fixtures, so rule~2 cannot reject the candidate whatever the death counts.
+
+\paragraph{Cost and controls.}
+Mean attempted datagram counts under the probe were within 2\% of
+baseline in every fixture. The largest ratios were 1.0170 in
+\texttt{threshold}, 1.0079 in \texttt{small-double-crash} and 1.0042 in
+\texttt{crash}; the aged fixture was 1.0000. Traces for
+\texttt{healthy}, \texttt{loss}, \texttt{correlated} and
+\texttt{partial-partition} equal baseline after the header in all 12
+cells. The probe produced no dead declaration about a running, unpaused
+target in a cell where baseline had none. In \texttt{correlated-dense}
+development index 2 it removes the known death, matching the screened
+one-timer shape.
+
+\section{Limitations}
+This is a screen with few expected events, not an estimate: we report
+counts and discordant replicates and no interval. The workloads are
+uncalibrated virtual fixtures chosen to expose one race; they say nothing
+about ordinary networks, 128 nodes or steady-state rates. The candidate
+restarts the suspicion on every acknowledgment, so a member that keeps
+answering this observer is never declared dead by this observer's timer
+alone; that conflicts with a finite maximum timeout and is left to an
+adoption decision. The simulator delivers cancelled timers by design, so
+the candidate adds trace events wherever a suspicion starts even when no
+expiry probe fires; one simulator golden test pinned to baseline event
+counts fails under the patch for that reason.
+
+\section{Reproduction}
+The recipe \texttt{run.sh NEW\_DIR [CELL \ldots]} in
+\texttt{experiments/2026-11-26-expiry-probe/} rebuilds both binaries from the pinned commit and refuses any cell whose
+row differs from \texttt{cells.tsv}. \texttt{evidence-store.sh fetch
+2026-11-26-expiry-probe} restores the original attempts;
+\texttt{analyze.py} applies the rules to \texttt{cells.tsv};
+\texttt{render.sh} renders this draft.
+
+\begin{thebibliography}{9}
+\bibitem{swim} A.~Das, I.~Gupta and A.~Motivala. SWIM: Scalable
+Weakly-consistent Infection-style Process Group Membership Protocol.
+\emph{DSN}, 2002. Section~4.2 read 2026-11-26 from
+\url{https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf}.
+\bibitem{lifeguard} A.~Dadgar, J.~Phillips and J.~Currey. Lifeguard: Local
+Health Awareness for More Accurate Failure Detection. arXiv:1707.00788v2,
+2018.
+\end{thebibliography}
+\end{document}
